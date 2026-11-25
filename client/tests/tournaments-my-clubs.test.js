@@ -112,4 +112,32 @@ describe('registration limits on cards (#246)', () => {
     expect(call[1].ruleSet.maxPlayers).toBe(16);
     expect(call[1].ruleSet.registrationClosesAt).toBe('2026-12-31');
   });
+
+  it('supports team format creation, card badges, and Của CLB matching for guest-side clubSlugs (B460)', async () => {
+    LIST.length = 0;
+    LIST.push(
+      T('team1', { format: 'team', teamCount: 1, boardCount: 4, clubSlug: 'sg', clubName: 'CLB SG', clubSlugs: ['sg', 'hn'] })
+    );
+    await boot({ clubs: [{ slug: 'hn', name: 'HN' }] });
+    pill().click();
+    expect(cards()).toEqual(['team1']);
+    const card = document.querySelector('.tournament-card[data-tournament-id="team1"]');
+    expect(card.textContent).toContain('tournaments.format_team');
+    expect(card.textContent).toContain('tournaments.btn_choose_roster');
+    expect(card.querySelector('[data-action="register"]')).toBeNull();
+    expect(card.textContent).not.toContain(' · ');
+
+    const tfTeam = document.getElementById('tf-team');
+    tfTeam.checked = true;
+    tfTeam.dispatchEvent(new Event('change'));
+    expect(document.getElementById('t-team-options').hidden).toBe(false);
+    document.getElementById('t-board-count').value = '4';
+    document.getElementById('t-team-rounds').value = '3';
+    document.getElementById('modal-tournament-confirm').click();
+    const call = window.__lobbyStub.client.emit.mock.calls.find((c) => c[0] === 'tournament:create');
+    expect(call[1]).toMatchObject({
+      format: 'team',
+      ruleSet: { boardCount: 4, teamRounds: 3, seriesMode: 'single', maxPlayers: null },
+    });
+  });
 });

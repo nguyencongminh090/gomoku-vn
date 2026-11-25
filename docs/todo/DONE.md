@@ -1,3 +1,5 @@
+- ✅ **#460.** Club team tournament UI: create, captain roster & standings `[Model: Sonnet]` — [detail](docs/todo/B460-club-team-tournament-ui.md)
+
 - ✅ **#236.** Club-vs-club team tournament backend & schema `[Model: Opus]` — [detail](docs/todo/B236-club-team-tournament.md)
 
 - ✅ **#458.** Club activity `[Model: Sonnet]` — [detail](docs/todo/B458-club-activity.md)

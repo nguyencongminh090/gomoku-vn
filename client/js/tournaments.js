@@ -92,7 +92,9 @@ client.on('tournament:list_patch', (data) => {
 });
 
 client.on('tournament:error', (data) => {
-  alert(data.code ? t('err.' + data.code.toLowerCase()) : data.message);
+  const key = data.code ? 'err.' + data.code.toLowerCase() : '';
+  const msg = key && t(key) !== key ? t(key) : (data.message || key);
+  alert(msg);
 });
 
 // ---------------------------------------------------------------------------
@@ -203,6 +205,7 @@ function formatLabel(format) {
   if (format === 'swiss') return t('tournaments.format_swiss');
   if (format === 'round_robin') return t('tournaments.format_round_robin');
   if (format === 'double_elim') return t('tournaments.format_double_elim_short');
+  if (format === 'team') return t('tournaments.format_team');
   return format;
 }
 
@@ -215,8 +218,10 @@ function statusBadge(status) {
 
 function renderTournamentList() {
   let tournaments = Array.from(tournamentMap.values());
-  if (activeStatusFilter === 'mine_clubs') tournaments = tournaments.filter((t) => t.clubSlug && myClubSlugs.has(t.clubSlug));
-  else if (activeStatusFilter !== 'all') tournaments = tournaments.filter((t) => t.status === activeStatusFilter);
+  if (activeStatusFilter === 'mine_clubs') {
+    tournaments = tournaments.filter((t) => (t.clubSlug && myClubSlugs.has(t.clubSlug))
+      || (t.clubSlugs || []).some((s) => myClubSlugs.has(s)));
+  } else if (activeStatusFilter !== 'all') tournaments = tournaments.filter((t) => t.status === activeStatusFilter);
   if (activeFormatFilter) tournaments = tournaments.filter((t) => t.format === activeFormatFilter);
 
   // The old #tournament-count pill is gone with the Zen header — the total
@@ -260,6 +265,12 @@ function renderTournamentList() {
       client.emit('tournament:start', { tournamentId: btn.dataset.tournamentId });
     });
   });
+  tournamentListEl.querySelectorAll('[data-action="open_team"]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.location.href = `tournament.html?id=${encodeURIComponent(btn.dataset.tournamentId)}`;
+    });
+  });
   tournamentListEl.querySelectorAll('[data-action="cancel_tournament"]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -299,8 +310,18 @@ function renderCard(tournament, index) {
   }
 
   let actionButtons = '';
+  const isTeam = tournament.format === 'team';
   if (tournament.status === 'draft') {
-    if (isOrganizer) {
+    if (isTeam) {
+      if (isOrganizer && (tournament.teamCount || 0) === 2) {
+        actionButtons += `<button class="btn btn-confirm" type="button" data-action="start" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_start')}</button>`;
+      }
+      if (tournament.registrationOpen !== false) {
+        actionButtons += `<button class="btn-secondary" type="button" data-action="open_team" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_choose_roster')}</button>`;
+      } else if ((tournament.teamCount || 0) >= 2 && !isOrganizer) {
+        statusLine = `<span class="tournament-card__status">${t('tournaments.status_full')}</span>`;
+      }
+    } else if (isOrganizer) {
       if (tournament.playerCount >= 2) {
         actionButtons += `<button class="btn btn-confirm" type="button" data-action="start" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_start')}</button>`;
       }
@@ -326,7 +347,12 @@ function renderCard(tournament, index) {
   const meta = [
     formatLabel(tournament.format),
     badge.label,
-    `${tournament.playerCount}${tournament.maxPlayers ? '/' + tournament.maxPlayers : ''} ${t('tournaments.players_suffix')}`,
+    ...(isTeam
+      ? [
+          t('tournaments.teams_count', { n: tournament.teamCount || 0 }),
+          t('tournaments.boards_per_team', { n: tournament.boardCount || 3 }),
+        ]
+      : [`${tournament.playerCount}${tournament.maxPlayers ? '/' + tournament.maxPlayers : ''} ${t('tournaments.players_suffix')}`]),
     t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') }),
     tournament.clubName ? t('tournaments.club_suffix', { name: escapeHtml(tournament.clubName) }) : '',
   ].filter(Boolean).map((x) => `<span class="rtag">${x}</span>`).join('');
@@ -419,6 +445,23 @@ function readTournamentRuleSet() {
     seriesMargin = parseInt(document.getElementById('t-series-margin').value, 10);
   }
 
+  const format = readTournamentFormat();
+  if (format === 'team') {
+    const boardCount = parseInt((document.getElementById('t-board-count') || {}).value, 10);
+    const teamRounds = parseInt((document.getElementById('t-team-rounds') || {}).value, 10);
+    return {
+      boardSize, winningRule, ruleWall, rulePortal, ruleSwap2, openingRule,
+      timerMode, timerSeconds, timerIncrementSeconds,
+      schedulingWindowMs: hours * 60 * 60 * 1000,
+      startsAt: document.getElementById('t-starts-at').value || null,
+      endsAt: document.getElementById('t-ends-at').value || null,
+      maxPlayers: null,
+      registrationClosesAt: document.getElementById('t-reg-closes-at').value || null,
+      seriesMode: 'single', seriesGameCount: null, seriesTargetScore: null, seriesMargin: null,
+      boardCount, teamRounds,
+    };
+  }
+
   return {
     boardSize, winningRule, ruleWall, rulePortal, ruleSwap2, openingRule,
     timerMode, timerSeconds, timerIncrementSeconds,
@@ -433,6 +476,7 @@ function readTournamentRuleSet() {
 
 modalConfirm.addEventListener('click', () => {
   const name = document.getElementById('tournament-name').value.trim();
+  const format = readTournamentFormat();
   const ruleSet = readTournamentRuleSet();
 
   // Client-side validation (backend already falls back to 'single' safely on
@@ -442,24 +486,35 @@ modalConfirm.addEventListener('click', () => {
     alert(t('tournaments.period_validation'));
     return;
   }
-  if (ruleSet.maxPlayers !== null && !(ruleSet.maxPlayers >= 2 && ruleSet.maxPlayers <= 512)) {
-    alert(t('tournaments.max_players_validation'));
-    return;
-  }
-  if (ruleSet.seriesMode === 'fixedCount'
-      && !(Number.isInteger(ruleSet.seriesGameCount) && ruleSet.seriesGameCount >= 2)) {
-    alert(t('tournaments.series_validation_count'));
-    return;
-  }
-  if (ruleSet.seriesMode === 'raceToMargin'
-      && !(ruleSet.seriesTargetScore > 0 && ruleSet.seriesMargin > 0)) {
-    alert(t('tournaments.series_validation_race'));
-    return;
+  if (format === 'team') {
+    if (!(Number.isInteger(ruleSet.boardCount) && ruleSet.boardCount >= 1 && ruleSet.boardCount <= 30)) {
+      alert(t('tournaments.team_validation_boards'));
+      return;
+    }
+    if (!(Number.isInteger(ruleSet.teamRounds) && ruleSet.teamRounds >= 1 && ruleSet.teamRounds <= 10)) {
+      alert(t('tournaments.team_validation_rounds'));
+      return;
+    }
+  } else {
+    if (ruleSet.maxPlayers !== null && !(ruleSet.maxPlayers >= 2 && ruleSet.maxPlayers <= 512)) {
+      alert(t('tournaments.max_players_validation'));
+      return;
+    }
+    if (ruleSet.seriesMode === 'fixedCount'
+        && !(Number.isInteger(ruleSet.seriesGameCount) && ruleSet.seriesGameCount >= 2)) {
+      alert(t('tournaments.series_validation_count'));
+      return;
+    }
+    if (ruleSet.seriesMode === 'raceToMargin'
+        && !(ruleSet.seriesTargetScore > 0 && ruleSet.seriesMargin > 0)) {
+      alert(t('tournaments.series_validation_race'));
+      return;
+    }
   }
 
   client.emit('tournament:create', {
     name: name || undefined,
-    format: readTournamentFormat(),
+    format,
     ruleSet,
     clubSlug: pendingClubSlug || undefined,
   });
@@ -524,12 +579,20 @@ modalConfirm.addEventListener('click', () => {
   const rowCount  = document.getElementById('t-series-count-row');
   const rowRace   = document.getElementById('t-series-race-row');
   const rowMargin = document.getElementById('t-series-margin-row');
+  const teamOpts  = document.getElementById('t-team-options');
+  const maxInput  = document.getElementById('t-max-players');
+  const maxWrap   = maxInput ? maxInput.parentElement : null;
+  const seriesRow = document.querySelector('input[name="tSeriesMode"]')?.closest('.setting-row');
   const sync = () => {
-    const mode = (document.querySelector('input[name="tSeriesMode"]:checked') || {}).value || 'single';
+    const isTeam = readTournamentFormat() === 'team';
+    if (teamOpts) teamOpts.hidden = !isTeam;
+    if (maxWrap) maxWrap.hidden = isTeam;
+    if (seriesRow) seriesRow.hidden = isTeam;
+    const mode = isTeam ? 'single' : ((document.querySelector('input[name="tSeriesMode"]:checked') || {}).value || 'single');
     rowCount.style.display = mode === 'fixedCount' ? '' : 'none';
     rowRace.style.display = mode === 'raceToMargin' ? '' : 'none';
     rowMargin.style.display = mode === 'raceToMargin' ? '' : 'none';
   };
-  document.querySelectorAll('input[name="tSeriesMode"]').forEach((r) => r.addEventListener('change', sync));
+  document.querySelectorAll('input[name="tSeriesMode"], input[name="tFormat"]').forEach((r) => r.addEventListener('change', sync));
   sync();
 })();

@@ -44,6 +44,7 @@ const navBadge = document.getElementById('nav-badge');
 const detailNameEl = document.getElementById('detail-name');
 const detailMetaEl = document.getElementById('detail-meta');
 const actionBannerSlot = document.getElementById('action-banner-slot');
+const teamPanelSlot = document.getElementById('team-panel-slot');
 const detailCancelSlot = document.getElementById('detail-cancel-slot');
 const subTabPairings = document.getElementById('sub-tab-pairings');
 const subTabStandings = document.getElementById('sub-tab-standings');
@@ -90,6 +91,135 @@ client.bindStatusBanner(statusBanner);
 let tournament = null;               // serializeTournament() payload
 let pairingsById = new Map();        // pairingId -> serializePairing() payload
 let entriesById = new Map();         // entryId -> entry
+
+// Captain club-roster state (B460: format === 'team')
+const captainState = {
+  loaded: false,
+  loading: false,
+  staffClubs: [],                    // [{ slug, name, tag, color, role }]
+  selectedSlug: '',
+  clubMembersBySlug: new Map(),      // `${slug}|${cat}` -> [{ username, displayName, avatarUrl, rating }]
+  pickedBySlug: new Map(),           // slug -> Set<username>
+  search: '',
+};
+
+function renderAvatarHtml(url, name, cls, ident) {
+  if (window.PlatformShell && typeof window.PlatformShell.avatar === 'function') {
+    return window.PlatformShell.avatar(url || null, name || '—', cls, ident).outerHTML;
+  }
+  const label = (ident && ident.tag) || String(name || '?').slice(0, 2).toUpperCase();
+  return `<span class="pav ${cls || ''}" aria-hidden="true">${escapeHtml(label)}</span>`;
+}
+
+function teamForEntry(entryId) {
+  if (!tournament || tournament.format !== 'team' || !Array.isArray(tournament.teams)) return null;
+  const e = entriesById.get(entryId);
+  if (e && e.teamId) return tournament.teams.find((t) => t.teamId === e.teamId) || null;
+  return tournament.teams.find((t) => (t.roster || []).some((r) => r.entryId === entryId)) || null;
+}
+
+function computeLiveTeamStandings() {
+  if (!tournament || tournament.format !== 'team') return [];
+  const teams = Array.isArray(tournament.teams) ? tournament.teams : [];
+  const stats = new Map();
+  for (const tm of teams) {
+    for (const r of tm.roster || []) {
+      stats.set(r.entryId, { score: 0, wins: 0, draws: 0, losses: 0 });
+    }
+  }
+  for (const p of pairingsById.values()) {
+    if (p.state !== 'Completed' && p.state !== 'Walkover') continue;
+    if (p.player2EntryId == null) continue;
+    const s1 = stats.get(p.player1EntryId);
+    const s2 = stats.get(p.player2EntryId);
+    const w = p.result ? p.result.winnerEntryId : undefined;
+    if (w === null) {
+      if (s1) { s1.score += 0.5; s1.draws += 1; }
+      if (s2) { s2.score += 0.5; s2.draws += 1; }
+    } else if (w === p.player1EntryId) {
+      if (s1) { s1.score += 1; s1.wins += 1; }
+      if (s2) { s2.losses += 1; }
+    } else if (w === p.player2EntryId) {
+      if (s2) { s2.score += 1; s2.wins += 1; }
+      if (s1) { s1.losses += 1; }
+    }
+  }
+  const rows = teams.map((tm) => {
+    let score = 0, wins = 0, draws = 0, losses = 0;
+    const roster = (tm.roster || []).map((r) => {
+      const es = stats.get(r.entryId) || { score: 0, wins: 0, draws: 0, losses: 0 };
+      score += es.score; wins += es.wins; draws += es.draws; losses += es.losses;
+      return { ...r, ...es };
+    });
+    return { ...tm, score, wins, draws, losses, roster };
+  });
+  rows.sort((a, b) => b.score - a.score || (a.teamOrder || 0) - (b.teamOrder || 0));
+  let rank = 1;
+  return rows.map((row, idx) => {
+    if (idx > 0 && rows[idx - 1].score !== row.score) rank = idx + 1;
+    return { ...row, liveRank: tournament.status === 'completed' && row.finalRank ? row.finalRank : rank };
+  });
+}
+
+async function ensureCaptainClubsLoaded() {
+  if (!userInfo.signedIn || userInfo.isGuest || captainState.loaded || captainState.loading) return;
+  captainState.loading = true;
+  try {
+    const res = await fetch('/api/clubs/mine', { credentials: 'same-origin' });
+    if (res.ok) {
+      const data = await res.json();
+      captainState.staffClubs = (data.clubs || []).filter((c) => c.role === 'owner' || c.role === 'officer');
+      if (!captainState.selectedSlug && captainState.staffClubs.length) {
+        captainState.selectedSlug = captainState.staffClubs[0].slug;
+      }
+    }
+    captainState.loaded = true;
+  } catch (_) {
+    captainState.loaded = true;
+  } finally {
+    captainState.loading = false;
+    if (tournament && tournament.format === 'team') {
+      ensureSelectedClubRosterLoaded();
+      renderTeamOverview();
+    }
+  }
+}
+
+async function ensureSelectedClubRosterLoaded() {
+  if (!tournament || tournament.format !== 'team' || !captainState.selectedSlug) return;
+  const slug = captainState.selectedSlug;
+  const cat = (tournament.ruleSet && tournament.ruleSet.winningRule) || 'freestyle';
+  const key = `${slug}|${cat}`;
+  if (captainState.clubMembersBySlug.has(key)) return;
+  captainState.clubMembersBySlug.set(key, null); // in-flight marker
+  try {
+    const res = await fetch(`/api/clubs/${encodeURIComponent(slug)}?category=${encodeURIComponent(cat)}`, { credentials: 'same-origin' });
+    if (!res.ok) { captainState.clubMembersBySlug.delete(key); return; }
+    const detail = await res.json();
+    const members = (detail.leaderboard || []).map((m) => ({
+      username: m.username,
+      displayName: m.displayName,
+      avatarUrl: m.avatarUrl || null,
+      rating: m.rating ?? null,
+    }));
+    captainState.clubMembersBySlug.set(key, members);
+    if (!captainState.pickedBySlug.has(slug)) {
+      const existing = (tournament.teams || []).find((tm) => tm.clubSlug === slug);
+      if (existing && existing.roster) {
+        const byDisplay = new Map(members.map((m) => [m.displayName, m.username]));
+        const picked = new Set();
+        for (const r of existing.roster) {
+          const match = members.find((m) => m.displayName === r.displayName) || (byDisplay.get(r.displayName) && { username: byDisplay.get(r.displayName) });
+          if (match) picked.add(match.username);
+        }
+        if (picked.size) captainState.pickedBySlug.set(slug, picked);
+      }
+    }
+    renderTeamOverview();
+  } catch (_) {
+    captainState.clubMembersBySlug.delete(key);
+  }
+}
 
 function myEntry() {
   if (!userInfo || !tournament) return null;
@@ -159,7 +289,9 @@ client.on('tournament:pairings_patch', (data) => {
 });
 
 client.on('tournament:error', (data) => {
-  alert(data.code ? t('err.' + data.code.toLowerCase()) : data.message);
+  const key = data.code ? 'err.' + data.code.toLowerCase() : '';
+  const msg = key && t(key) !== key ? t(key) : (data.message || key);
+  alert(msg);
 });
 
 // ── Sub-tabs ─────────────────────────────────────────────────────────────
@@ -212,6 +344,7 @@ function formatLabel(format) {
   if (format === 'swiss') return t('tournaments.format_swiss');
   if (format === 'round_robin') return t('tournaments.format_round_robin');
   if (format === 'double_elim') return t('tournaments.format_double_elim');
+  if (format === 'team') return t('tournaments.format_team');
   return format;
 }
 function statusBadgeInfo(status) {
@@ -234,19 +367,25 @@ document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeMan
 function renderHeader() {
   detailNameEl.textContent = tournament.name;
   const badge = statusBadgeInfo(tournament.status);
+  const isTeam = tournament.format === 'team';
   let roundMeta = '';
-  if (tournament.format !== 'double_elim' && tournament.totalRounds) {
+  if (tournament.format !== 'double_elim' && tournament.totalRounds && (!isTeam || tournament.status !== 'draft')) {
     // round_robin's currentRoundIndex is a 0-based array index server-side
-    // (Swiss's is already 1-based) — normalize to a 1-based display number.
+    // (Swiss's and Team's are already 1-based) — normalize to a 1-based display number.
     const displayRound = tournament.format === 'round_robin'
       ? (tournament.currentRoundIndex || 0) + 1
       : (tournament.currentRoundIndex || 1);
     roundMeta = `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-flag-checkered"></use></svg>${t('tdetail.round_label', { n: Math.min(displayRound, tournament.totalRounds), total: tournament.totalRounds })}</span>`;
   }
+  const participantsMeta = isTeam
+    ? `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-users-three"></use></svg>${escapeHtml(`${(tournament.teams || []).length}/2 hội nhóm`)}</span>
+       <span class="detail-meta-item">${escapeHtml(`${(tournament.ruleSet && tournament.ruleSet.boardCount) || 3} bàn mỗi đội`)}</span>
+       <span class="detail-meta-item">Không tính điểm xếp hạng</span>`
+    : `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-users-three"></use></svg>${tournament.entries.length} ${t('tournaments.players_suffix')}</span>`;
   detailMetaEl.innerHTML = `
     <span class="badge badge--format">${formatLabel(tournament.format)}</span>
     <span class="badge ${badge.cls}">${badge.label}</span>
-    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-users-three"></use></svg>${tournament.entries.length} ${t('tournaments.players_suffix')}</span>
+    ${participantsMeta}
     <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-user-circle"></use></svg>${t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') })}</span>
     ${roundMeta}
   `;
@@ -256,13 +395,23 @@ function renderHeader() {
   const droppable = tournament.status === 'active' && isOrganizer()
     ? tournament.entries.filter((e) => !e.withdrawn) : [];
   const canCancel = isOrganizer() && (tournament.status === 'draft' || tournament.status === 'active');
+  const canStartTeam = isTeam && tournament.status === 'draft' && isOrganizer() && (tournament.teams || []).length === 2;
   const item = (id, ico, key) => `<button class="manage-menu__item" type="button" role="menuitem" id="${id}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-${ico}"></use></svg>${t(key)}</button>`;
   const menuItems = (canWithdraw ? item('btn-withdraw', 'sign-out', 'tdetail.btn_withdraw') : '')
     + (droppable.length ? item('btn-drop-player', 'user-minus', 'tdetail.btn_drop_player') : '')
     + (canCancel ? item('btn-cancel-tournament', 'warning', 'tdetail.btn_cancel_tournament') : '');
-  detailCancelSlot.innerHTML = menuItems
-    ? `<button class="btn-secondary manage-btn" type="button" id="btn-manage" aria-haspopup="menu" aria-expanded="false">${t('tdetail.btn_manage')}<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-caret-down"></use></svg></button><div class="manage-menu" id="manage-menu" role="menu" hidden>${menuItems}</div>`
+  const startBtnHtml = canStartTeam
+    ? `<button class="btn btn-confirm" type="button" id="btn-start-team-tournament">Bắt đầu giải đồng đội</button>`
     : '';
+  detailCancelSlot.innerHTML = startBtnHtml + (menuItems
+    ? `<button class="btn-secondary manage-btn" type="button" id="btn-manage" aria-haspopup="menu" aria-expanded="false">${t('tdetail.btn_manage')}<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-caret-down"></use></svg></button><div class="manage-menu" id="manage-menu" role="menu" hidden>${menuItems}</div>`
+    : '');
+  const startTeamBtn = document.getElementById('btn-start-team-tournament');
+  if (startTeamBtn) {
+    startTeamBtn.addEventListener('click', () => {
+      client.emit('tournament:start', { tournamentId });
+    });
+  }
   const manageBtn = document.getElementById('btn-manage');
   const menuEl = document.getElementById('manage-menu');
   const setMenu = (open) => { menuEl.hidden = !open; manageBtn.setAttribute('aria-expanded', String(open)); };
@@ -443,8 +592,20 @@ function renderPairingCard(pairing) {
   const p1Name = entryName(pairing.player1EntryId);
   const p2Name = pairing.player2EntryId ? entryName(pairing.player2EntryId) : t('tdetail.bye_opponent');
 
-  const p1Label = me && pairing.player1EntryId === me.entryId ? `<span class="pairing-card__you">${t('tdetail.you')}</span>` : escapeHtml(p1Name);
-  const p2Label = me && pairing.player2EntryId === me.entryId ? `<span class="pairing-card__you">${t('tdetail.you')}</span>` : escapeHtml(p2Name);
+  const isTeam = tournament.format === 'team';
+  const team1 = isTeam ? teamForEntry(pairing.player1EntryId) : null;
+  const team2 = isTeam ? teamForEntry(pairing.player2EntryId) : null;
+  const p1Base = me && pairing.player1EntryId === me.entryId ? `<span class="pairing-card__you">${t('tdetail.you')}</span>` : escapeHtml(p1Name);
+  const p2Base = me && pairing.player2EntryId === me.entryId ? `<span class="pairing-card__you">${t('tdetail.you')}</span>` : escapeHtml(p2Name);
+  const p1Label = isTeam
+    ? `<span class="pairing-card__side"><span class="match-stone-dot match-stone-dot--black" title="Quân Đen"></span>${team1 ? `<span class="team-club-tag">${escapeHtml(team1.clubTag || team1.clubName)}</span>` : ''}${p1Base}</span>`
+    : p1Base;
+  const p2Label = isTeam
+    ? `<span class="pairing-card__side"><span class="match-stone-dot match-stone-dot--white" title="Quân Trắng"></span>${team2 ? `<span class="team-club-tag">${escapeHtml(team2.clubTag || team2.clubName)}</span>` : ''}${p2Base}</span>`
+    : p2Base;
+  const boardBadge = isTeam && pairing.boardNumber
+    ? `<span class="pairing-card__board">Bàn ${pairing.boardNumber}</span>`
+    : '';
 
   let metaLine = '';
   let actions = '';
@@ -502,7 +663,7 @@ function renderPairingCard(pairing) {
   return `
     <div class="pairing-card${isMine ? ' is-me' : ''}" data-pairing-id="${escapeAttr(pairing.pairingId)}">
       <div class="pairing-card__top">
-        <div class="pairing-card__players">${p1Label}<span class="pairing-card__vs">vs</span>${p2Label}</div>
+        <div class="pairing-card__players">${boardBadge}${p1Label}<span class="pairing-card__vs">vs</span>${p2Label}</div>
         <span class="state-pill state-pill--${st.cls}">${st.label}</span>
       </div>
       ${metaLine ? `<div class="pairing-card__meta">${metaLine}</div>` : ''}
@@ -518,7 +679,12 @@ function renderPairings() {
   const pairings = Array.from(pairingsById.values());
 
   if (pairings.length === 0) {
-    pairingsContainer.innerHTML = `
+    pairingsContainer.innerHTML = tournament.format === 'team'
+      ? `<div class="empty-tournaments">
+           <span class="room-list__empty-text">Chưa có bàn đấu nào được xếp cặp.</span>
+           <span class="room-list__empty-sub">Sau khi đủ 2 hội nhóm chốt đội hình và người tổ chức bắt đầu giải, các bàn đấu theo từng vòng sẽ hiển thị tại đây.</span>
+         </div>`
+      : `
       <div class="empty-tournaments">
         <span class="room-list__empty-text">${t('tdetail.no_pairings')}</span>
         <span class="room-list__empty-sub">${t('tdetail.no_pairings_sub')}</span>
@@ -549,7 +715,7 @@ function renderPairings() {
       const displayNum = tournament.format === 'round_robin' ? idx + 1 : idx;
       const isCurrent = idx === currentIdx && tournament.status === 'active';
       const label = `${t('tdetail.round_word')} ${displayNum}${isCurrent ? ` (${t('tdetail.round_current')})` : (tournament.status !== 'draft' ? ` (${t('tdetail.round_past')})` : '')}`;
-      const list = byRound.get(idx).sort((a, b) => (a.pairedAt < b.pairedAt ? -1 : 1));
+      const list = byRound.get(idx).sort((a, b) => (a.boardNumber && b.boardNumber ? a.boardNumber - b.boardNumber : (a.pairedAt < b.pairedAt ? -1 : 1)));
       return `
         <div class="round-group">
           <div class="round-group__title">${label}</div>
@@ -1058,7 +1224,355 @@ standingsContainer.addEventListener('mouseleave', () => {
   standingsContainer.querySelectorAll('.bm__row.is-tracked').forEach((el) => el.classList.remove('is-tracked'));
 });
 
+function renderTeamOverview() {
+  if (!teamPanelSlot) return;
+  if (!tournament || tournament.format !== 'team') {
+    teamPanelSlot.innerHTML = '';
+    return;
+  }
+
+  ensureCaptainClubsLoaded();
+
+  const boardCount = (tournament.ruleSet && tournament.ruleSet.boardCount) || 3;
+  const teams = Array.isArray(tournament.teams) ? tournament.teams : [];
+  const staffSlugs = new Set(captainState.staffClubs.map((c) => c.slug));
+
+  if (tournament.status !== 'draft') {
+    const liveTeams = computeLiveTeamStandings();
+    if (liveTeams.length < 2) {
+      teamPanelSlot.innerHTML = '';
+      return;
+    }
+    const byOrder = [...liveTeams].sort((a, b) => (a.teamOrder || 0) - (b.teamOrder || 0));
+    const [left, right] = byOrder;
+    const isCompleted = tournament.status === 'completed';
+    const tiedFirst = left.score === right.score;
+    const rankPill = (tm) => {
+      if (!isCompleted) return `<span class="team-rank-pill">Hạng #${tm.liveRank}</span>`;
+      if (tiedFirst) return `<span class="team-rank-pill">Đồng hạng nhất (#1)</span>`;
+      return tm.liveRank === 1
+        ? `<span class="team-rank-pill">Vô địch (#1)</span>`
+        : `<span class="team-rank-pill">Á quân (#2)</span>`;
+    };
+    teamPanelSlot.innerHTML = `
+      <section class="team-overview" id="team-scoreboard">
+        <div class="team-scoreboard">
+          <div class="team-scoreboard__side">
+            ${renderAvatarHtml(null, left.clubName, 'pav--md', { tag: left.clubTag, color: left.clubColor })}
+            <div class="team-scoreboard__info">
+              <a class="team-scoreboard__name" href="/c/${encodeURIComponent(left.clubSlug)}">${escapeHtml(left.clubName)}</a>
+              <div class="team-scoreboard__meta">
+                ${rankPill(left)}
+                <span>${left.wins} thắng</span>
+                <span>${left.draws} hòa</span>
+                <span>${left.losses} thua</span>
+              </div>
+            </div>
+          </div>
+          <div class="team-scoreboard__center" aria-label="Tỉ số đồng đội">
+            <span>${fmtScore(left.score)}</span>
+            <span>:</span>
+            <span>${fmtScore(right.score)}</span>
+          </div>
+          <div class="team-scoreboard__side team-scoreboard__side--right">
+            <div class="team-scoreboard__info">
+              <a class="team-scoreboard__name" href="/c/${encodeURIComponent(right.clubSlug)}">${escapeHtml(right.clubName)}</a>
+              <div class="team-scoreboard__meta">
+                ${rankPill(right)}
+                <span>${right.wins} thắng</span>
+                <span>${right.draws} hòa</span>
+                <span>${right.losses} thua</span>
+              </div>
+            </div>
+            ${renderAvatarHtml(null, right.clubName, 'pav--md', { tag: right.clubTag, color: right.clubColor })}
+          </div>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  // Draft: show registered club teams + captain roster selector
+  const registeredBoxes = teams.length
+    ? `<div class="team-grid">${teams.map((tm) => {
+        const canUnreg = isOrganizer() || staffSlugs.has(tm.clubSlug);
+        return `
+          <div class="team-box" data-team-slug="${escapeAttr(tm.clubSlug)}">
+            <div class="team-box__top">
+              <div class="team-box__club">
+                ${renderAvatarHtml(null, tm.clubName, 'pav--sm', { tag: tm.clubTag, color: tm.clubColor })}
+                <a href="/c/${encodeURIComponent(tm.clubSlug)}">${escapeHtml(tm.clubName)}</a>
+              </div>
+              ${canUnreg ? `<button type="button" class="btn-secondary btn-secondary--danger" data-unregister-team="${escapeAttr(tm.clubSlug)}">Rút đội hình</button>` : ''}
+            </div>
+            <div class="team-box__meta">
+              <span>Đội trưởng: ${escapeHtml(tm.captainName || '—')}</span>
+              <span>${(tm.roster || []).length}/${boardCount} bàn</span>
+            </div>
+            <div class="team-roster-list">
+              ${(tm.roster || []).map((r) => `
+                <div class="team-roster-row">
+                  <div class="team-roster-row__left">
+                    <span class="team-roster-row__board">Bàn ${r.boardNumber}</span>
+                    <span class="team-roster-row__name">${escapeHtml(r.displayName)}</span>
+                  </div>
+                  <div class="team-roster-row__meta">
+                    <span>${r.ratingAtReg != null ? `Rating ${r.ratingAtReg}` : 'Chưa xếp hạng'}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('')}</div>`
+    : `<p class="team-card__sub">Chưa có hội nhóm nào chốt đội hình. Cần đủ 2 hội nhóm đăng ký để bắt đầu.</p>`;
+
+  let builderHtml = '';
+  const eligibleClubs = captainState.staffClubs.filter((c) => teams.length < 2 || teams.some((tm) => tm.clubSlug === c.slug));
+  if (eligibleClubs.length > 0) {
+    if (!eligibleClubs.some((c) => c.slug === captainState.selectedSlug)) {
+      captainState.selectedSlug = eligibleClubs[0].slug;
+    }
+    ensureSelectedClubRosterLoaded();
+    const slug = captainState.selectedSlug;
+    const cat = (tournament.ruleSet && tournament.ruleSet.winningRule) || 'freestyle';
+    const members = captainState.clubMembersBySlug.get(`${slug}|${cat}`);
+    const picked = captainState.pickedBySlug.get(slug) || new Set();
+    const q = captainState.search.trim().toLocaleLowerCase('vi');
+    const filtered = Array.isArray(members)
+      ? members.filter((m) => !q || `${m.username} ${m.displayName}`.toLocaleLowerCase('vi').includes(q))
+      : [];
+    const orderedPreview = Array.isArray(members)
+      ? members.filter((m) => picked.has(m.username)).sort((a, b) =>
+          (Number(b.rating != null) - Number(a.rating != null))
+          || ((b.rating ?? 0) - (a.rating ?? 0))
+          || a.username.localeCompare(b.username))
+      : [];
+    const existingForSlug = teams.some((tm) => tm.clubSlug === slug);
+
+    builderHtml = `
+      <div class="team-card" id="team-roster-builder">
+        <div class="team-card__head">
+          <div>
+            <h3 class="team-card__title">Chọn đội hình thi đấu cho CLB</h3>
+            <p class="team-card__sub">Chọn đúng ${boardCount} thành viên chính thức. Hệ thống tự xếp thứ tự bàn theo Rating giảm dần (cùng điểm xét tên tài khoản A–Z) và khóa khi giải bắt đầu.</p>
+          </div>
+        </div>
+        <div class="team-builder__controls">
+          <div class="team-builder__field">
+            <label for="team-club-select">Hội nhóm quản lý</label>
+            <select id="team-club-select">
+              ${eligibleClubs.map((c) => `<option value="${escapeAttr(c.slug)}" ${c.slug === slug ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="team-builder__field">
+            <label for="team-member-search">Tìm thành viên</label>
+            <input type="search" id="team-member-search" value="${escapeAttr(captainState.search)}" placeholder="Tên hiển thị hoặc tên đăng nhập" />
+          </div>
+        </div>
+        ${!Array.isArray(members)
+          ? `<p class="team-card__sub">Đang tải danh sách thành viên hội nhóm…</p>`
+          : `<div class="team-pick-list" id="team-member-list">
+              ${filtered.map((m) => {
+                const checked = picked.has(m.username);
+                return `
+                  <label class="team-pick-item${checked ? ' is-checked' : ''}">
+                    <input type="checkbox" value="${escapeAttr(m.username)}" ${checked ? 'checked' : ''} />
+                    ${renderAvatarHtml(m.avatarUrl, m.displayName, 'pav--sm')}
+                    <span class="team-pick-item__body">
+                      <span class="team-pick-item__name">${escapeHtml(m.displayName)}</span>
+                      <span class="team-pick-item__sub">
+                        <span>@${escapeHtml(m.username)}</span>
+                        <span>${m.rating != null ? `Rating ${m.rating}` : 'Chưa xếp hạng'}</span>
+                      </span>
+                    </span>
+                  </label>
+                `;
+              }).join('')}
+            </div>`}
+        <div id="team-board-preview">
+          <p class="team-card__sub">Đã chọn ${orderedPreview.length}/${boardCount} kỳ thủ${orderedPreview.length ? ' — thứ tự bàn dự kiến:' : '.'}</p>
+          ${orderedPreview.length ? `<div class="team-roster-list">
+            ${orderedPreview.map((m, idx) => `
+              <div class="team-roster-row">
+                <div class="team-roster-row__left">
+                  <span class="team-roster-row__board">Bàn ${idx + 1}</span>
+                  <span class="team-roster-row__name">${escapeHtml(m.displayName)}</span>
+                </div>
+                <div class="team-roster-row__meta">
+                  <span>@${escapeHtml(m.username)}</span>
+                  <span>${m.rating != null ? `Rating ${m.rating}` : 'Chưa xếp hạng'}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>` : ''}
+        </div>
+        <div class="pairing-card__actions">
+          <button type="button" class="btn btn-confirm" id="btn-submit-team-roster" ${orderedPreview.length !== boardCount ? 'disabled' : ''}>
+            ${existingForSlug ? 'Cập nhật đội hình CLB' : 'Đăng ký đội hình CLB'}
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  teamPanelSlot.innerHTML = `
+    <section class="team-overview">
+      <div class="team-card" id="team-registered-panel">
+        <div class="team-card__head">
+          <h3 class="team-card__title">Đội hình CLB tham dự (${teams.length}/2)</h3>
+        </div>
+        ${registeredBoxes}
+      </div>
+      ${builderHtml}
+    </section>
+  `;
+
+  teamPanelSlot.querySelectorAll('[data-unregister-team]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const slugToDrop = btn.dataset.unregisterTeam;
+      if (confirm('Rút đội hình của hội nhóm này khỏi giải đấu?')) {
+        client.emit('tournament:unregister_team', { tournamentId, clubSlug: slugToDrop });
+      }
+    });
+  });
+
+  const clubSel = document.getElementById('team-club-select');
+  if (clubSel) {
+    clubSel.addEventListener('change', () => {
+      captainState.selectedSlug = clubSel.value;
+      ensureSelectedClubRosterLoaded();
+      renderTeamOverview();
+    });
+  }
+  const searchInput = document.getElementById('team-member-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      captainState.search = searchInput.value;
+      const caret = searchInput.selectionStart;
+      renderTeamOverview();
+      const fresh = document.getElementById('team-member-search');
+      if (fresh) { fresh.focus(); try { fresh.setSelectionRange(caret, caret); } catch (_) { /* ignore */ } }
+    });
+  }
+  const memberList = document.getElementById('team-member-list');
+  if (memberList) {
+    memberList.querySelectorAll('input[type="checkbox"]').forEach((box) => {
+      box.addEventListener('change', () => {
+        const slug = captainState.selectedSlug;
+        if (!captainState.pickedBySlug.has(slug)) captainState.pickedBySlug.set(slug, new Set());
+        const set = captainState.pickedBySlug.get(slug);
+        if (box.checked) set.add(box.value);
+        else set.delete(box.value);
+        renderTeamOverview();
+      });
+    });
+  }
+  const submitBtn = document.getElementById('btn-submit-team-roster');
+  if (submitBtn) {
+    submitBtn.addEventListener('click', () => {
+      const slug = captainState.selectedSlug;
+      const set = captainState.pickedBySlug.get(slug) || new Set();
+      client.emit('tournament:register_team', {
+        tournamentId,
+        clubSlug: slug,
+        usernames: Array.from(set),
+      });
+    });
+  }
+}
+
+function renderTeamStandings() {
+  const liveTeams = computeLiveTeamStandings();
+  if (liveTeams.length === 0) {
+    standingsContainer.innerHTML = `<div class="empty-tournaments"><span class="room-list__empty-text">Chưa có đội hình CLB nào đăng ký.</span></div>`;
+    return;
+  }
+  const me = myEntry();
+  const isCompleted = tournament.status === 'completed';
+  const tiedFirst = liveTeams.length === 2 && liveTeams[0].score === liveTeams[1].score;
+  const partialNotice = tournament.status === 'cancelled'
+    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
+    : '';
+
+  standingsContainer.innerHTML = `
+    ${partialNotice}
+    <div class="team-table-wrap">
+    <table class="standings-table" id="team-standings-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Hội nhóm</th>
+          <th style="text-align:right;">Thắng</th>
+          <th style="text-align:right;">Hòa</th>
+          <th style="text-align:right;">Thua</th>
+          <th style="text-align:right;">Điểm</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${liveTeams.map((tm) => {
+          const isMyTeam = me && tm.roster.some((r) => r.entryId === me.entryId);
+          const badge = isCompleted
+            ? (tiedFirst
+                ? `<span class="team-rank-pill">Đồng hạng nhất</span>`
+                : (tm.liveRank === 1 ? `<span class="team-rank-pill">Vô địch</span>` : ''))
+            : '';
+          return `
+            <tr class="${isMyTeam ? 'is-me' : ''}">
+              <td class="rank-cell">${tm.liveRank}</td>
+              <td class="name-cell">
+                <span class="pairing-card__side">
+                  ${renderAvatarHtml(null, tm.clubName, 'pav--sm', { tag: tm.clubTag, color: tm.clubColor })}
+                  <a href="/c/${encodeURIComponent(tm.clubSlug)}">${escapeHtml(tm.clubName)}</a>
+                  ${badge}
+                </span>
+              </td>
+              <td class="num-cell">${tm.wins}</td>
+              <td class="num-cell">${tm.draws}</td>
+              <td class="num-cell">${tm.losses}</td>
+              <td class="num-cell"><strong>${fmtScore(tm.score)}</strong></td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div class="team-grid" id="team-boards-breakdown" style="margin-top:18px;">
+      ${liveTeams.map((tm) => `
+        <div class="team-box">
+          <div class="team-box__top">
+            <div class="team-box__club">
+              ${renderAvatarHtml(null, tm.clubName, 'pav--sm', { tag: tm.clubTag, color: tm.clubColor })}
+              <span>${escapeHtml(tm.clubName)}</span>
+            </div>
+            <span class="team-rank-pill">${fmtScore(tm.score)} điểm</span>
+          </div>
+          <div class="team-roster-list">
+            ${tm.roster.map((r) => `
+              <div class="team-roster-row${me && me.entryId === r.entryId ? ' is-me' : ''}">
+                <div class="team-roster-row__left">
+                  <span class="team-roster-row__board">Bàn ${r.boardNumber}</span>
+                  <span class="team-roster-row__name">${escapeHtml(r.displayName)}</span>
+                </div>
+                <div class="team-roster-row__meta">
+                  <span>${r.wins}T / ${r.draws}H / ${r.losses}B</span>
+                  <strong>${fmtScore(r.score)} đ</strong>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 function renderStandings() {
+  if (tournament.format === 'team') {
+    renderTeamStandings();
+    return;
+  }
+
   if (tournament.format === 'double_elim') {
     renderBracketTree();
     return;
@@ -1214,6 +1728,7 @@ function renderAll() {
   if (!tournament) return;
   renderHeader();
   renderActionBanner();
+  renderTeamOverview();
   renderPairings();
   renderStandings();
 }

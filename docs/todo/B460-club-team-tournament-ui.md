@@ -1,5 +1,5 @@
 # B460 — Club team tournament UI: create, captain roster & standings
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-25 — full Jest (4908/4908), cache-bust OK, and desktop/mobile Chromium passed. See features/club-platform/screenshots/team-*.png.
 **Area:** client/index.html, client/js/tournaments.js, client/tournament.html, client/js/tournament-detail.js, client/css/tournament.css, client/js/club.js, client/js/i18n.js
 **From:** features/club-platform/planning.md (slice 7b split from B236)   **Depends:** B236
 
