@@ -1,5 +1,5 @@
 # B462 — #461 follow-up: sanction rank survives owner transfer
-**Status:** OPEN
+**Status:** ✅ VERIFIED 2026-11-25 on `fix/club-sanction-owner-transfer` — guard test passed first run, no code change (fix-log 2026-11-25-462)
 **Area:** server/tests/club-sanction-rank.test.js, server/managers/ClubService.js (moderate, setRole transfer)
 **From:** club-platform handoff (memory), user task list 2026-11-25   **Depends:** B461
 

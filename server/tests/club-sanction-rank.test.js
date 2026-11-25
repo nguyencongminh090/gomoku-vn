@@ -167,3 +167,26 @@ it('an expired owner mute no longer blocks an officer mute', async () => {
   expect((await mod('off', 'mute', ['mem'])).status).toBe(200);
   expect(sanction('mem')).toEqual({ kind: 'mute', actor_role: 'officer' });
 });
+
+it('B462: after an ownership transfer the old owner cannot lift their own sanctions, the new owner can', async () => {
+  try {
+    await mod('own', 'ban', ['mem']);
+    await mod('own', 'mute', ['mem2']);
+    expect((await call('PUT', URL_ + '/members/off/role', 'own', { role: 'owner' })).status).toBe(200);
+    expect(db.prepare('SELECT owner_id FROM clubs WHERE id=?').get(clubId).owner_id).toBe(U.off);
+    expect(db.prepare('SELECT role FROM club_members WHERE club_id=? AND user_id=?').get(clubId, U.own).role).toBe('officer');
+    expect((await mod('own', 'unban', ['mem'])).status).toBe(403);
+    expect((await mod('own', 'unmute', ['mem2'])).status).toBe(403);
+    expect(sanction('mem')).toEqual({ kind: 'ban', actor_role: 'owner' });
+    expect(sanction('mem2')).toEqual({ kind: 'mute', actor_role: 'owner' });
+    expect((await mod('off', 'unban', ['mem'])).status).toBe(200);
+    expect((await mod('off', 'unmute', ['mem2'])).status).toBe(200);
+    expect(sanction('mem')).toBeUndefined();
+    expect(sanction('mem2')).toBeUndefined();
+  } finally {
+    // Restore the fixture owner so tests added after this one see the original roles.
+    db.prepare("UPDATE club_members SET role='owner' WHERE club_id=? AND user_id=?").run(clubId, U.own);
+    db.prepare("UPDATE club_members SET role='officer' WHERE club_id=? AND user_id=?").run(clubId, U.off);
+    db.prepare('UPDATE clubs SET owner_id=? WHERE id=?').run(U.own, clubId);
+  }
+});

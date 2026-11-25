@@ -1,3 +1,5 @@
+- ✅ **#462.** #461 follow-up: test that sanction rank survives owner transfer `[Model: Sonnet]` — [detail](docs/todo/B462-club-sanction-owner-transfer-test.md)
+
 - ✅ **#467.** Verify full 2-round team event e2e + restart hydration `[Model: Opus]` — [detail](docs/todo/B467-team-event-e2e-restart-check.md)
 
 - ✅ **#466.** Verify team tournament page in English locale `[Model: Sonnet]` — [detail](docs/todo/B466-team-tournament-english-check.md)
