@@ -45,7 +45,7 @@ function drop(userId, type, actorId) {
 function push(userId, type, actorId, payload = {}) {
   if (!TYPES.includes(type)) throw new Error(`unknown notification type: ${type}`);
   const row = db().transaction(() => {
-    if (actorId) drop(userId, type, actorId);
+    if (actorId && type !== 'club_mention' && type !== 'club_all') drop(userId, type, actorId);
     const info = db().prepare(
       'INSERT INTO notifications (user_id, type, actor_id, payload, created_at) VALUES (?, ?, ?, ?, ?)'
     ).run(userId, type, actorId || null, JSON.stringify(payload), new Date().toISOString());

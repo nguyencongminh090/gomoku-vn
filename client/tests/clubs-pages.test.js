@@ -1233,3 +1233,13 @@ it('filters the roster by role and keeps sanction controls scoped to staff', asy
   expect(document.getElementById('cb-members-body').textContent).not.toContain('clubs.role_owner');
   expect(document.getElementById('cb-bulk').hidden).toBe(true);
 });
+
+it('inserts a group mention at the caret and retains the surrounding draft', async () => {
+  await bootClub({ ...CLUB, myRole: 'member', chat: { notifyMention: true } });
+  const input = document.getElementById('cb-chat-input');
+  input.value = 'Chào @off hôm nay';
+  input.setSelectionRange(9, 9);
+  input.dispatchEvent(new Event('input'));
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', cancelable: true }));
+  expect(input.value).toBe('Chào @officers hôm nay');
+});

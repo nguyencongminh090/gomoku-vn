@@ -73,7 +73,6 @@ in the detail file / fix-log).
 
 
 
-- **#456.** Mentions `[Model: Sonnet]` — [detail](docs/todo/B456-mentions.md)
 
 - **#457.** Site oversight and reporting `[Model: Sonnet]` — [detail](docs/todo/B457-site-oversight-and-reporting.md)
 
