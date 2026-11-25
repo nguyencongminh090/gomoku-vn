@@ -1,3 +1,4 @@
+- ✅ **#426.** Tournament match board wider than 390px phone viewport (clipped both sides) `[Model: Sonnet]` — [detail](docs/todo/B426-tmatch-board-wider-than-phone.md)
 - ✅ **#448.** Club rail crest: `/api/clubs/mine` missing color/tag (rule 9) `[Model: Sonnet]` — [detail](docs/todo/B448-club-mine-crest-fields.md)
 - ✅ **#451.** Club channel links rewrite the URL to `/#ch=…` (`<base href="/">`); reload lands on home `[Model: Sonnet]` — [detail](docs/todo/B451-club-channel-hash-base-href.md)
 - ✅ **#450.** Club calendar + reminders for scheduled events `[Model: Opus 5]` — [detail](docs/todo/B450-club-calendar-reminders.md)

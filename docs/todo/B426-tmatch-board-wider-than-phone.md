@@ -1,5 +1,5 @@
 # B426 — Tournament match board wider than a 390px phone viewport
-**Status:** ✅ FIXED 2026-11-25 — fix/426-tmatch-board-phone-width; real-browser layout spec at 360/375/390 ([fix-log](../fix-log/2026-11-25-426-tmatch-board-phone-width.md))
+**Status:** ✅ FIXED 2026-11-25 — fix/426-tmatch-board-phone-width → dev; real-browser layout spec at 360/375/390 ([fix-log](../fix-log/2026-11-25-426-tmatch-board-phone-width.md))
 **Area:** client/tournament-match.html (`#board-wrap`, `#match-canvas`), client/css/tournament.css:258, client/js/board.js (sizing)
 **From:** #425 phone browser pass, 2026-11-21 (Renju tournament, Chromium 390x844, own DB)   **Depends:** —
 
