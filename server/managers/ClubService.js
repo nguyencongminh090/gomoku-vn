@@ -946,6 +946,29 @@ function weeklyBoard(clubId) {
     .map((r, i) => ({ rank: i + 1, username: r.username, displayName: r.display_name, avatarUrl: avatarOf(r.user_id, r.avatar_v), wins: r.wins, played: r.played }));
 }
 
+function clubActivity(userId, slug) {
+  const club = getClub(slug);
+  checkAccess(club, userId);
+  requireMember(club, userId);
+  const activity = db().prepare(`WITH played AS (
+    SELECT black_player_id AS uid,started_at FROM games WHERE black_player_id IS NOT NULL AND ended_at>=@since AND winner_color IS NOT NULL
+    UNION ALL SELECT white_player_id,started_at FROM games WHERE white_player_id IS NOT NULL AND ended_at>=@since AND winner_color IS NOT NULL
+  ) SELECT m.user_id,u.username,u.display_name,u.avatar_v,COUNT(*) AS games
+    FROM played g JOIN club_members m ON m.club_id=@club AND m.user_id=g.uid AND m.role!='pending'
+    JOIN users u ON u.id=m.user_id WHERE u.hide_history=0 AND g.started_at>=m.joined_at
+    GROUP BY m.user_id ORDER BY games DESC,u.username LIMIT 30`)
+    .all({ since: new Date(Date.now()-WEEK_MS).toISOString(), club: club.id })
+    .map((r) => ({ username: r.username, displayName: r.display_name, avatarUrl: avatarOf(r.user_id, r.avatar_v), games: r.games }));
+  const recent = db().prepare(`SELECT g.id,b.display_name AS black,w.display_name AS white,g.ended_at AS endedAt,g.winner_color AS result
+    FROM club_members bm JOIN games g ON g.black_player_id=bm.user_id
+    JOIN club_members wm ON wm.club_id=bm.club_id AND wm.user_id=g.white_player_id
+    JOIN users b ON b.id=bm.user_id JOIN users w ON w.id=wm.user_id
+    WHERE bm.club_id=? AND bm.role!='pending' AND wm.role!='pending' AND b.hide_history=0 AND w.hide_history=0
+      AND g.started_at>=bm.joined_at AND g.started_at>=wm.joined_at AND g.winner_color IS NOT NULL
+    ORDER BY g.ended_at DESC,g.id DESC LIMIT 12`).all(club.id);
+  return { activity, recent };
+}
+
 function clubHistory(clubId, limit = HISTORY_SHOWN) {
   return db().prepare(`
     SELECT l.id, l.type, l.detail, l.created_at, a.username AS a_user, a.display_name AS a_name, t.username AS t_user, t.display_name AS t_name
@@ -1027,7 +1050,7 @@ function userIdByUsername(username) {
 }
 
 module.exports = {
-  removeContent, checkAccess, clubHistory, reportMessage, removedMessages, moderate, ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
+  clubActivity, removeContent, checkAccess, clubHistory, reportMessage, removedMessages, moderate, ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
   COLORS, createClub, updateClub, deleteClub, join, leave, approve, remove, setRole, invite, revokeInvite,
   createEvent, deleteEvent, rsvpEvent, remindDueEvents, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage, _resetFanOut,
   createPoll, refreshPolls, votePoll, closePoll, pollVoters, MAX_OPEN_POLLS,

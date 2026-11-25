@@ -191,6 +191,7 @@
     $('cb-msg').textContent = '';
     if (updateHash && currentChannel() !== name) history.replaceState(null, '', location.pathname + location.search + '#ch=' + name); // <base href="/"> would resolve a bare '#x' to "/#x" (#451)
     if (name === 'chat') openChat();
+    if (name === 'board') loadActivity();
     syncUnread();
   }
 
@@ -698,6 +699,40 @@
   }
 
   /** Board channel: rating categories or "this week" (wins in 7 days, from the same payload). */
+  async function loadActivity() {
+    const club = state.club;
+    const rated = club.leaderboard.filter((m) => m.rating != null).length;
+    $('cb-rating-summary').textContent = club.avgRating == null
+      ? 'Chưa đủ thành viên xếp hạng để tính điểm trung bình.'
+      : `Điểm trung bình của nhóm là ${club.avgRating} từ ${rated} thành viên đã xếp hạng${club.rank ? `, hạng #${club.rank}` : ''}.`;
+    const member = isMember();
+    $('cb-activity').hidden = !member;
+    if (!member) {
+      $('cb-activity-list').replaceChildren();
+      $('cb-recent').replaceChildren();
+      return;
+    }
+    try {
+      const res = await fetch(base() + '/activity', { credentials: 'same-origin' });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (state.club !== club) return;
+      $('cb-activity-list').replaceChildren(...(data.activity?.length
+        ? data.activity.map((p) => userRow(p.username, p.displayName, p.avatarUrl, `${p.games} ván trong tuần`))
+        : [el('p', 'Chưa có ván trong tuần.', 'pnote')]));
+      $('cb-recent').replaceChildren(...(data.recent?.length ? data.recent.map((g) => {
+        const result = g.result === 'DRAW' ? 'Hòa' : (g.result === 'BLACK' ? g.black : g.white) + ' thắng';
+        const row = el('div', undefined, 'prow');
+        const body = el('div', undefined, 'prow__body');
+        body.append(el('div', g.black + ' – ' + g.white, 'prow__t'), window.PlatformShell.meta([result, fmtWhen(g.endedAt)]));
+        row.append(body);
+        return row;
+      }) : [el('p', 'Chưa có ván nội bộ.', 'pnote')]));
+    } catch (_) {
+      if (state.club === club) { $('cb-activity-list').textContent = t('clubs.error'); $('cb-recent').replaceChildren(); }
+    }
+  }
+
   function renderBoardMode() {
     const week = state.weekly;
     const rows = state.club.weekly || [];

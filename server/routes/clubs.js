@@ -233,6 +233,10 @@ const readAuth = [verifyToken, (req, res, next) => {
   next();
 }];
 
+router.get('/:slug/activity', ...readAuth, h((req, res) => {
+  res.set('Cache-Control', 'no-store').json(svc.clubActivity(req.user.userId, req.params.slug));
+}));
+
 router.get('/:slug/messages', ...readAuth, h((req, res) => {
   res.set('Cache-Control', 'no-store');
   const body = { messages: svc.listMessages(req.user.userId, req.params.slug, req.query) };

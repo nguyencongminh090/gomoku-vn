@@ -1244,3 +1244,29 @@ it('inserts a group mention at the caret and retains the surrounding draft', asy
   input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', cancelable: true }));
   expect(input.value).toBe('Chào @officers hôm nay');
 });
+
+it('loads activity on opening the board as a member with separate meta spans and hides it for non-members', async () => {
+  await bootClub(CLUB);
+  global.fetch = jest.fn();
+  document.getElementById('cb-ch-board').click();
+  await flush();
+  expect(document.getElementById('cb-activity').hidden).toBe(true);
+  expect(global.fetch).not.toHaveBeenCalled();
+  expect(document.getElementById('cb-rating-summary').textContent).toBe('Điểm trung bình của nhóm là 1500 từ 1 thành viên đã xếp hạng, hạng #3.');
+  expect(document.getElementById('cb-rating-summary').textContent).not.toContain('·');
+
+  await bootClub({ ...CLUB, myRole: 'member' });
+  global.fetch = jest.fn(() => ok({
+    activity: [{ username: 'mai', displayName: 'Mai', avatarUrl: null, games: 3 }],
+    recent: [{ id: 'g1', black: 'Own', white: 'Mai', endedAt: '2026-11-25T05:00:00.000Z', result: 'BLACK' }],
+  }));
+  document.getElementById('cb-ch-board').click();
+  await flush();
+  expect(document.getElementById('cb-activity').hidden).toBe(false);
+  expect(document.querySelector('#cb-activity-list .prow__t').textContent).toBe('Mai');
+  expect([...document.querySelectorAll('#cb-activity-list .prow__meta > span')].map((s) => s.textContent)).toEqual(['3 ván trong tuần']);
+  expect(document.getElementById('cb-activity-list').textContent).not.toContain('·');
+  expect(document.querySelector('#cb-recent .prow__t').textContent).toBe('Own – Mai');
+  expect(document.querySelectorAll('#cb-recent .prow__meta > span')).toHaveLength(2);
+  expect(document.querySelector('#cb-recent .prow__meta > span').textContent).toBe('Own thắng');
+});
