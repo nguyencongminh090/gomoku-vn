@@ -42,7 +42,7 @@ async function bootClub(club) {
   global.fetch = jest.fn(() => ok(club));
   window.EscapeUtils = require('../js/escape-utils.js');
   require('../js/platform-shell.js');
-  require('../js/club-kit.js');
+  require('../js/club-policy.js'); require('../js/club-kit.js');
   require('../js/club.js');
   document.dispatchEvent(new Event('DOMContentLoaded'));
   await flush(); await flush();
@@ -295,7 +295,7 @@ describe('club page', () => {
       global.fetch = jest.fn((u) => (String(u).includes('/mine')
         ? ok({ clubs: [{ slug: 'other', name: 'Other', role: 'member', members: 3, avatarUrl: null }, { slug: 'caro', name: '<i>Caro</i>', role: 'member', members: 2, avatarUrl: null }] })
         : ok({ ...CLUB, myRole: 'member' })));
-      require('../js/platform-shell.js'); require('../js/club-kit.js'); require('../js/club.js');
+      require('../js/platform-shell.js'); require('../js/club-policy.js'); require('../js/club-kit.js'); require('../js/club.js');
       document.dispatchEvent(new Event('DOMContentLoaded'));
       await flush(); await flush(); await flush();
       expect(global.fetch.mock.calls[0][0]).toContain('/api/clubs/caro?category=');
@@ -810,12 +810,12 @@ describe('chat commands + notifications (B447)', () => {
     it('"/" lists only enabled commands this member may use; /ghim is staff-only', async () => {
       await boot(clubAs('member'));
       type('/');
-      expect(hints()).toEqual(['/giaohuu', '/binhchon', '/lich']);
+      expect(hints()).toEqual(['/giaohuu', '/binhchon', '/lich', '/trogiup']);
       expect(document.getElementById('cb-chat-hints').hidden).toBe(false);
       expect(input().getAttribute('aria-expanded')).toBe('true');
       await boot(clubAs('officer'));
       type('/');
-      expect(hints()).toEqual(['/ghim', '/giaohuu', '/binhchon', '/lich']);
+      expect(hints()).toEqual(['/ghim', '/giaohuu', '/binhchon', '/lich', '/trogiup']);
       type('/b');
       expect(hints()).toEqual(['/binhchon']);
       type('/gh');
@@ -825,15 +825,16 @@ describe('chat commands + notifications (B447)', () => {
     it('disabled commands are not offered; no hints once a space is typed or for plain text', async () => {
       await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdChallenge: false, cmdPoll: false, cmdCalendar: false } }));
       type('/');
-      expect(hints()).toEqual(['/ghim']);
+      expect(hints()).toEqual(['/ghim', '/trogiup']);
       type('/ghim hello');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
       type('hello /');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
       await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdPin: false, cmdChallenge: false, cmdPoll: false, cmdCalendar: false } }));
-      type('/');
+      type('/pin');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
-      expect(input().getAttribute('aria-expanded')).toBe('false');
+      type('/help');
+      expect(hints()).toEqual(['/help']);
     });
 
     it('arrows move the selection, Enter fills the command (no submit), Escape closes', async () => {

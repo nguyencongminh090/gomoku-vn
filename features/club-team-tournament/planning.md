@@ -13,3 +13,5 @@ See [user_story.md](user_story.md) · diagrams: [sequence](diagram/uml_diagram/s
 1. Design (schema: `team_entries`, roster table; new `team` format in the tournament module).
 2. Backend pairing + scoring + tests. 3. Club roster UI + live standings. 4. Real-browser pass.
 Link: [B200](../../docs/todo/B200-club-tabs-chat-events.md) (club tab lists it once built).
+
+Resolved 2026-11-25 in [Club platform decisions](../club-platform/planning.md#decisions).

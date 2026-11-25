@@ -17,6 +17,7 @@ Notes are generic: `CLAUDE.md` and `.claude/rules/*` win on conflict. Check `app
 ## Inline — project-authored (distilled from our own fix-log; read BEFORE touching the area)
 | Note | Use when |
 |---|---|
+| [club-community](club-community.md) | Club moderation, composer shortcuts, mentions and team competition |
 | [engineering-method-lessons](engineering-method-lessons.md) | ANY non-trivial fix: measure-don't-guess, instruction premise may be a no-op, fix the producing layer, merge drift, honest log corrections |
 | [proxy-client-ip-rate-limit](proxy-client-ip-rate-limit.md) | anything keyed per IP: `getClientIp()`, limiters (`keyGenerator`), `MAX_ROOMS_PER_IP`, trust proxy |
 | [static-assets-caching-csp-build](static-assets-caching-csp-build.md) | `express.static`/Cache-Control, compression, CSP/Helmet, Cloudflare beacon/ETag, stale `dist/`, `?v=` trap |

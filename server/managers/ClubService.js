@@ -85,7 +85,8 @@ function roleOf(clubId, userId) {
   return r ? r.role : null;
 }
 
-const isStaff = (role) => role === 'owner' || role === 'officer';
+const policy = require('../../client/js/club-policy');
+const { isStaff } = policy;
 const countMembers = (clubId) =>
   db().prepare("SELECT COUNT(*) AS n FROM club_members WHERE club_id = ? AND role != 'pending'").get(clubId).n;
 const countUserClubs = (userId) =>
@@ -287,7 +288,7 @@ function remove(actorId, slug, targetId) {
   const target = roleOf(club.id, targetId);
   if (!isStaff(actor)) throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn không có quyền.');
   if (!target) throw new ClubError('CLUB_NOT_MEMBER', 404, 'Người này không ở trong nhóm.');
-  if (target === 'owner' || (isStaff(target) && actor !== 'owner')) {
+  if (!policy.canModerate(actor, target)) {
     throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn không có quyền với người này.');
   }
   db().prepare('DELETE FROM club_members WHERE club_id = ? AND user_id = ?').run(club.id, targetId);
@@ -679,9 +680,13 @@ function postMessage(userId, slug, text) {
   const raw = typeof text === 'string' ? text : '';
   const settings = chat.readSettings(club.chat_settings);
   const cmd = chat.parseCommand(raw);
+  rateLimit(userId);
   if (cmd) {
     if (!cmd.kind) throw new ClubError('CLUB_COMMAND_UNKNOWN', 400, `Không có lệnh /${cmd.word}.`);
-    if (!settings[chat.COMMAND_TOGGLE[cmd.kind]]) throw new ClubError('CLUB_COMMAND_DISABLED', 403, `Lệnh /${cmd.word} đang tắt trong nhóm này.`);
+    const definition = policy.find(cmd.word);
+    if (definition.staff && !isStaff(role)) throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn không có quyền.');
+    if (definition.toggle && !settings[definition.toggle]) throw new ClubError('CLUB_COMMAND_DISABLED', 403, `Lệnh /${cmd.word} đang tắt trong nhóm này.`);
+    if (cmd.kind === 'help') return { kind: 'help', commands: policy.available(role, settings).map((c) => c.kind) };
     if (cmd.kind === 'pin') return pinCommand(club, role, userId, cmd.arg, settings);
     if (cmd.kind === 'poll') return pollCommand(club, role, userId, cmd.arg, settings);
     if (cmd.kind === 'calendar') return calendarCommand(club, role, userId, cmd.arg);
@@ -692,7 +697,6 @@ function postMessage(userId, slug, text) {
   const mentions = chat.parseMentions(raw);
   const toAll = mentions.all && isStaff(role) && settings.notifyAll;
   if (toAll && coolingDown(club.id + ':all')) throw new ClubError('CLUB_NOTIFY_COOLDOWN', 429, 'Chỉ báo cả nhóm 1 lần mỗi 10 phút.');
-  rateLimit(userId);
   const id = db().transaction(() => insertMessage(club.id, userId, body))();
   if (toAll) {
     lastFanOut.set(club.id + ':all', Date.now());
@@ -708,7 +712,6 @@ function pinCommand(club, role, userId, arg, settings) {
   const body = dmText.clean(arg);
   if (!body) throw new ClubError('CLUB_MESSAGE_EMPTY', 400, 'Tin nhắn trống.');
   const { announcement } = validateIdentity({ announcement: arg }); // stored raw like the settings form; ≤ DESC_MAX
-  rateLimit(userId);
   const id = db().transaction(() => {
     db().prepare('UPDATE clubs SET announcement = ? WHERE id = ?').run(announcement, club.id);
     return insertMessage(club.id, userId, body, 'pin');
@@ -734,7 +737,6 @@ function challengeCommand(club, userId, arg) {
   const target = db().prepare(`SELECT u.id, u.username, u.display_name FROM club_members m JOIN users u ON u.id = m.user_id
     WHERE m.club_id = ? AND m.role != 'pending' AND lower(u.username) = ?`).get(club.id, parsed.username.toLowerCase());
   if (!target) throw new ClubError('CLUB_NOT_MEMBER', 404, 'Người này không phải thành viên.');
-  rateLimit(userId);
   // Lazy: ChallengeService pulls in the room stack; club reads and tests never need it.
   const challenges = require('./ChallengeService');
   let sent;
@@ -755,7 +757,6 @@ function pollCommand(club, role, userId, arg, settings) {
   const open = db().prepare(`SELECT COUNT(*) AS n FROM club_polls p JOIN club_messages m ON m.id = p.message_id
     WHERE m.club_id = ? AND p.creator_id = ? AND p.closed_at IS NULL AND p.closes_at > ?`).get(club.id, userId, now()).n;
   if (open >= MAX_OPEN_POLLS) throw new ClubError('CLUB_POLL_LIMIT', 409, `Bạn đang có ${MAX_OPEN_POLLS} bình chọn chưa đóng.`);
-  rateLimit(userId);
   const options = parsed.options.map((o) => dmText.clean(o));
   const id = db().transaction(() => {
     const mid = insertMessage(club.id, userId, dmText.clean(parsed.question), 'poll');

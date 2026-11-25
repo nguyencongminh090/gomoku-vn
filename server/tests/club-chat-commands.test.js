@@ -282,3 +282,12 @@ describe('mentions and @all', () => {
     expect((await say('own', '@all again')).status).toBe(201);
   });
 });
+
+it('shares alias permissions and returns help privately', async () => {
+  expect((await say('mem', '/announce họp')).status).toBe(403);
+  expect((await say('off', '/announce họp')).body.kind).toBe('pin');
+  const help = await say('mem', '/help');
+  expect(help.body.commands).toContain('poll');
+  expect(help.body.commands).not.toContain('pin');
+  expect(messages()).toHaveLength(1);
+});

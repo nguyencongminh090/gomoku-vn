@@ -162,8 +162,8 @@
   }
 
   // --- roles ---
-  const isMember = () => !!state.club && ['owner', 'officer', 'member'].includes(state.club.myRole);
-  const isStaff = () => !!state.club && ['owner', 'officer'].includes(state.club.myRole);
+  const isMember = () => !!state.club && window.ClubPolicy.isMember(state.club.myRole);
+  const isStaff = () => !!state.club && window.ClubPolicy.isStaff(state.club.myRole);
 
   // --- channels ---
   /** Channel from `#ch=<name>` (or a legacy `#tab=`); staff channels for staff only; default trò-chuyện. */
@@ -538,14 +538,15 @@
   }
 
   // --- composer command hints (B447): only commands this club enabled and this member may use ---
-  function commandHints() {
-    const c = chatSet();
-    const out = [];
-    if (c.cmdPin && isStaff()) out.push({ cmd: '/ghim', args: t('clubs.cmd_pin_args'), desc: t('clubs.cmd_pin') });
-    if (c.cmdChallenge) out.push({ cmd: '/giaohuu', args: t('clubs.cmd_challenge_args'), desc: t('clubs.cmd_challenge') });
-    if (c.cmdPoll) out.push({ cmd: '/binhchon', args: t('clubs.cmd_poll_args'), desc: t('clubs.cmd_poll') });
-    if (c.cmdCalendar) out.push({ cmd: '/lich', args: isStaff() ? t('clubs.cmd_calendar_args') : '', desc: t(isStaff() ? 'clubs.cmd_calendar_staff' : 'clubs.cmd_calendar'), bare: true });
-    return out;
+  function commandHints(prefix = '') {
+    return window.ClubPolicy.available(state.club.myRole, chatSet()).flatMap(({ kind, words }) => {
+      const word = words.find((w) => w.startsWith(prefix));
+      if (!word) return [];
+      const calendar = kind === 'calendar';
+      const args = kind === 'help' || (calendar && !isStaff()) ? '' : t('clubs.cmd_' + kind + '_args');
+      const desc = t('clubs.cmd_' + (calendar && isStaff() ? 'calendar_staff' : kind));
+      return [{ cmd: '/' + word, args, desc, aliases: words.filter((w) => w !== word), bare: calendar || kind === 'help' }];
+    });
   }
 
   function hideHints() {
@@ -558,7 +559,7 @@
   /** While the input is just "/word" (no space yet), list the matching commands. */
   function renderHints() {
     const m = /^\/([A-Za-z]*)$/.exec($('cb-chat-input').value);
-    const list = m ? commandHints().filter((h) => h.cmd.startsWith('/' + m[1].toLowerCase())) : [];
+    const list = m ? commandHints(m[1].toLowerCase()) : [];
     if (!list.length) { hideHints(); return; }
     state.hints = list;
     state.hint = Math.min(state.hint, list.length - 1);
@@ -568,6 +569,7 @@
       li.setAttribute('role', 'option');
       li.setAttribute('aria-selected', String(i === state.hint));
       li.append(el('b', h.cmd), el('span', h.args, 'cl-hint__args'), el('span', h.desc, 'cl-hint__desc'));
+      if (h.aliases.length) li.append(el('small', h.aliases.map((w) => '/' + w).join(' · ')));
       li.addEventListener('mousedown', (ev) => { ev.preventDefault(); pickHint(i); });
       return li;
     }));
@@ -745,7 +747,7 @@
     renderRail();
 
     const role = c.myRole;
-    const staff = role === 'owner' || role === 'officer';
+    const staff = window.ClubPolicy.isStaff(role);
     for (const ch of STAFF_CHANNELS) $('cb-ch-' + ch).hidden = !staff;
     $('cb-staff-grp').hidden = !staff;
     const pendingN = staff ? (c.pending || []).length : 0;
@@ -825,7 +827,7 @@
         }
         if (staff) {
           // Officers can't act on staff; nobody removes the owner (the server enforces the same).
-          const canKick = m.role !== 'owner' && (role === 'owner' || m.role === 'member');
+          const canKick = window.ClubPolicy.canModerate(role, m.role);
           if (canKick) td.append(mini(t('clubs.kick'), () => act('DELETE', '/members/' + enc, null, 'clubs.confirm_kick')));
           if (role === 'owner' && m.role !== 'owner') {
             td.append(' ', mini(t(m.role === 'officer' ? 'clubs.demote' : 'clubs.promote'),
@@ -950,6 +952,12 @@
       const sent = await act('POST', '/messages', { text });
       if (sent) {
         $('cb-chat-input').value = '';
+        if (sent.kind === 'help') {
+          $('cb-chat-input').value = '/';
+          $('cb-chat-input').focus();
+          renderHints();
+          return;
+        }
         if (sent.kind === 'pin') load(); // the pinned bar above the stream shows the new text
         if (sent.kind === 'calendar' || sent.kind === 'event') { // B450: /lich stores nothing in chat; show the events channel
           if (sent.kind === 'event') await load();
