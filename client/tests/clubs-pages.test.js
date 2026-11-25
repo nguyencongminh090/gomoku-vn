@@ -1235,6 +1235,27 @@ it('filters the roster by role and keeps sanction controls scoped to staff', asy
   expect(document.getElementById('cb-bulk').hidden).toBe(true);
 });
 
+it('thành-viên filter bar uses the platform form controls (search pill, .pform selects, styled bulk row)', async () => {
+  await bootClub({ ...CLUB, myRole: 'owner' });
+  const search = document.getElementById('cb-member-search');
+  expect(search.closest('label').classList.contains('psearch')).toBe(true);
+  expect(search.closest('label').querySelector('.psearch__icon')).not.toBeNull();
+  expect(search.getAttribute('aria-label')).toBe('Tìm thành viên');
+  for (const id of ['cb-role-filter', 'cb-member-sort']) {
+    expect(document.getElementById(id).closest('.pform')).not.toBeNull();
+    expect(document.getElementById(id).closest('.cl-filter')).not.toBeNull();
+  }
+  for (const id of ['cb-bulk-action', 'cb-minutes']) expect(document.getElementById(id).closest('.pform.cl-filter__bulk')).not.toBeNull();
+  expect(document.getElementById('cb-bulk').hidden).toBe(false);
+  const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'club.css'), 'utf8');
+  expect(css).toMatch(/\.cl-filter \{[^}]*display: flex/);
+  expect(css).toMatch(/\.cl-filter \.psearch \{[^}]*min-height: 44px/);
+  // Filter still drives the roster after the markup move.
+  search.value = 'zzz-nobody';
+  search.oninput();
+  expect(document.getElementById('cb-members-body').textContent).not.toContain('clubs.role_owner');
+});
+
 it('inserts a group mention at the caret and retains the surrounding draft', async () => {
   await bootClub({ ...CLUB, myRole: 'member', chat: { notifyMention: true } });
   const input = document.getElementById('cb-chat-input');
