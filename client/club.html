@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="css/tokens.css?v=bd768e32" />
   <link rel="stylesheet" href="css/platform-shell.css?v=174b5103" />
   <link rel="stylesheet" href="css/platform.css?v=a7da945b" />
-  <link rel="stylesheet" href="css/club.css?v=bbf42aac" />
+  <link rel="stylesheet" href="css/club.css?v=8f93ac26" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
@@ -95,8 +95,8 @@
           <form id="cb-chat-form" class="cl-compose">
             <ul id="cb-chat-hints" class="cl-hints" role="listbox" aria-label="Lệnh" data-i18n-aria="clubs.cmd_list" hidden></ul>
             <div class="cl-compose__box">
-              <button type="button" class="pbtn pbtn--sm" id="cb-poll-new" data-i18n="clubs.new_poll">Bình chọn</button>
               <input id="cb-chat-input" type="text" maxlength="500" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="cb-chat-hints" aria-expanded="false" data-i18n-placeholder="clubs.chat_placeholder" placeholder="Nhắn cho cả nhóm…" aria-label="Tin nhắn" data-i18n-aria="clubs.chat_label">
+              <button type="button" class="cl-ib" id="cb-poll-new" aria-label="Bình chọn" title="Bình chọn" data-i18n-aria="clubs.new_poll" data-i18n-title="clubs.new_poll"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-check-square"></use></svg></button>
               <button type="submit" class="cl-send" aria-label="Gửi" title="Gửi" data-i18n-aria="clubs.chat_send" data-i18n-title="clubs.chat_send"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-paper-plane-tilt"></use></svg></button>
             </div>
           </form>
@@ -249,7 +249,8 @@
       </section>
 
       <section id="cb-panel-log" class="cl-panel cl-page" aria-labelledby="cb-ch-log" hidden>
-        <label>Lọc nhật ký <input type="search" id="cb-log-search" placeholder="Tên người dùng hoặc tác vụ"></label>
+        <label class="psearch cl-search"><svg class="icon psearch__icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-magnifying-glass"></use></svg>
+          <input type="search" id="cb-log-search" placeholder="Lọc theo tên người dùng hoặc tác vụ" aria-label="Lọc nhật ký"></label>
         <div id="cb-history" class="prows prows--tickets"></div>
       </section>
     </section>
@@ -279,6 +280,6 @@
 <script src="js/avatar-crop.js?v=2f613ebf"></script>
 <script src="js/club-policy.js?v=98d4d2bc"></script>
 <script src="js/club-kit.js?v=4cccc3ae"></script>
-<script src="js/club.js?v=d79fce38"></script>
+<script src="js/club.js?v=6e37b92d"></script>
 </body>
 </html>

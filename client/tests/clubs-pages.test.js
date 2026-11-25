@@ -374,7 +374,7 @@ describe('club page', () => {
       await bootClub({ ...CLUB, myRole: 'officer', events: EVENTS });
       window.confirm = jest.fn(() => true);
       global.fetch.mockClear();
-      [...document.querySelectorAll('#cb-events button')].find((b) => b.textContent === 'clubs.delete_event').click();
+      [...document.querySelectorAll('#cb-events button')].find((b) => b.getAttribute('aria-label') === 'clubs.delete_event').click();
       await flush();
       expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/events/e1');
       expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
@@ -472,6 +472,30 @@ describe('club page', () => {
       await flush(); await flush();
       expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/messages/7');
       expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
+    });
+
+    it('row actions share one grid cell (flag + delete never spill into an implicit 2nd grid row)', async () => {
+      await bootChat('officer');
+      document.getElementById('cb-ch-events').click();
+      tab().click();
+      await flush(); await flush();
+      const rows = [...document.querySelectorAll('.cb-chat__msg')];
+      // grid is 3 columns (avatar | body | actions): 4 children made the blank gap under each message
+      for (const r of rows) expect(r.children.length).toBeLessThanOrEqual(3);
+      const other = rows.find((r) => r.querySelector('.cb-chat__flag'));
+      expect([...other.lastElementChild.children].map((b) => b.className)).toEqual(['cl-ib cb-chat__flag', 'cl-ib cb-chat__del']);
+      expect(other.lastElementChild.classList.contains('cb-chat__acts')).toBe(true);
+    });
+
+    it('poll button is an icon tool after the input, labelled for AT, not a text pill before it', async () => {
+      await bootChat('member');
+      const btn = document.getElementById('cb-poll-new');
+      const box = btn.parentElement;
+      expect([...box.children].map((n) => n.id || n.type)).toEqual(['cb-chat-input', 'cb-poll-new', 'submit']);
+      expect(btn.classList.contains('cl-ib')).toBe(true);
+      expect(btn.getAttribute('data-i18n')).toBeNull();
+      expect(btn.getAttribute('data-i18n-aria')).toBe('clubs.new_poll');
+      expect(btn.querySelector('svg use').getAttribute('href')).toMatch(/#ph-regular-check-square$/);
     });
 
     it('send posts {text}, clears the input, then fetches only newer messages', async () => {
@@ -1336,4 +1360,27 @@ it('renders previews, sanctions and command aliases as separate facts, never a j
 
   // club.js never joins facts with a middle dot (feedback rule; ticket-rows.md)
   expect(fs.readFileSync(path.join(__dirname, '..', 'js', 'club.js'), 'utf8')).not.toMatch(/join\(['"] · ['"]\)|\+ ' · ' \+/);
+});
+
+test('#474 club controls: soft tonal buttons, aligned field rows, subtle motion with a reduced-motion path', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'club.css'), 'utf8');
+  // no hard 1.5px ring on the base button; hover changes fill, not opacity
+  expect(css).toMatch(/\.cl-hq \.pbtn \{[^}]*box-shadow: none/);
+  expect(css).toMatch(/\.cl-hq \.pbtn:hover:not\(:disabled\) \{ opacity: 1;/);
+  // a button beside 44px fields takes their height (one shared bottom edge)
+  expect(css).toMatch(/:is\(\.pform__row, \.cb-inline, \.cl-filter__bulk\) > \.pbtn \{ min-height: 44px; \}/);
+  // motion: transform/opacity only, never `transition: all`, all killed under reduced motion
+  expect(css).not.toMatch(/transition:\s*all/);
+  expect(css).toMatch(/@property --pct/);
+  expect(css).toMatch(/@starting-style \{ dialog\.cl-editor\[open\]/);
+  expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.cl-hq \*, \.cl-hq \*::before, \.cl-hq \*::after \{ animation: none !important; transition: none !important; \}/);
+  for (const [, body] of css.matchAll(/@keyframes [\w-]+ \{([^}]*\})/g)) expect(body).not.toMatch(/\b(width|height|top|left|margin)\s*:/);
+});
+
+it('#474 staff roster: rows without a select box keep an empty slot, so every name starts in one column', async () => {
+  await bootClub({ ...CLUB, myRole: 'owner' });
+  const firsts = [...document.querySelectorAll('#cb-members-body tr td:first-child')].map((td) => td.firstElementChild);
+  expect(firsts.length).toBeGreaterThan(1);
+  expect(firsts.some((n) => n.matches('input[type="checkbox"]'))).toBe(true);
+  for (const n of firsts) expect(n.matches('input[type="checkbox"], .cl-check-slot')).toBe(true);
 });
