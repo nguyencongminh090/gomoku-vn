@@ -1,5 +1,5 @@
 # B463 — club.html loads js/club-policy.js without ?v=
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-25 on `fix/club-policy-cache-bust` — fix-log 2026-11-25-463 (club-scripts-versioned test)
 **Area:** client/club.html, scripts/cache-bust.js, server/tests/cache-bust.test.js
 **From:** club-platform handoff (memory), user task list 2026-11-25   **Depends:** —
 
