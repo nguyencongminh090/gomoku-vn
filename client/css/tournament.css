@@ -257,7 +257,7 @@
 .match-clock__time { font-size: calc(18px * var(--fs-scale, 1)); font-weight: 800; font-variant-numeric: tabular-nums; color: var(--c-ink); }
 .match-clock__time.is-low { color: var(--c-error, #EF4444); animation: timer-pulse 0.6s ease-in-out infinite alternate; }
 .match-stone-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
-.match-stone-dot--black { background: #1a1a1a; }
+.match-stone-dot--black { background: #1a1a1a; border: 1px solid var(--c-ink-3); } /* #469: ring so the dot shows on dark cards */
 .match-stone-dot--white { background: #f5f5f5; border: 1px solid #999; }
 
 /* No max-width here: let BoardRenderer.resize() (board.js) size the canvas

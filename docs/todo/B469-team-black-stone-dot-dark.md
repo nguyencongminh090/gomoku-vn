@@ -1,5 +1,5 @@
 # B469 — Team pairing card: black stone dot near-invisible in dark mode
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-25 — --c-ink-3 ring on the black dot (fix-log 2026-11-25-469)
 **Area:** client/css (.match-stone-dot--black), client/js/tournament-detail.js (pairing card)
 **From:** #467 verification screenshots 2026-11-25   **Depends:** B460
 
