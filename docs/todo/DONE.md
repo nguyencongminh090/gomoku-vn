@@ -1,3 +1,5 @@
+- ✅ **#464.** Tournament sub-tabs wrap to 2 lines on mobile `[Model: Sonnet]` — [detail](docs/todo/B464-tournament-subtabs-wrap-mobile.md)
+
 - ✅ **#463.** club.html loads js/club-policy.js without ?v= cache-bust hash `[Model: Sonnet]` — [detail](docs/todo/B463-club-policy-cache-bust.md)
 
 - ✅ **#462.** #461 follow-up: test that sanction rank survives owner transfer `[Model: Sonnet]` — [detail](docs/todo/B462-club-sanction-owner-transfer-test.md)

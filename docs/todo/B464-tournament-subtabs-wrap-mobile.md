@@ -1,5 +1,5 @@
 # B464 — Tournament sub-tabs wrap to 2 lines on mobile
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-25 on `fix/tournament-subtabs-mobile` — fix-log 2026-11-25-464 (tournament-subtabs-css test + browser.cjs team)
 **Area:** client/css/tournament.css (.sub-tabs, .sub-tabs__btn)
 **From:** features/club-platform/screenshots/team-standings-mobile.png (390 px), 2026-11-25   **Depends:** —
 

@@ -82,16 +82,26 @@
 .action-banner__spacer { flex: 1; }
 
 /* ── Sub tabs (Pairings / Standings) ──────────────────────────────────── */
-.sub-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--c-border); }
+/* #464: labels never wrap; a strip wider than the screen scrolls inside itself, never the page. */
+.sub-tabs {
+  display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--c-border);
+  overflow-x: auto; scrollbar-width: none;
+}
+.sub-tabs::-webkit-scrollbar { display: none; }
 .sub-tabs__btn {
   appearance: none; background: none; border: none; cursor: pointer;
   font-family: inherit; font-size: calc(14px * var(--fs-scale, 1)); font-weight: 600; color: var(--c-ink-2);
   min-height: 40px; padding: 0 4px; margin-right: 20px;
+  flex: none; white-space: nowrap;
   display: inline-flex; align-items: center; gap: 6px;
   border-bottom: 2px solid transparent; transition: color .15s ease, border-color .15s ease;
 }
 .sub-tabs__btn:hover { color: var(--c-ink); }
 .sub-tabs__btn.is-active { color: var(--c-brand-text); border-bottom-color: var(--c-brand); }
+/* main.css draws focus 2px outside (!important); the overflow-x strip would clip it. */
+.sub-tabs__btn:focus-visible { outline-offset: -2px !important; }
+.sub-tabs__btn:last-child { margin-right: 0; }
+@media (max-width: 480px) { .sub-tabs__btn { margin-right: 8px; } }
 .sub-tab-panel { display: none; }
 .sub-tab-panel.is-active { display: block; }
 

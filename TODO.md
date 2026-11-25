@@ -68,7 +68,6 @@ in the detail file / fix-log).
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — direct route (CloudFront→Caddy) LIVE; open: peak-hour check + real-browser game `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
-- **#464.** Tournament sub-tabs wrap to 2 lines on mobile `[Model: Sonnet]` — [detail](docs/todo/B464-tournament-subtabs-wrap-mobile.md)
 - **#468.** Bare local script/style refs escape cache-bust (admin, room, profile) + verify guard `[Model: Sonnet]` — [detail](docs/todo/B468-bare-local-refs-cache-bust-guard.md)
 - **#469.** Team pairing card: black stone dot near-invisible in dark mode `[Model: Sonnet]` — [detail](docs/todo/B469-team-black-stone-dot-dark.md)
 - **#470.** Tournament match board renders at 150 px on desktop `[Model: Sonnet]` — [detail](docs/todo/B470-tmatch-desktop-board-tiny.md)
