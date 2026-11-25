@@ -78,8 +78,6 @@ backToTournamentLink.addEventListener('click', (e) => {
 
 // ── Element refs ─────────────────────────────────────────────────────────
 const statusBanner = document.getElementById('status-banner');
-const navUser = document.getElementById('nav-user');
-const navBadge = document.getElementById('nav-badge');
 const matchTitleEl = document.getElementById('match-title');
 const matchMetaEl = document.getElementById('match-meta');
 const swap2BannerSlot = document.getElementById('swap2-banner-slot');
@@ -87,7 +85,8 @@ const matchActionsEl = document.getElementById('match-actions');
 const btnResign = document.getElementById('btn-resign');
 const btnDraw = document.getElementById('btn-draw');
 const btnTime = document.getElementById('btn-time');
-const moveListEl = document.getElementById('move-list');
+const moveListEl = document.getElementById('moves-list');
+const moveGridEl = document.getElementById('moves-grid');
 const resultOverlay = document.getElementById('match-result-overlay');
 
 // Live view of the session identity (TODO.md #68).
@@ -105,11 +104,6 @@ const userInfo = {
   get displayName() { const u = window.GvnSession.getUser(); return u ? u.displayName : ''; },
   get isGuest()     { const u = window.GvnSession.getUser(); return !!(u && u.isGuest); },
 };
-if (userInfo.signedIn) {
-  navUser.textContent = userInfo.displayName;
-  navBadge.textContent = userInfo.isGuest ? t('nav.guest_badge') : '';
-  navBadge.style.display = userInfo.isGuest ? '' : 'none';
-}
 client.bindStatusBanner(statusBanner);
 
 // ── Local game state (built from tmatch:init, patched by tmatch:moved/etc.) ─
@@ -429,66 +423,106 @@ function renderSwap2Board() {
 
 // ── Header / meta ────────────────────────────────────────────────────────
 
-const slot1NameEl = document.getElementById('slot-1-name');
-const slot2NameEl = document.getElementById('slot-2-name');
-const scorePanelEl = document.getElementById('score-panel');
+const scorecardEl = document.getElementById('scorecard');
 const scorePanelTitleEl = document.getElementById('score-panel-title');
-const scoreBodyEl = document.getElementById('score-body');
+const scoreHeroEl = document.getElementById('score-hero');
+const cardTop = document.getElementById('seatcard-top');
+const cardBottom = document.getElementById('seatcard-bottom');
+
+const sprite = (name) => `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-${name}"></use></svg>`;
+
+function initials(name) {
+  const parts = String(name || '?').trim().split(/\s+/).filter(Boolean);
+  return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] || '?').slice(0, 2)).toUpperCase();
+}
+
+/** Which server clock is this player's. Before a Swap2 opening assigns colours, 'black' is the first player's. */
+function clockKey(player) {
+  const swap2 = gameState.swap2;
+  if (swap2 && swap2.enabled && !swap2.colorsAssigned) return player.userId === swap2.firstPlayerId ? 'black' : 'white';
+  return player.color === 'BLACK' ? 'black' : 'white';
+}
+
+// Same seat cards as room.html (room-ui.js renderCard): you at the bottom; a spectator sees player 1 there.
+function renderCard(el, player) {
+  el.classList.toggle('seatcard--empty', !player);
+  if (!player) { delete el.dataset.clock; el.innerHTML = ''; return; }
+  const isMe = player.userId === userInfo.userId;
+  const key = clockKey(player);
+  const coloured = player.color === 'BLACK' || player.color === 'WHITE';
+  const piece = coloured && typeof window.boardPieceSvg === 'function'
+    ? window.boardPieceSvg(player.color === 'BLACK' ? 1 : 2, 'seatcard__piece') : '';
+  el.dataset.clock = key;
+  el.innerHTML = `
+    <div class="seatcard__av${isMe ? ' seatcard__av--me' : ''}" aria-hidden="true">${avatarInner(player)}${piece}</div>
+    <div class="seatcard__id"><div class="seatcard__name">${escapeHtml(player.displayName)}</div></div>
+    <div class="seatcard__clock" data-clock-text></div>`;
+  el.querySelector('.seatcard__name').title = player.displayName;
+  // CSP forbids inline onerror — fall back to initials from here.
+  const img = el.querySelector('.seatcard__img');
+  if (img) img.addEventListener('error', () => img.replaceWith(document.createTextNode(img.dataset.ini)), { once: true });
+}
+
+// Same rule as room-ui.js avatarInner (#473: the server does not send avatarUrl here yet).
+function avatarInner(player) {
+  const ini = escapeHtml(initials(player.displayName));
+  const url = player.avatarUrl;
+  if (!url || !/^\/api\/profile\/avatar\/[\w-]+\.webp\?v=\d+$/.test(url)) return ini;
+  return `<img class="seatcard__img" src="${url}" alt="" data-ini="${ini}">`;
+}
 
 function renderHeader() {
-  const p1 = gameState.players[0], p2 = gameState.players[1];
+  const [p1, p2] = gameState.players;
   matchTitleEl.textContent = `${p1 ? p1.displayName : '—'} vs ${p2 ? p2.displayName : '—'}`;
-  slot1NameEl.textContent = p1 ? p1.displayName : '—';
-  slot2NameEl.textContent = p2 ? p2.displayName : '—';
 
-  let metaHtml = `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-trophy"></use></svg>${t('tmatch.in_tournament')}</span>`;
-  // Only shown for an actual multi-game series; a plain 'single'-mode pairing
-  // keeps today's meta line unchanged and the score-panel stays hidden.
-  const isSeries = seriesInfo && seriesInfo.seriesMode && seriesInfo.seriesMode !== 'single';
+  const meta = [`<span class="tm-meta__lead">${sprite('trophy')}<span class="tm-meta__text">${t('tmatch.in_tournament')}</span></span>`];
+  const isSeries = !!(seriesInfo && seriesInfo.seriesMode && seriesInfo.seriesMode !== 'single');
   if (isSeries) {
-    const gameLabel = t('tmatch.series_game_index', { n: seriesInfo.gameIndex + 1 });
-    metaHtml += `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-medal"></use></svg>${gameLabel}</span>`;
-    const targetLabel = seriesInfo.seriesMode === 'raceToMargin'
+    meta.push(`<span class="rpill">${t('tmatch.series_game_index', { n: seriesInfo.gameIndex + 1 })}</span>`);
+    meta.push(`<span class="rpill tm-meta__target">${seriesInfo.seriesMode === 'raceToMargin'
       ? t('tmatch.series_race_to_margin', { target: seriesInfo.seriesTargetScore, margin: seriesInfo.seriesMargin })
-      : t('tmatch.series_fixed_count', { n: seriesInfo.seriesGameCount });
-    metaHtml += `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-flag-checkered"></use></svg>${targetLabel}</span>`;
+      : t('tmatch.series_fixed_count', { n: seriesInfo.seriesGameCount })}</span>`);
   }
-  matchMetaEl.innerHTML = metaHtml;
+  matchMetaEl.innerHTML = meta.join('');
 
-  const black = gameState.players.find(p => p.color === 'BLACK');
-  const white = gameState.players.find(p => p.color === 'WHITE');
-  document.getElementById('clock-black-name').textContent = black ? black.displayName : '—';
-  document.getElementById('clock-white-name').textContent = white ? white.displayName : '—';
-
+  const me = myPlayer();
+  const bottom = me || p1;
+  renderCard(cardBottom, bottom);
+  renderCard(cardTop, gameState.players.find((p) => p !== bottom));
+  renderTimers();
   renderScorePanel(isSeries);
 }
 
-// Series score table (TODO.md #52/#55 — "Room.html has score count, you can
-// use it": reuses .score-panel/.score-table (room.css) the same way
-// room-ui.js's renderScoreTable() does, instead of the old inline meta-line
-// score text — just a 2-column Tên/Điểm table since a series tracks one
-// numeric "games won" score per player, not room.html's rematch Win/Loss/Draw.
+let seriesShown = false;
+
+// As room.html: the score sits in the left score card on desktop, and in the third sheet tab on phones
+// (the card is hidden there), which is then labelled "Score" instead of "Spectators".
+function placeScore() {
+  const phone = !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+  const home = phone ? document.getElementById('tab-users') : scorecardEl;
+  if (scoreHeroEl.parentNode !== home) home.insertBefore(scoreHeroEl, phone ? home.firstChild : null);
+  const label = document.querySelector('.tab-btn[data-tab="tab-users"] .tab-btn__label');
+  const key = phone && seriesShown ? 'room.tab_scores' : 'room.tab_spectators';
+  label.dataset.i18n = key;
+  label.textContent = t(key);
+}
+
+// Series score, drawn like the room's score card (score hero between the two names).
 function renderScorePanel(isSeries) {
-  if (!isSeries) {
-    scorePanelEl.style.display = 'none';
-    return;
-  }
-  // seriesInfo.scores is null until the series' first game finishes
-  // (pairing.seriesScore starts null server-side) — fall back to the two
-  // known players at 0 each so the table (and the fact a series is running)
-  // is visible from game 1, matching room.html's score-panel showing seated
-  // players at 0 before any result exists.
+  scorecardEl.hidden = !isSeries;
+  seriesShown = isSeries;
+  placeScore();
+  if (!isSeries) { scoreHeroEl.innerHTML = ''; return; }
+  // seriesInfo.scores is null until the series' first game finishes — show both players at 0.
   const scores = seriesInfo.scores || gameState.players.map((p) => ({ displayName: p.displayName, score: 0 }));
   scorePanelTitleEl.textContent = seriesInfo.seriesMode === 'raceToMargin'
     ? t('tmatch.score_title_race_to_margin', { target: seriesInfo.seriesTargetScore })
     : t('tmatch.score_title_fixed_count', { n: seriesInfo.seriesGameCount });
-  scoreBodyEl.innerHTML = scores.map((s) => `
-    <tr>
-      <td>${escapeHtml(s.displayName)}</td>
-      <td>${s.score}</td>
-    </tr>
-  `).join('');
-  scorePanelEl.style.display = '';
+  const side = (s) => `<div class="score-hero__p"><span class="score-hero__av">${escapeHtml(initials(s.displayName))}</span><span class="score-hero__name">${escapeHtml(s.displayName)}</span></div>`;
+  const [a, b] = scores;
+  scoreHeroEl.innerHTML = a && b
+    ? `<div class="score-hero__top">${side(a)}<span class="score-hero__num">${Number(a.score) || 0} – ${Number(b.score) || 0}</span>${side(b)}</div>`
+    : '';
 }
 
 function escapeHtml(str) {
@@ -550,12 +584,23 @@ function renderSwap2Banner() {
 function renderMoveList() {
   if (!gameState) return;
   const history = gameState.moveHistory || [];
-  moveListEl.innerHTML = history.map((m, i) => {
-    const moveNum = Math.floor(i / 2) + 1;
-    const colorLabel = m.color === 'BLACK' ? t('tmatch.black') : t('tmatch.white');
-    return `<div class="move-list__row"><span>${moveNum}. ${colorLabel}</span><span>(${m.x},${m.y})</span></div>`;
-  }).join('');
-  moveListEl.scrollTop = moveListEl.scrollHeight;
+  if (!history.length) {
+    moveListEl.innerHTML = moveGridEl.innerHTML = `<li class="moves__empty">${t('room.moves_empty')}</li>`;
+    return;
+  }
+  const label = (m) => window.Coords ? window.Coords.label(m.x, m.y, gameState.boardSize) : `${m.x},${m.y}`;
+  const piece = (c) => typeof window.boardPieceSvg === 'function' ? window.boardPieceSvg(c === 'BLACK' ? 1 : 2, 'moves-grid__pc') : '';
+  const last = history.length - 1;
+  moveGridEl.innerHTML = history.map((m, i) =>
+    `<li${i === last ? ' class="moves-grid__cur"' : ''}><em>${i + 1}.</em>${piece(m.color)}<b>${label(m)}</b></li>`).join('');
+  let rows = '';
+  for (let i = 0; i <= last; i += 2) {
+    const cell = (k) => history[k] ? `<span${k === last ? ' class="moves__cur"' : ''}>${label(history[k])}</span>` : '<span></span>';
+    rows += `<li><span class="moves__n">${i / 2 + 1}</span>${cell(i)}${cell(i + 1)}</li>`;
+  }
+  moveListEl.innerHTML = rows;
+  const box = document.getElementById('tab-moves');
+  box.scrollTop = box.scrollHeight;
 }
 
 // ── Timer (ported pattern from room-socket.js's applyTimerSync/tickLocal) ──
@@ -606,26 +651,18 @@ function applyTimerSync(sync) {
 }
 
 function renderTimers() {
-  const bTimeEl = document.getElementById('clock-black-time');
-  const wTimeEl = document.getElementById('clock-white-time');
-  bTimeEl.textContent = formatTime(timerValues.black);
-  wTimeEl.textContent = formatTime(timerValues.white);
-  bTimeEl.classList.toggle('is-low', timerValues.black <= 10);
-  wTimeEl.classList.toggle('is-low', timerValues.white <= 10);
-
-  const blackClockEl = document.getElementById('clock-black');
-  const whiteClockEl = document.getElementById('clock-white');
-  if (gameState) {
-    const swap2 = gameState.swap2;
-    let isBlackTurn;
-    if (swap2 && swap2.enabled && !swap2.colorsAssigned) {
-      isBlackTurn = gameState.currentTurn === swap2.firstPlayerId;
-    } else {
-      const blackP = gameState.players.find((p) => p.color === 'BLACK');
-      isBlackTurn = gameState.currentTurn === (blackP ? blackP.userId : null);
-    }
-    blackClockEl.classList.toggle('is-active', isBlackTurn && gameState.status === 'ongoing');
-    whiteClockEl.classList.toggle('is-active', !isBlackTurn && gameState.status === 'ongoing');
+  if (!gameState) return;
+  const swap2 = gameState.swap2;
+  const black = gameState.players.find((p) => p.color === 'BLACK');
+  const blackTurnId = swap2 && swap2.enabled && !swap2.colorsAssigned ? swap2.firstPlayerId : (black ? black.userId : null);
+  const turnKey = gameState.currentTurn === blackTurnId ? 'black' : 'white';
+  const ongoing = gameState.status === 'ongoing';
+  for (const el of [cardTop, cardBottom]) {
+    const key = el.dataset.clock;
+    if (!key) continue;
+    el.querySelector('[data-clock-text]').textContent = formatTime(timerValues[key]);
+    el.classList.toggle('seatcard--turn', ongoing && key === turnKey);
+    el.classList.toggle('seatcard--low', ongoing && timerValues[key] <= 10);
   }
 }
 
@@ -650,50 +687,31 @@ btnTime.addEventListener('click', () => {
   if (!timeRequestPending) client.emit('tmatch:request_time', { tournamentId, pairingId });
 });
 
-function renderDrawPrompt() {
-  const el = document.getElementById('draw-prompt-area');
+// Requests as the room's toasts (.gtoast) — floating over the panel, never over the board or clocks.
+function toast(iconName, text, buttons = '') {
+  return `<div class="gtoast">${sprite(iconName)}<span class="gtoast__t">${text}</span>${buttons}</div>`;
+}
+function answerButtons(prefix) {
+  return `<button class="gtoast__btn gtoast__btn--ok" type="button" id="${prefix}-accept-btn" title="${t('game.btn_accept')}" aria-label="${t('game.btn_accept')}">${sprite('check')}</button>`
+    + `<button class="gtoast__btn" type="button" id="${prefix}-decline-btn" title="${t('game.btn_decline')}" aria-label="${t('game.btn_decline')}">${sprite('x')}</button>`;
+}
+function renderPrompt(el, pending, kind, iconName, waitingText, offerText) {
   if (!el) return;
-  if (!drawOfferPending || !gameState || gameState.status !== 'ongoing') { el.innerHTML = ''; return; }
+  if (!pending || !gameState || gameState.status !== 'ongoing') { el.innerHTML = ''; return; }
+  if (pending.from === userInfo.userId) { el.innerHTML = toast(iconName, waitingText); return; }
+  el.innerHTML = toast(iconName, offerText(), answerButtons(kind));
+  document.getElementById(`${kind}-accept-btn`).addEventListener('click', () => client.emit(`tmatch:${kind}_accept`, { tournamentId, pairingId }));
+  document.getElementById(`${kind}-decline-btn`).addEventListener('click', () => client.emit(`tmatch:${kind}_decline`, { tournamentId, pairingId }));
+}
 
-  if (drawOfferPending.from === userInfo.userId) {
-    el.innerHTML = `<div class="draw-prompt">${t('game.draw_waiting')}</div>`;
-    return;
-  }
-
-  el.innerHTML = `
-    <div class="draw-prompt">
-      <span>${t('game.draw_offer', { name: escapeHtml(drawOfferPending.fromName || t('game.opponent_generic')) })}</span>
-      <div class="draw-prompt__actions">
-        <button class="btn-draw-action btn-draw-accept" type="button" id="draw-accept-btn">${t('game.btn_accept')}</button>
-        <button class="btn-draw-action btn-draw-decline" type="button" id="draw-decline-btn">${t('game.btn_decline')}</button>
-      </div>
-    </div>
-  `;
-  document.getElementById('draw-accept-btn').addEventListener('click', () => client.emit('tmatch:draw_accept', { tournamentId, pairingId }));
-  document.getElementById('draw-decline-btn').addEventListener('click', () => client.emit('tmatch:draw_decline', { tournamentId, pairingId }));
+function renderDrawPrompt() {
+  renderPrompt(document.getElementById('draw-prompt-area'), drawOfferPending, 'draw', 'handshake', t('game.draw_waiting'),
+    () => t('game.draw_offer', { name: escapeHtml(drawOfferPending.fromName || t('game.opponent_generic')) }));
 }
 
 function renderTimePrompt() {
-  const el = document.getElementById('time-prompt-area');
-  if (!el) return;
-  if (!timeRequestPending || !gameState || gameState.status !== 'ongoing') { el.innerHTML = ''; return; }
-
-  if (timeRequestPending.from === userInfo.userId) {
-    el.innerHTML = `<div class="draw-prompt">${t('game.time_waiting')}</div>`;
-    return;
-  }
-
-  el.innerHTML = `
-    <div class="draw-prompt">
-      <span>${t('game.time_offer', { name: escapeHtml(timeRequestPending.fromName || ''), bonus: timeRequestPending.bonus || 10 })}</span>
-      <div class="draw-prompt__actions">
-        <button class="btn-draw-action btn-draw-accept" type="button" id="time-accept-btn">${t('game.btn_accept')}</button>
-        <button class="btn-draw-action btn-draw-decline" type="button" id="time-decline-btn">${t('game.btn_decline')}</button>
-      </div>
-    </div>
-  `;
-  document.getElementById('time-accept-btn').addEventListener('click', () => client.emit('tmatch:time_accept', { tournamentId, pairingId }));
-  document.getElementById('time-decline-btn').addEventListener('click', () => client.emit('tmatch:time_decline', { tournamentId, pairingId }));
+  renderPrompt(document.getElementById('time-prompt-area'), timeRequestPending, 'time', 'hourglass', t('game.time_waiting'),
+    () => t('game.time_offer', { name: escapeHtml(timeRequestPending.fromName || ''), bonus: timeRequestPending.bonus || 10 }));
 }
 
 client.on('tmatch:draw_offered', (data) => {
@@ -873,6 +891,7 @@ function appendChatMessage(msg) {
   div.appendChild(bubble);
   chatMessagesEl.appendChild(div);
   chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  if (!isSelf && isPhone() && !chatOnScreen()) setUnread(unread + 1);
 }
 
 function sendChat() {
@@ -917,9 +936,48 @@ tabBtns.forEach((btn) => {
     btn.classList.add('tab-btn--active');
     const tabId = btn.getAttribute('data-tab');
     document.getElementById(tabId).classList.add('tab-content--active');
-    if (tabId === 'tab-chat') chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    if (tabId === 'tab-chat') { chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight; if (chatOnScreen()) setUnread(0); }
   });
 });
+
+// ── Phone layout: chat input in the dock, tabs in a bottom sheet (as room-stage.js does for room.html;
+// not reused — it is written against window.RoomState and brings reactions/bubbles this page lacks). ──
+const phoneQuery = window.matchMedia ? window.matchMedia('(max-width: 768px)') : null;
+const sheetEl = document.getElementById('rsheet');
+const sheetBtn = document.getElementById('btn-sheet');
+const sheetScrim = document.getElementById('rsheet-scrim');
+const sheetBadge = document.getElementById('sheet-badge');
+let unread = 0;
+
+function isPhone() { return !!(phoneQuery && phoneQuery.matches); }
+function chatOnScreen() {
+  return document.body.classList.contains('stage-sheet-open') && document.getElementById('tab-chat').classList.contains('tab-content--active');
+}
+function setUnread(n) {
+  unread = n;
+  sheetBadge.hidden = n <= 0;
+  sheetBadge.textContent = n > 9 ? '9+' : String(n);
+}
+function setSheetOpen(open) {
+  const isOpen = !!open && isPhone();
+  document.body.classList.toggle('stage-sheet-open', isOpen);
+  sheetBtn.setAttribute('aria-expanded', String(isOpen));
+  sheetScrim.hidden = !isOpen;
+  if (isPhone() && !isOpen) sheetEl.setAttribute('inert', ''); else sheetEl.removeAttribute('inert');
+  if (chatOnScreen()) { setUnread(0); chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight; }
+}
+function placeChatInput() {
+  // The dock holds the input at both widths (phone: bottom bar; desktop: foot of the right column).
+  const wrap = document.getElementById('chat-input-wrapper');
+  document.getElementById('rdock').insertBefore(wrap, sheetBtn);
+  placeScore();
+  setSheetOpen(false);
+}
+sheetBtn.addEventListener('click', () => setSheetOpen(!document.body.classList.contains('stage-sheet-open')));
+document.getElementById('rsheet-grab').addEventListener('click', () => setSheetOpen(false));
+sheetScrim.addEventListener('click', () => setSheetOpen(false));
+if (phoneQuery && phoneQuery.addEventListener) phoneQuery.addEventListener('change', placeChatInput);
+placeChatInput();
 
 window.addEventListener('langchange', () => {
   if (gameState) { renderHeader(); renderSwap2Banner(); renderMoveList(); }

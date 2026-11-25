@@ -221,11 +221,11 @@ async function run() {
         await stopServer(); await startServer(); console.log('server restarted mid-game');
         for (const sec of [3, 12]) {
           await P.baonam.page.waitForTimeout(sec === 3 ? 3000 : 9000);
-          const st = await P.trucmai.page.evaluate(() => { const g = document.querySelector('#board-wrap svg').__gboard; return { moves: document.querySelectorAll('#move-list .move-list__row').length, myTurn: g.isMyTurn, interactive: g.interactive, banner: document.getElementById('status-banner')?.innerText.trim(), overlay: document.getElementById('match-result-overlay').className, clocks: [...document.querySelectorAll('.match-clock__time')].map((e) => e.innerText) }; });
+          const st = await P.trucmai.page.evaluate(() => { const g = document.querySelector('#board-wrap svg').__gboard; return { moves: document.querySelectorAll('#moves-list li:not(.moves__empty) span:not(.moves__n):not(:empty)').length, myTurn: g.isMyTurn, interactive: g.interactive, banner: document.getElementById('status-banner')?.innerText.trim(), overlay: document.getElementById('match-result-overlay').className, clocks: [...document.querySelectorAll('.seatcard__clock')].map((e) => e.innerText) }; });
           console.log('match page', sec + 's after restart (Trúc Mai):', JSON.stringify(st), 'url', P.trucmai.page.url().includes('tournament-match'));
         }
         await P.baonam.page.screenshot({ path: path.join(SHOTS, 'e2e2-match-after-restart-desktop.png') });
-        console.log('match page after restart moves:', await P.baonam.page.locator('#move-list .move-list__row').count(),
+        console.log('match page after restart moves:', await P.baonam.page.locator('#moves-grid li:not(.moves__empty)').count(),
           'banner:', (await P.baonam.page.locator('#status-banner').innerText().catch(() => '')).trim());
         for (const x of Object.values(P)) await x.page.goto(TURL);
         await page.locator('#team-scoreboard').waitFor();
@@ -234,7 +234,7 @@ async function run() {
         await shoot(page, 'e2e2-after-midgame-restart');
         // Replay: both ready again; a fresh board; Trúc Mai resigns.
         await enterBoth(P.baonam, P.trucmai);
-        console.log('replay board moves:', await P.baonam.page.locator('#move-list .move-list__row').count(), 'pairing same:', new URL(P.baonam.page.url()).searchParams.get('pairingId') === pid);
+        console.log('replay board moves:', await P.baonam.page.locator('#moves-grid li:not(.moves__empty)').count(), 'pairing same:', new URL(P.baonam.page.url()).searchParams.get('pairingId') === pid);
         await clickCell(P.baonam.page, 7, 7);
         P.trucmai.page.once('dialog', (d) => d.accept());
         await P.trucmai.page.locator('#btn-resign').click();
