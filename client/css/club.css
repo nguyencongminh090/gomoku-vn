@@ -13,7 +13,7 @@
   --cl-stone-w: rgba(255, 255, 255, .55);
   --cl-on-cc: #fff;
   --cl-nav-h: 56px;
-  --cl-d: var(--duration-normal, .24s);
+  --cl-d: 240ms;   /* DESIGN.md Hội nhóm: 240ms */
   display: grid;
   grid-template-columns: 76px 250px minmax(0, 1fr) 270px;
   height: calc(100vh - var(--cl-nav-h));
@@ -37,12 +37,70 @@
 .cl-ib--ring { width: 36px; height: 36px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--c-border); }
 .cl-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--radius-pill, 999px); background: var(--c-error); color: var(--c-bg); font-size: 12px; font-weight: 900; }
 .cl-count { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: var(--radius-pill, 999px); background: var(--c-fill); color: var(--c-ink-2); font-size: 12px; font-weight: 800; letter-spacing: 0; }
-.cl-grp { display: flex; align-items: center; gap: 8px; padding: 12px 10px 4px; font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: var(--c-ink-2); }
+.cl-grp { display: flex; align-items: center; gap: 8px; padding: 12px 10px 4px; font-size: 13px; font-weight: 800; color: var(--c-ink-2); }   /* sentence case: no caps on Vietnamese labels */
 .cl-av36 { width: 36px; height: 36px; font-size: 13px; }
 .cl-av40 { width: 40px; height: 40px; font-size: 14px; }
 .cl-h3 { font-size: 16px; font-weight: 800; margin: 6px 0 10px; }
 .cl-card > .prows + .cl-h3 { margin-top: 20px; } /* second heading in one card (activity panel) needs air above it */
-.cl-card { padding: 16px; border-radius: var(--radius-lg); background: var(--c-surface); }
+.cl-card { padding: 16px; border-radius: 16px; background: var(--c-surface); }
+
+/* Controls (#474, CL4 shapes; softened 2026-11-25 "giao diện vẫn cứng"): tonal pills, no hard rings,
+   one motion language (--cl-fast for state, --cl-base for enter). Scoped to .cl-hq, so (0,2,0) beats
+   platform.css's (0,1,0) .pbtn modifiers: each one is restated here. */
+.cl-hq {
+  --cl-fast: 160ms;
+  --cl-base: 240ms;
+  --cl-ease: var(--ease-out, cubic-bezier(.2, .7, .2, 1));
+  --cl-tone: color-mix(in srgb, var(--c-ink) 8%, transparent);
+  --cl-tone-hi: color-mix(in srgb, var(--c-ink) 14%, transparent);
+  --cl-field-line: var(--c-border-strong);   /* field edge >=3:1 (COL-CONTRAST-UI) */
+}
+.cl-hq .pbtn { justify-content: center; min-height: 40px; padding: 0 18px; border: 0; border-radius: var(--radius-pill, 999px); background: var(--cl-tone); box-shadow: none; color: var(--c-ink); font-weight: 700; white-space: nowrap; transition: background-color var(--cl-fast) var(--cl-ease), color var(--cl-fast) var(--cl-ease), box-shadow var(--cl-fast) var(--cl-ease), transform var(--cl-fast) var(--cl-ease); }
+.cl-hq .pbtn:hover:not(:disabled) { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .cl-hq .pbtn:hover:not(:disabled) { background: var(--cl-tone-hi); }
+  .cl-hq .pchip:hover { background: var(--cl-tone-hi); color: var(--c-ink); }
+  .cl-hq .pform input:not([type="checkbox"]):not([type="file"]):hover, .cl-hq .pform select:hover, .cl-hq .pform textarea:hover, .cl-hq .cb-inline input:hover { border-color: var(--c-ink-2); }
+  }
+.cl-hq .pbtn:active:not(:disabled) { opacity: 1; transform: scale(.96); transition-duration: 60ms; }
+.cl-hq .pbtn--sm { min-height: 36px; padding: 0 14px; font-size: 14px; }
+.cl-hq .pbtn--primary { background: var(--c-brand); color: var(--c-on-brand); box-shadow: 0 1px 2px rgb(0 0 0 / .18); }
+.cl-hq .pbtn--primary:hover:not(:disabled) { background: var(--c-brand-dark); box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--c-brand) 70%, transparent); }
+.cl-hq .pbtn--danger { background: color-mix(in srgb, var(--c-error) 10%, transparent); box-shadow: none; color: var(--c-error); }
+.cl-hq .pbtn--danger:hover:not(:disabled) { background: color-mix(in srgb, var(--c-error) 18%, transparent); }
+.cl-hq .pbtn[aria-pressed="true"] { background: var(--cc-tint); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--cc-text) 60%, transparent); color: var(--cc-text); }
+.cl-hq .cl-ib, .cl-hq .cl-send, .cl-hq .cl-ch, .cl-hq .cl-u, .cl-hq .cl-hint, .cl-hq .cb-poll__opt, .cl-list .prow { transition: background-color var(--cl-fast) var(--cl-ease), color var(--cl-fast) var(--cl-ease), box-shadow var(--cl-fast) var(--cl-ease), transform var(--cl-fast) var(--cl-ease); }
+.cl-hq .cl-ib:active, .cl-hq .cl-send:active { transform: scale(.92); transition-duration: 60ms; }
+.cl-hq .pchip { min-height: 40px; padding: 0 16px; border: 0; border-radius: var(--radius-pill, 999px); background: var(--cl-tone); box-shadow: none; color: var(--c-ink-2); font-weight: 700; transition: background-color var(--cl-fast) var(--cl-ease), color var(--cl-fast) var(--cl-ease); }
+.cl-hq .pchip[aria-selected="true"], .cl-hq .pchip[aria-pressed="true"] { background: var(--c-ink); color: var(--c-on-ink); }
+.cl-hq .pbadge { border: 0; border-radius: var(--radius-pill, 999px); background: var(--cl-tone); font-weight: 700; }
+/* Sentence case for labels and table headers (platform.css sets caps + tracking site-wide). */
+.cl-hq .pform label:not(.pcheck), .cl-hq .pform__label { font-size: 14px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--c-ink-2); }
+.cl-hq .pform label > select, .cl-hq .pform label > input { font-weight: 400; color: var(--c-ink); }   /* controls wrapped by a label keep field text, not label text */
+.cl-hq .ptbl th { font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--c-ink-2); }
+/* Fields: filled, soft line (still >=3:1 with the fill), brand ring on focus. A label sits 6px above
+   its field; groups stay 14px apart (proximity). */
+.cl-hq .pform input:not([type="checkbox"]):not([type="file"]), .cl-hq .pform select, .cl-hq .pform textarea, .cl-hq .cb-inline input { min-height: 44px; border: 1px solid var(--cl-field-line); border-radius: 12px; background: var(--c-field, var(--c-surface)); transition: border-color var(--cl-fast) var(--cl-ease), box-shadow var(--cl-fast) var(--cl-ease); }
+.cl-hq .pform input:not([type="checkbox"]):not([type="file"]):focus-visible, .cl-hq .pform select:focus-visible, .cl-hq .pform textarea:focus-visible, .cl-hq .cb-inline input:focus-visible { border-color: var(--c-brand-text); box-shadow: 0 0 0 2px var(--c-brand-text); outline: 0 !important; }   /* solid ring: PRI-FOCUS-VISIBLE */
+.cl-hq .pform > :is(label, .pform__label) + :is(input, textarea, select, .pswatches) { margin-top: -8px; }
+.cl-hq .psearch { min-height: 44px; padding: 0 14px; border-radius: 12px; background: var(--c-field, var(--c-surface)); box-shadow: inset 0 0 0 1px var(--cl-field-line); transition: box-shadow var(--cl-fast) var(--cl-ease); }
+.cl-hq .psearch:hover { box-shadow: inset 0 0 0 1px var(--c-ink-2); }
+.cl-hq .psearch:focus-within { outline: 0; box-shadow: inset 0 0 0 1px var(--c-brand-text), 0 0 0 2px var(--c-brand-text); }
+.cl-hq .psearch input { flex: 1; width: auto; min-width: 0; color: inherit; }
+.cl-search { max-width: 520px; }
+/* A button beside fields takes the field height, so the row shares one top and bottom edge. */
+.cl-hq :is(.pform__row, .cb-inline, .cl-filter__bulk) > .pbtn { min-height: 44px; }
+.cl-hq .cb-images__row .pform__label { min-width: 140px; }   /* sentence-case labels: both "Đổi ảnh" buttons line up */
+/* Row select box (thành-viên bulk actions) */
+.cl-hq .ptbl input[type="checkbox"] { appearance: none; position: relative; width: 20px; height: 20px; margin: 0 10px 0 0; vertical-align: middle; border-radius: 6px; background: var(--c-field, var(--c-surface)); box-shadow: inset 0 0 0 1.5px var(--c-border-strong); cursor: pointer; transition: background-color var(--cl-fast) var(--cl-ease), box-shadow var(--cl-fast) var(--cl-ease); }
+.cl-hq .ptbl input[type="checkbox"]:checked { background: var(--c-brand); box-shadow: none; }
+.cl-hq .ptbl input[type="checkbox"]:checked::after { content: ""; position: absolute; left: 7px; top: 3px; width: 5px; height: 10px; border: solid var(--c-on-brand); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.cl-hq .ptbl td { vertical-align: middle; }
+.cl-check-slot { display: inline-block; width: 20px; height: 20px; margin-right: 10px; vertical-align: middle; }
+.cl-hq .ptbl td.num > .pbtn { margin-left: 4px; }
+.cl-hq .ptbl .pbtn--sm { min-height: 32px; padding: 0 12px; font-size: 13px; }   /* row actions: compact so four fit beside name + role */
+.cl-hq .pform output:empty { display: none; }   /* empty preview slot must not add two gaps (alerts stay rendered: live region) */
+.cl-hq .cl-card > .cl-h3:first-child { margin: 0 0 14px; }
 
 /* crest: the club avatar (tag on the club colour, or its image) */
 .cl-crest { width: 48px; height: 48px; border-radius: 50%; font-size: 14px; font-weight: 900; letter-spacing: .02em; box-shadow: inset 0 0 0 2px var(--cl-crest-ring); transition: border-radius var(--cl-d) var(--ease-out); }
@@ -115,9 +173,12 @@ a.cb-chat__name:hover { text-decoration: underline; }
 .cl-role { flex: none; font-size: 12px; font-weight: 900; color: var(--cc-text); }
 .cb-chat__time { flex: none; font-size: 12px; color: var(--c-ink-2); }
 .cb-chat__text { overflow-wrap: anywhere; }
-.cb-chat__del { width: 36px; height: 36px; opacity: 0; }
-.cb-chat__msg:hover .cb-chat__del, .cb-chat__del:focus-visible { opacity: 1; }
-@media (hover: none) { .cb-chat__del { opacity: 1; } }
+.cb-chat__acts { display: flex; gap: 2px; }
+.cb-chat__acts .cl-ib { width: 36px; height: 36px; }
+@media (hover: hover) {   /* pointer: actions appear on hover/focus; touch keeps them visible */
+  .cb-chat__acts { opacity: 0; transition: opacity var(--duration-fast, .14s); }
+  .cb-chat__msg:hover .cb-chat__acts, .cb-chat__acts:focus-within { opacity: 1; }
+}
 .cl-compose { flex: none; padding: 12px 18px 16px; }
 .cl-compose__box { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 6px 0 16px; border-radius: 14px; background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); }
 .cl-compose__box:focus-within { box-shadow: inset 0 0 0 2px var(--c-brand-text); }
@@ -184,7 +245,7 @@ a.cb-chat__name:hover { text-decoration: underline; }
 .cl-kv dt { font-size: 13px; color: var(--c-ink-2); }
 .cl-gate__act { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 18px; }
 .cl-gate__act .pnote { margin: 0; }
-.cl-gate__join { min-height: 48px; padding: 0 28px; border-radius: var(--radius-pill, 999px); font-size: 16px; font-weight: 800; }
+.cl-hq .cl-gate__join { min-height: 48px; padding: 0 28px; border-radius: var(--radius-pill, 999px); font-size: 16px; font-weight: 800; }
 
 /* members pane */
 .cl-mem { min-height: 0; padding: 8px 10px; overflow: auto; background: var(--c-surface); border-left: 1px solid var(--c-border); }
@@ -199,13 +260,19 @@ a.cb-chat__name:hover { text-decoration: underline; }
 
 /* channel pages (tables and forms from the old tabs) */
 .cl-page .ptbl-wrap { margin: 0; }
-/* thành-viên filter bar: platform .psearch pill + .pform selects at one control height (CL4 .search, 44px). */
-.cl-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
-.cl-filter .psearch { flex: 1 1 220px; min-height: 44px; padding: 0 14px; }
+/* thành-viên filter bar: search + labelled selects share one bottom edge (labels stacked above, 6px);
+   the staff bulk bar is its own quiet panel below, same 44px row. */
+.cl-filter { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; }
+.cl-filter .psearch { flex: 1 1 240px; min-height: 44px; padding: 0 14px; }
 .cl-filter .psearch input { flex: 1; width: auto; min-width: 0; }
 .cl-filter .pform, .cl-filter__bulk { max-width: none; }
+.cl-hq :is(.cl-filter, .cl-filter__bulk) .pform__row { align-items: flex-end; gap: 12px; }
+.cl-hq :is(.cl-filter, .cl-filter__bulk) label:not(.psearch) { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.cl-filter select { min-width: 150px; }
 .cl-filter select, .cl-filter__bulk select, .cl-filter__bulk input[type="number"] { min-height: 44px; }
 .cl-filter__bulk input[type="number"] { width: 110px; }
+.cl-hq .cl-filter__bulk { padding: 12px 14px; border-radius: 16px; background: var(--c-surface); }
+.cl-hq .cl-filter__bulk .pbtn { margin-left: auto; }
 .cl-page .prows--tickets .prow > .icon { color: var(--cc-text); }
 .cl-evday { margin: var(--space-3, 12px) 0 0; font-size: 13px; font-weight: 800; color: var(--c-ink-2); }   /* B450: day heading in sự-kiện */
 .cl-evday:first-child { margin-top: 0; }
@@ -245,7 +312,24 @@ a.cb-chat__name:hover { text-decoration: underline; }
 .cl-pill { display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: var(--radius-pill, 999px); background: var(--cc-tint); color: var(--cc-text); font-size: 13px; font-weight: 800; white-space: nowrap; }
 .cl-dir #cl-create-panel { margin-bottom: 18px; }
 
-@keyframes cl-rise { from { opacity: 0; transform: translateY(14px); } }
+/* Motion (#474 follow-up "I need something smooth"): DESIGN.md Hội nhóm = subtle. State changes 160ms,
+   entrances 240ms, ease-out; transform/opacity only. Reduced motion: the .cl-hq kill-switch below. */
+.cl-hq .cl-panel:not([hidden]) { animation: cl-enter var(--cl-base) var(--cl-ease) both; }   /* channel switch: hidden → shown restarts it */
+.cl-hq .cl-hints:not([hidden]) { animation: cl-pop var(--cl-fast) var(--cl-ease) both; transform-origin: bottom left; }
+@property --pct { syntax: "<percentage>"; inherits: false; initial-value: 0%; }   /* lets the vote bar glide */
+/* --pct (registered) is animated by club.js renderPoll via WAAPI: the option buttons are rebuilt on each update. */
+dialog.cl-editor { opacity: 1; transform: none; transition: opacity var(--cl-fast) var(--cl-ease), transform var(--cl-base) var(--cl-ease), overlay var(--cl-fast) allow-discrete, display var(--cl-fast) allow-discrete; }
+dialog.cl-editor:not([open]) { opacity: 0; transform: translateY(8px) scale(.97); }
+@starting-style { dialog.cl-editor[open] { opacity: 0; transform: translateY(8px) scale(.97); } }
+dialog.cl-editor::backdrop { transition: background-color var(--cl-base) var(--cl-ease), overlay var(--cl-base) allow-discrete, display var(--cl-base) allow-discrete; }
+@starting-style { dialog.cl-editor[open]::backdrop { background-color: transparent; } }
+@keyframes cl-enter { from { opacity: 0; transform: translateY(6px); } }
+@keyframes cl-pop { from { opacity: 0; transform: translateY(4px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) {
+  dialog.cl-editor, dialog.cl-editor::backdrop { transition: none; transform: none; }
+}
+
+@keyframes cl-rise { from { opacity: 0; transform: translateY(8px); } }
 
 @media (max-width: 1180px) {
   .cl-hq { grid-template-columns: 76px 230px minmax(0, 1fr); }
@@ -257,6 +341,7 @@ a.cb-chat__name:hover { text-decoration: underline; }
    (one scroll area: the stream/page), so the composer always sits above the tab bar. */
 @media (max-width: 860px) {
   body.pshell.cl-body { padding-bottom: 0; }
+  .cl-hq .pbtn, .cl-hq .pbtn--sm, .cl-hq .ptbl .pbtn--sm, .cl-hq .pchip { min-height: 44px; }   /* touch targets (platform.css B306, restated past the scoped sizes) */
   .cl-hq, .cl-hq--dir { display: flex; flex-direction: column; min-height: 0; height: calc(100vh - var(--cl-nav-h) - var(--ptabbar-h) - env(safe-area-inset-bottom)); height: calc(100dvh - var(--cl-nav-h) - var(--ptabbar-h) - env(safe-area-inset-bottom)); }
   .cl-hq > *, .cl-content > * { min-width: 0; max-width: 100%; }
   .cl-rail { flex: none; flex-direction: row; padding: 8px 12px 10px; overflow-x: auto; overflow-y: hidden; border-right: 0; border-bottom: 1px solid var(--c-border); }
@@ -302,6 +387,10 @@ a.cb-chat__name:hover { text-decoration: underline; }
   .cl-hq *, .cl-hq *::before, .cl-hq *::after { animation: none !important; transition: none !important; }
 }
 
-dialog.cl-editor { width: min(32rem, calc(100% - 2rem)); max-height: 85dvh; overflow: auto; margin: auto; color: var(--c-ink); background: var(--c-surface); }
+dialog.cl-editor { width: min(32rem, calc(100% - 2rem)); max-height: 85dvh; overflow: auto; margin: auto; padding: 24px; border: 0; border-radius: 20px; box-shadow: var(--shadow-card); color: var(--c-ink); background: var(--c-surface); }
 dialog.cl-editor::backdrop { background: rgb(0 0 0 / .5); }
+.cl-editor .cl-h3 { margin: 0 0 16px; font-size: 18px; font-weight: 900; }
+.cl-editor .pform__row { flex-wrap: nowrap; }
 .cl-editor .pform__row input { flex: 1; min-width: 0; }
+.cl-editor #cb-add-option { align-self: flex-start; }
+#cb-poll-form > .pform__row:last-child { justify-content: flex-end; margin-top: 4px; }

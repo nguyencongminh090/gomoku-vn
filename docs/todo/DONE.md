@@ -1,3 +1,5 @@
+- ✅ **#474.** Club page: old buttons/widgets, all-caps labels, poll button on the chat bar `[Model: Sonnet]` — [detail](docs/todo/B474-club-controls-modern.md)
+
 - ✅ **#472.** Match page keeps the aborted game live after a server restart `[Model: Opus]` — [detail](docs/todo/B472-tmatch-stale-after-restart.md)
 
 - ✅ **#471.** Tournament games history shows raw reason codes ("won — win") `[Model: Haiku]` — [detail](docs/todo/B471-tournament-history-reason-raw.md)

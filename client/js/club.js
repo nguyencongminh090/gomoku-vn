@@ -279,6 +279,11 @@
   function renderPoll(card, p) {
     const id = card.dataset.id;
     card.dataset.open = p.closed ? '0' : '1';
+    // Bars glide from the last shown share to the new one (the buttons are rebuilt, so a CSS transition
+    // never fires): the final --pct is set inline at once, WAAPI animates only the in-between frames.
+    const prevPct = [...card.querySelectorAll('.cb-poll__opt')].map((o) => o.style.getPropertyValue('--pct'));
+    const glide = typeof Element !== 'undefined' && Element.prototype.animate && window.CSS && CSS.registerProperty !== undefined
+      && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     const opts = el('div', undefined, 'cb-poll__opts');
     p.options.forEach((text, i) => {
       const n = p.counts[i] || 0;
@@ -288,6 +293,7 @@
       b.disabled = p.closed;
       b.setAttribute('aria-pressed', String(p.myOption === i));
       b.style.setProperty('--pct', pct + '%');
+      if (glide && prevPct[i] && prevPct[i] !== pct + '%') b.animate([{ '--pct': prevPct[i] }, { '--pct': pct + '%' }], { duration: 480, easing: 'cubic-bezier(.16, 1, .3, 1)' });
       const label = el('span', undefined, 'cb-poll__label');
       if (p.myOption === i) label.append(icon('check-circle'));
       label.append(decode(text));
@@ -391,19 +397,23 @@
       body.append(who, box);
       row.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'cl-av40'), body);
     }
+    // One grid cell for the row actions: flag + delete as separate grid items overflowed the
+    // 3-column row into an implicit 2nd row (a blank ~50px gap under every message for staff).
+    const acts = el('div', undefined, 'cb-chat__acts');
     if (isMember() && !m.mine) {
-      row.append(iconBtn('flag', 'Báo cáo tin nhắn', async () => {
+      acts.append(iconBtn('flag', 'Báo cáo tin nhắn', async () => {
         const reason = window.prompt('Lý do báo cáo (tối đa 200 ký tự)');
         if (reason && await act('POST', '/messages/' + m.id + '/report', { reason })) $('cb-msg').textContent = 'Đã gửi báo cáo.';
       }, 'cb-chat__flag'));
     }
     if (isStaff()) {
-      row.append(iconBtn('trash', t('clubs.delete_message'), async () => {
+      acts.append(iconBtn('trash', t('clubs.delete_message'), async () => {
         const ok = await act('DELETE', '/messages/' + m.id, null, 'clubs.confirm_delete_message');
         if (ok) { resetChat(); openChat(); }
         return false;
       }, 'cb-chat__del'));
     }
+    if (acts.childElementCount) row.append(acts);
     return row;
   }
 
@@ -532,7 +542,7 @@
     field.required = true;
     field.maxLength = 50;
     field.value = value;
-    const remove = mini(t('clubs.remove_option'), () => { row.remove(); previewPoll(); });
+    const remove = iconBtn('x', t('clubs.remove_option'), () => { row.remove(); previewPoll(); });
     row.append(field, remove);
     $('cb-options').append(row);
     previewPoll();
@@ -564,7 +574,8 @@
       el('div', e.going ? t('clubs.event_going_n', { n: e.going }) : t('clubs.event_going_none'), 'prow__m cl-event__going'));
     row.append(window.PlatformShell.icon('ph-regular-calendar'), body);
     if (isMember()) {
-      const b = el('button', t(e.mine ? 'clubs.event_going' : 'clubs.event_join'), 'pbtn pbtn--sm' + (e.mine ? ' pbtn--primary' : ''));
+      // Joined = aria-pressed (tinted), not a filled primary per row (DESIGN.md: one filled button per screen).
+      const b = el('button', t(e.mine ? 'clubs.event_going' : 'clubs.event_join'), 'pbtn pbtn--sm');
       b.type = 'button';
       b.setAttribute('aria-pressed', String(!!e.mine));
       b.title = t('clubs.event_join_hint');
@@ -580,7 +591,7 @@
       };
       row.append(b);
     }
-    if (staff) row.append(mini(t('clubs.delete_event'), () => act('DELETE', '/events/' + encodeURIComponent(e.id), null, 'clubs.confirm_delete_event')));
+    if (staff) row.append(iconBtn('trash', t('clubs.delete_event'), () => act('DELETE', '/events/' + encodeURIComponent(e.id), null, 'clubs.confirm_delete_event')));   // icon: one text action per row
     return row;
   }
 
@@ -875,7 +886,7 @@
         check.value = m.username;
         check.setAttribute('aria-label', m.displayName);
         name.append(check);
-      }
+      } else if (staff) name.append(el('span', undefined, 'cl-check-slot')); // keeps names in one column
       name.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'pav--sm'), link);
       tr.append(name, el('td', t('clubs.role_' + m.role)));
       if (actions) {
