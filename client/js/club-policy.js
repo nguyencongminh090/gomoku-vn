@@ -54,7 +54,7 @@ function parseEventArg(arg, nowMs = Date.now()) {
   return { startsAt: new Date(ms).toISOString(), title: m[6].replace(/\s+/g, ' ').trim() };
 }
 
-  const policy = { parseEventArg, roles, isMember, isStaff, canModerate, commands, find, available };
+  const policy = { parseEventArg, roles, rank, isMember, isStaff, canModerate, commands, find, available };
   if (typeof window !== 'undefined') window.ClubPolicy = policy;
   if (typeof module !== 'undefined') module.exports = policy;
 })();

@@ -1,3 +1,5 @@
+- ✅ **#461.** Club unban/unmute ignores who issued the sanction (officer can lift owner ban) `[Model: Sonnet]` — [detail](docs/todo/B461-club-unban-rank-check.md)
+
 - ✅ **#460.** Club team tournament UI: create, captain roster & standings `[Model: Sonnet]` — [detail](docs/todo/B460-club-team-tournament-ui.md)
 
 - ✅ **#236.** Club-vs-club team tournament backend & schema `[Model: Opus]` — [detail](docs/todo/B236-club-team-tournament.md)
