@@ -263,13 +263,16 @@
    rule below. */
 
 @media (max-width: 768px) {
-  /* .board-area-shell bleeds edge-to-edge on mobile (room.css: width:calc(100%
-     + 32px); margin-left:-16px), which is correct for the board itself but
-     was also stretching .match-clocks/.match-actions (siblings inside the
-     same shell) past the real viewport edge, overflowing the page
-     horizontally (measured bodyScrollWidth 406px vs. clientWidth 390px).
-     Cancel the inherited bleed for just these two header-like children. */
-  .match-clocks, .match-actions { align-self: flex-start; width: calc(100% - 32px); margin-left: 16px; }
+  /* TODO.md #426: room.css's mobile full-bleed on .board-area-shell
+     (width:calc(100% + 32px); margin-left:-16px) assumes a 16px .room
+     padding, but the same mobile block sets .room padding to 0 — so the
+     shell overshot the viewport 16px per side and BoardRenderer.resize()
+     sized the board to that too-wide box (clipped labels at both edges).
+     room.html cancels it in room-arena.css; do the same here. The shell
+     already spans the full phone width, so the clocks/actions take 100% of
+     it (their old calc(100% - 32px) + 16px inset only undid the bleed). */
+  .room .board-area-shell { width: 100%; margin-left: 0; }
+  .match-clocks, .match-actions { align-self: flex-start; width: 100%; margin-left: 0; }
 }
 
 .move-list { max-height: 320px; overflow-y: auto; font-size: calc(12px * var(--fs-scale, 1)); }
