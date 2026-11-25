@@ -35,6 +35,9 @@ const cheat = require('../managers/CheatReportService');
 const news = require('../managers/NewsService');
 const integrity = require('../managers/RatingIntegrityService');
 
+const oversight = require('../managers/ClubOversight');
+const { ClubError } = require('../managers/ClubService');
+
 const router = express.Router();
 router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 600, keyGenerator: (req) => ipKeyGenerator(getClientIpFromReq(req) || '') }));
 
@@ -53,10 +56,20 @@ const h = (fn) => (req, res, next) => {
     if (!req.user.userId) return res.status(403).json({ error: 'Khách không dùng được tính năng này.', code: 'GUEST_FORBIDDEN' });
     fn(req, res, next);
   } catch (err) {
-    if (err instanceof svc.AdminUserError || err instanceof cheat.CheatReportError || err instanceof news.NewsError || err instanceof integrity.RatingIntegrityError) return res.status(err.status).json({ error: err.message, code: err.code });
+    if (err instanceof ClubError || err instanceof svc.AdminUserError || err instanceof cheat.CheatReportError || err instanceof news.NewsError || err instanceof integrity.RatingIntegrityError) return res.status(err.status).json({ error: err.message, code: err.code });
     next(err);
   }
 };
+
+router.get('/clubs', verifyToken, h((req, res) => {
+  res.set('Cache-Control', 'no-store').json(oversight.directory(req.user.userId, req.query));
+}));
+router.get('/clubs/:slug', verifyToken, h((req, res) => {
+  res.set('Cache-Control', 'no-store').json(oversight.detail(req.user.userId, req.params.slug));
+}));
+router.post('/clubs/:slug/actions', ...write, h((req, res) => {
+  res.json(oversight.act(req.user.userId, req.params.slug, req.body || {}));
+}));
 
 router.get('/users', verifyToken, h((req, res) => {
   res.set('Cache-Control', 'no-store');

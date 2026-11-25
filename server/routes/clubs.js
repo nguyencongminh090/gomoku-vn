@@ -75,8 +75,20 @@ router.post('/', ...write, h((req, res) => {
 
 router.get('/mine', verifyToken, h((req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json({ clubs: req.user.userId ? svc.clubsOfUser(req.user.userId) : [] });
+  res.json({ clubs: req.user.userId ? svc.clubsOfUser(req.user.userId, true) : [] });
 }));
+
+router.param('slug', (req, res, next, slug) => {
+  try {
+    const club = svc.getClub(slug);
+    const write = !['GET', 'HEAD'].includes(req.method) && !(req.method === 'POST' && ['/:slug/messages/:id/report', '/:slug/leave'].includes(req.route?.path));
+    svc.checkAccess(club, club.hidden ? optionalUserId(req) : null, write);
+    next();
+  } catch (err) {
+    if (err instanceof svc.ClubError) return res.status(err.status).json({ code: err.code, error: err.message });
+    next(err);
+  }
+});
 
 // Avatar + banner (#250). Never stored as uploaded: sharp decodes, rotates, cover-crops to the kind's size and
 // re-encodes to WebP (no EXIF/polyglots). Staff only; the file is overwritten in place, the URL carries ?v=.
@@ -90,7 +102,7 @@ for (const [kind, spec] of Object.entries(KINDS)) {
     const club = svc.getClub(req.params.slug);
     const file = imageFile(club.id, kind);
     if (!fs.existsSync(file)) return res.status(404).json({ error: 'Chưa có ảnh.', code: 'CLUB_IMAGE_NONE' });
-    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.set('Cache-Control', club.hidden ? 'private, no-store' : 'public, max-age=31536000, immutable');
     res.type('image/webp').sendFile(file);
   }));
 
@@ -115,6 +127,8 @@ for (const [kind, spec] of Object.entries(KINDS)) {
       } catch (_) {
         return res.status(415).json({ error: 'Ảnh không hợp lệ.', code: 'CLUB_IMAGE_INVALID' });
       }
+      svc.clubForImageEdit(req.user.userId, req.params.slug);
+      svc.checkAccess(svc.getClub(req.params.slug), req.user.userId, true);
       fs.mkdirSync(CLUB_IMAGE_DIR, { recursive: true });
       const target = imageFile(club.id, kind);
       const tmp = `${target}.${process.pid}.tmp`;
@@ -233,6 +247,11 @@ router.post('/:slug/messages', ...write, h((req, res) => {
 
 router.delete('/:slug/messages/:id', ...write, h((req, res) => {
   svc.deleteMessage(req.user.userId, req.params.slug, req.params.id);
+  res.json({ ok: true });
+}));
+
+router.post('/:slug/messages/:id/report', ...write, h((req, res) => {
+  svc.reportMessage(req.user.userId, req.params.slug, req.params.id, req.body?.reason);
   res.json({ ok: true });
 }));
 

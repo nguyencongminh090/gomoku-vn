@@ -110,6 +110,27 @@ async function run() {
       await page.reload();
       await page.locator('.is-mentioned').getByText('@officers').waitFor();
       await shoot('mention-received');
+    } else if (slice === 'admin') {
+      const member = await joinMember('hoamai', 'Hoa Mai');
+      await member.request.post(base + '/api/clubs/' + club.slug + '/messages', { data: { text: 'Tin cần xem xét' } });
+      await page.reload();
+      page.once('dialog', (dialog) => dialog.accept('Nội dung không phù hợp'));
+      await page.getByRole('button', { name: 'Báo cáo tin nhắn' }).first().click();
+      await page.getByText('Đã gửi báo cáo.').waitFor();
+      const db = require('better-sqlite3')(path.join(dir, 'browser.db'), { fileMustExist: true });
+      db.prepare("UPDATE users SET role='admin' WHERE username=?").run(credentials.username);
+      db.close();
+      await page.goto(base + '/admin#clubs');
+      await page.locator('#ac-reports').getByText(/Tin cần xem xét/).waitFor();
+      await shoot('admin-reports');
+      page.once('dialog', (dialog) => dialog.accept());
+      await page.getByRole('button', { name: 'Gỡ tin bị báo cáo' }).click();
+      await page.locator('#ac-detail h2').waitFor();
+      await shoot('admin-club');
+      page.once('dialog', (dialog) => dialog.accept());
+      await page.getByRole('button', { name: 'Khóa nhóm', exact: true }).click();
+      await page.getByRole('button', { name: 'Mở khóa', exact: true }).waitFor();
+      assert.equal((await member.request.post(base + '/api/clubs/' + club.slug + '/messages', { data: { text: 'hi' } })).status(), 403);
     } else throw new Error('Unknown slice');
   } finally {
     try { if (browser) await browser.close(); } finally { app.kill('SIGTERM'); }

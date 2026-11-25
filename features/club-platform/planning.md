@@ -34,3 +34,5 @@ Park badges, separate announcement channels and customizable onboarding. The pin
 Each slice requires server and jsdom tests, cache hash verification, desktop/mobile browser evidence against a disposable database, full Jest, a feature commit and a merge commit on dev.
 
 Advisory review identified deletion reconciliation for existing polling tabs, the cascade on club_log during deletion, and the tournament format CHECK in migration 011. Retain admin dispositions outside that cascade, reconcile displayed IDs, and test team hydration and walkovers before shipping. Permission decisions also draw on the SKILLS_TREE authz-least-privilege and authz-broken-access-control notes.
+
+Locking leaves reporting and leaving available. Hiding removes a club from public discovery, profile badges and hosted-club labels, and limits direct reads to its confirmed members. Admin report evidence retains the message excerpt when chat retention removes its source. The admin ledger records successful reads and mutations, including the club identity on deletion.
