@@ -69,3 +69,14 @@ in the detail file / fix-log).
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — direct route (CloudFront→Caddy) LIVE; open: peak-hour check + real-browser game `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
+
+
+- **#454.** Creation forms `[Model: Sonnet]` — [detail](docs/todo/B454-creation-forms.md)
+
+- **#455.** Club moderation `[Model: Sonnet]` — [detail](docs/todo/B455-club-moderation.md)
+
+- **#456.** Mentions `[Model: Sonnet]` — [detail](docs/todo/B456-mentions.md)
+
+- **#457.** Site oversight and reporting `[Model: Sonnet]` — [detail](docs/todo/B457-site-oversight-and-reporting.md)
+
+- **#458.** Club activity `[Model: Sonnet]` — [detail](docs/todo/B458-club-activity.md)

@@ -1,5 +1,5 @@
 # B236 — Club-vs-club team tournament (size L)
-**Status:** OPEN — blocked on the 6 open questions in `features/club-team-tournament/planning.md`
+**Status:** OPEN — decisions approved in features/club-platform/planning.md
 **Area:** features/club-team-tournament, tournament module, club roster UI
 **From:** club review F, 2026-10-12   **Depends:** #200, B235
 

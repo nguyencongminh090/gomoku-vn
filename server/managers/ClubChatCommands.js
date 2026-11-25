@@ -20,10 +20,7 @@ const CHAT_DEFAULTS = Object.freeze({
 });
 const CHAT_KEYS = Object.keys(CHAT_DEFAULTS);
 
-/** Command word → kind. Words are typed without diacritics (`/giaohữu` is not accepted). */
-const COMMANDS = Object.freeze({ ghim: 'pin', giaohuu: 'challenge', binhchon: 'poll', lich: 'calendar' });
-/** Which toggle gates each command kind. */
-const COMMAND_TOGGLE = Object.freeze({ pin: 'cmdPin', challenge: 'cmdChallenge', poll: 'cmdPoll', calendar: 'cmdCalendar' });
+const policy = require('../../client/js/club-policy');
 
 /** /binhchon limits (B449): raw lengths, before DmText.clean escapes anything. */
 const POLL = Object.freeze({ MIN_OPTIONS: 2, MAX_OPTIONS: 6, QUESTION_MAX: 140, OPTION_MAX: 50 });
@@ -66,7 +63,7 @@ function parseCommand(raw) {
   const m = /^\/([A-Za-z]+)(?:\s+([\s\S]*))?$/.exec(String(raw || '').trim());
   if (!m) return null;
   const word = m[1].toLowerCase();
-  return { word, kind: COMMANDS[word] || null, arg: (m[2] || '').trim() };
+  return { word, kind: policy.find(word)?.kind || null, arg: (m[2] || '').trim() };
 }
 
 /** "/giaohuu @an 3+2 caro" arg → { username, extras: ['3+2', 'caro'] } or null when no name. */
@@ -144,6 +141,8 @@ function parseMentions(raw) {
 }
 
 module.exports = {
-  CHAT_DEFAULTS, CHAT_KEYS, COMMANDS, COMMAND_TOGGLE, MAX_MENTIONS, POLL,
+  COMMANDS: Object.fromEntries(policy.commands.flatMap((c) => c.words.map((w) => [w, c.kind]))),
+  COMMAND_TOGGLE: Object.fromEntries(policy.commands.map((c) => [c.kind, c.toggle])),
+  CHAT_DEFAULTS, CHAT_KEYS, MAX_MENTIONS, POLL,
   readSettings, mergeSettings, parseCommand, parseChallengeArg, parsePollArg, parseEventArg, parseMentions,
 };
