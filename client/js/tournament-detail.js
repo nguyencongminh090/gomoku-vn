@@ -378,9 +378,9 @@ function renderHeader() {
     roundMeta = `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-flag-checkered"></use></svg>${t('tdetail.round_label', { n: Math.min(displayRound, tournament.totalRounds), total: tournament.totalRounds })}</span>`;
   }
   const participantsMeta = isTeam
-    ? `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-users-three"></use></svg>${escapeHtml(`${(tournament.teams || []).length}/2 hội nhóm`)}</span>
-       <span class="detail-meta-item">${escapeHtml(`${(tournament.ruleSet && tournament.ruleSet.boardCount) || 3} bàn mỗi đội`)}</span>
-       <span class="detail-meta-item">Không tính điểm xếp hạng</span>`
+    ? `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-users-three"></use></svg>${t('tdetail.team_clubs_count', { n: (tournament.teams || []).length })}</span>
+       <span class="detail-meta-item">${t('tdetail.team_boards_per_team', { n: (tournament.ruleSet && tournament.ruleSet.boardCount) || 3 })}</span>
+       <span class="detail-meta-item">${t('tdetail.team_unrated')}</span>`
     : `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-users-three"></use></svg>${tournament.entries.length} ${t('tournaments.players_suffix')}</span>`;
   detailMetaEl.innerHTML = `
     <span class="badge badge--format">${formatLabel(tournament.format)}</span>
@@ -401,7 +401,7 @@ function renderHeader() {
     + (droppable.length ? item('btn-drop-player', 'user-minus', 'tdetail.btn_drop_player') : '')
     + (canCancel ? item('btn-cancel-tournament', 'warning', 'tdetail.btn_cancel_tournament') : '');
   const startBtnHtml = canStartTeam
-    ? `<button class="btn btn-confirm" type="button" id="btn-start-team-tournament">Bắt đầu giải đồng đội</button>`
+    ? `<button class="btn btn-confirm" type="button" id="btn-start-team-tournament">${t('tdetail.team_start')}</button>`
     : '';
   detailCancelSlot.innerHTML = startBtnHtml + (menuItems
     ? `<button class="btn-secondary manage-btn" type="button" id="btn-manage" aria-haspopup="menu" aria-expanded="false">${t('tdetail.btn_manage')}<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-caret-down"></use></svg></button><div class="manage-menu" id="manage-menu" role="menu" hidden>${menuItems}</div>`
@@ -598,13 +598,13 @@ function renderPairingCard(pairing) {
   const p1Base = me && pairing.player1EntryId === me.entryId ? `<span class="pairing-card__you">${t('tdetail.you')}</span>` : escapeHtml(p1Name);
   const p2Base = me && pairing.player2EntryId === me.entryId ? `<span class="pairing-card__you">${t('tdetail.you')}</span>` : escapeHtml(p2Name);
   const p1Label = isTeam
-    ? `<span class="pairing-card__side"><span class="match-stone-dot match-stone-dot--black" title="Quân Đen"></span>${team1 ? `<span class="team-club-tag">${escapeHtml(team1.clubTag || team1.clubName)}</span>` : ''}${p1Base}</span>`
+    ? `<span class="pairing-card__side"><span class="match-stone-dot match-stone-dot--black" title="${t('tdetail.team_black')}"></span>${team1 ? `<span class="team-club-tag">${escapeHtml(team1.clubTag || team1.clubName)}</span>` : ''}${p1Base}</span>`
     : p1Base;
   const p2Label = isTeam
-    ? `<span class="pairing-card__side"><span class="match-stone-dot match-stone-dot--white" title="Quân Trắng"></span>${team2 ? `<span class="team-club-tag">${escapeHtml(team2.clubTag || team2.clubName)}</span>` : ''}${p2Base}</span>`
+    ? `<span class="pairing-card__side"><span class="match-stone-dot match-stone-dot--white" title="${t('tdetail.team_white')}"></span>${team2 ? `<span class="team-club-tag">${escapeHtml(team2.clubTag || team2.clubName)}</span>` : ''}${p2Base}</span>`
     : p2Base;
   const boardBadge = isTeam && pairing.boardNumber
-    ? `<span class="pairing-card__board">Bàn ${pairing.boardNumber}</span>`
+    ? `<span class="pairing-card__board">${t('tdetail.team_board', { n: pairing.boardNumber })}</span>`
     : '';
 
   let metaLine = '';
@@ -681,8 +681,8 @@ function renderPairings() {
   if (pairings.length === 0) {
     pairingsContainer.innerHTML = tournament.format === 'team'
       ? `<div class="empty-tournaments">
-           <span class="room-list__empty-text">Chưa có bàn đấu nào được xếp cặp.</span>
-           <span class="room-list__empty-sub">Sau khi đủ 2 hội nhóm chốt đội hình và người tổ chức bắt đầu giải, các bàn đấu theo từng vòng sẽ hiển thị tại đây.</span>
+           <span class="room-list__empty-text">${t('tdetail.team_no_pairings')}</span>
+           <span class="room-list__empty-sub">${t('tdetail.team_no_pairings_sub')}</span>
          </div>`
       : `
       <div class="empty-tournaments">
@@ -1248,11 +1248,11 @@ function renderTeamOverview() {
     const isCompleted = tournament.status === 'completed';
     const tiedFirst = left.score === right.score;
     const rankPill = (tm) => {
-      if (!isCompleted) return `<span class="team-rank-pill">Hạng #${tm.liveRank}</span>`;
-      if (tiedFirst) return `<span class="team-rank-pill">Đồng hạng nhất (#1)</span>`;
+      if (!isCompleted) return `<span class="team-rank-pill">${t('tdetail.team_rank', { n: tm.liveRank })}</span>`;
+      if (tiedFirst) return `<span class="team-rank-pill">${t('tdetail.team_tied_first_n')}</span>`;
       return tm.liveRank === 1
-        ? `<span class="team-rank-pill">Vô địch (#1)</span>`
-        : `<span class="team-rank-pill">Á quân (#2)</span>`;
+        ? `<span class="team-rank-pill">${t('tdetail.team_champion_n')}</span>`
+        : `<span class="team-rank-pill">${t('tdetail.team_runner_up_n')}</span>`;
     };
     teamPanelSlot.innerHTML = `
       <section class="team-overview" id="team-scoreboard">
@@ -1263,13 +1263,13 @@ function renderTeamOverview() {
               <a class="team-scoreboard__name" href="/c/${encodeURIComponent(left.clubSlug)}">${escapeHtml(left.clubName)}</a>
               <div class="team-scoreboard__meta">
                 ${rankPill(left)}
-                <span>${left.wins} thắng</span>
-                <span>${left.draws} hòa</span>
-                <span>${left.losses} thua</span>
+                <span>${t('tdetail.team_wins', { n: left.wins })}</span>
+                <span>${t('tdetail.team_draws', { n: left.draws })}</span>
+                <span>${t('tdetail.team_losses', { n: left.losses })}</span>
               </div>
             </div>
           </div>
-          <div class="team-scoreboard__center" aria-label="Tỉ số đồng đội">
+          <div class="team-scoreboard__center" aria-label="${t('tdetail.team_score_label')}">
             <span>${fmtScore(left.score)}</span>
             <span>:</span>
             <span>${fmtScore(right.score)}</span>
@@ -1279,9 +1279,9 @@ function renderTeamOverview() {
               <a class="team-scoreboard__name" href="/c/${encodeURIComponent(right.clubSlug)}">${escapeHtml(right.clubName)}</a>
               <div class="team-scoreboard__meta">
                 ${rankPill(right)}
-                <span>${right.wins} thắng</span>
-                <span>${right.draws} hòa</span>
-                <span>${right.losses} thua</span>
+                <span>${t('tdetail.team_wins', { n: right.wins })}</span>
+                <span>${t('tdetail.team_draws', { n: right.draws })}</span>
+                <span>${t('tdetail.team_losses', { n: right.losses })}</span>
               </div>
             </div>
             ${renderAvatarHtml(null, right.clubName, 'pav--md', { tag: right.clubTag, color: right.clubColor })}
@@ -1303,21 +1303,21 @@ function renderTeamOverview() {
                 ${renderAvatarHtml(null, tm.clubName, 'pav--sm', { tag: tm.clubTag, color: tm.clubColor })}
                 <a href="/c/${encodeURIComponent(tm.clubSlug)}">${escapeHtml(tm.clubName)}</a>
               </div>
-              ${canUnreg ? `<button type="button" class="btn-secondary btn-secondary--danger" data-unregister-team="${escapeAttr(tm.clubSlug)}">Rút đội hình</button>` : ''}
+              ${canUnreg ? `<button type="button" class="btn-secondary btn-secondary--danger" data-unregister-team="${escapeAttr(tm.clubSlug)}">${t('tdetail.team_withdraw')}</button>` : ''}
             </div>
             <div class="team-box__meta">
-              <span>Đội trưởng: ${escapeHtml(tm.captainName || '—')}</span>
-              <span>${(tm.roster || []).length}/${boardCount} bàn</span>
+              <span>${t('tdetail.team_captain', { name: escapeHtml(tm.captainName || '—') })}</span>
+              <span>${t('tdetail.team_boards_filled', { n: (tm.roster || []).length, total: boardCount })}</span>
             </div>
             <div class="team-roster-list">
               ${(tm.roster || []).map((r) => `
                 <div class="team-roster-row">
                   <div class="team-roster-row__left">
-                    <span class="team-roster-row__board">Bàn ${r.boardNumber}</span>
+                    <span class="team-roster-row__board">${t('tdetail.team_board', { n: r.boardNumber })}</span>
                     <span class="team-roster-row__name">${escapeHtml(r.displayName)}</span>
                   </div>
                   <div class="team-roster-row__meta">
-                    <span>${r.ratingAtReg != null ? `Rating ${r.ratingAtReg}` : 'Chưa xếp hạng'}</span>
+                    <span>${r.ratingAtReg != null ? t('tdetail.team_rating', { n: r.ratingAtReg }) : t('tdetail.team_player_unrated')}</span>
                   </div>
                 </div>
               `).join('')}
@@ -1325,7 +1325,7 @@ function renderTeamOverview() {
           </div>
         `;
       }).join('')}</div>`
-    : `<p class="team-card__sub">Chưa có hội nhóm nào chốt đội hình. Cần đủ 2 hội nhóm đăng ký để bắt đầu.</p>`;
+    : `<p class="team-card__sub">${t('tdetail.team_none_registered')}</p>`;
 
   let builderHtml = '';
   const eligibleClubs = captainState.staffClubs.filter((c) => teams.length < 2 || teams.some((tm) => tm.clubSlug === c.slug));
@@ -1354,24 +1354,24 @@ function renderTeamOverview() {
       <div class="team-card" id="team-roster-builder">
         <div class="team-card__head">
           <div>
-            <h3 class="team-card__title">Chọn đội hình thi đấu cho CLB</h3>
-            <p class="team-card__sub">Chọn đúng ${boardCount} thành viên chính thức. Hệ thống tự xếp thứ tự bàn theo Rating giảm dần (cùng điểm xét tên tài khoản A–Z) và khóa khi giải bắt đầu.</p>
+            <h3 class="team-card__title">${t('tdetail.team_builder_title')}</h3>
+            <p class="team-card__sub">${t('tdetail.team_builder_sub', { n: boardCount })}</p>
           </div>
         </div>
         <div class="team-builder__controls">
           <div class="team-builder__field">
-            <label for="team-club-select">Hội nhóm quản lý</label>
+            <label for="team-club-select">${t('tdetail.team_club_label')}</label>
             <select id="team-club-select">
               ${eligibleClubs.map((c) => `<option value="${escapeAttr(c.slug)}" ${c.slug === slug ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
             </select>
           </div>
           <div class="team-builder__field">
-            <label for="team-member-search">Tìm thành viên</label>
-            <input type="search" id="team-member-search" value="${escapeAttr(captainState.search)}" placeholder="Tên hiển thị hoặc tên đăng nhập" />
+            <label for="team-member-search">${t('tdetail.team_search_label')}</label>
+            <input type="search" id="team-member-search" value="${escapeAttr(captainState.search)}" placeholder="${t('tdetail.team_search_ph')}" />
           </div>
         </div>
         ${!Array.isArray(members)
-          ? `<p class="team-card__sub">Đang tải danh sách thành viên hội nhóm…</p>`
+          ? `<p class="team-card__sub">${t('tdetail.team_loading_members')}</p>`
           : `<div class="team-pick-list" id="team-member-list">
               ${filtered.map((m) => {
                 const checked = picked.has(m.username);
@@ -1383,7 +1383,7 @@ function renderTeamOverview() {
                       <span class="team-pick-item__name">${escapeHtml(m.displayName)}</span>
                       <span class="team-pick-item__sub">
                         <span>@${escapeHtml(m.username)}</span>
-                        <span>${m.rating != null ? `Rating ${m.rating}` : 'Chưa xếp hạng'}</span>
+                        <span>${m.rating != null ? t('tdetail.team_rating', { n: m.rating }) : t('tdetail.team_player_unrated')}</span>
                       </span>
                     </span>
                   </label>
@@ -1391,17 +1391,17 @@ function renderTeamOverview() {
               }).join('')}
             </div>`}
         <div id="team-board-preview">
-          <p class="team-card__sub">Đã chọn ${orderedPreview.length}/${boardCount} kỳ thủ${orderedPreview.length ? ' — thứ tự bàn dự kiến:' : '.'}</p>
+          <p class="team-card__sub">${t(orderedPreview.length ? 'tdetail.team_picked_order' : 'tdetail.team_picked', { n: orderedPreview.length, total: boardCount })}</p>
           ${orderedPreview.length ? `<div class="team-roster-list">
             ${orderedPreview.map((m, idx) => `
               <div class="team-roster-row">
                 <div class="team-roster-row__left">
-                  <span class="team-roster-row__board">Bàn ${idx + 1}</span>
+                  <span class="team-roster-row__board">${t('tdetail.team_board', { n: idx + 1 })}</span>
                   <span class="team-roster-row__name">${escapeHtml(m.displayName)}</span>
                 </div>
                 <div class="team-roster-row__meta">
                   <span>@${escapeHtml(m.username)}</span>
-                  <span>${m.rating != null ? `Rating ${m.rating}` : 'Chưa xếp hạng'}</span>
+                  <span>${m.rating != null ? t('tdetail.team_rating', { n: m.rating }) : t('tdetail.team_player_unrated')}</span>
                 </div>
               </div>
             `).join('')}
@@ -1409,7 +1409,7 @@ function renderTeamOverview() {
         </div>
         <div class="pairing-card__actions">
           <button type="button" class="btn btn-confirm" id="btn-submit-team-roster" ${orderedPreview.length !== boardCount ? 'disabled' : ''}>
-            ${existingForSlug ? 'Cập nhật đội hình CLB' : 'Đăng ký đội hình CLB'}
+            ${t(existingForSlug ? 'tdetail.team_update_roster' : 'tdetail.team_register_roster')}
           </button>
         </div>
       </div>
@@ -1420,7 +1420,7 @@ function renderTeamOverview() {
     <section class="team-overview">
       <div class="team-card" id="team-registered-panel">
         <div class="team-card__head">
-          <h3 class="team-card__title">Đội hình CLB tham dự (${teams.length}/2)</h3>
+          <h3 class="team-card__title">${t('tdetail.team_registered_title', { n: teams.length })}</h3>
         </div>
         ${registeredBoxes}
       </div>
@@ -1431,7 +1431,7 @@ function renderTeamOverview() {
   teamPanelSlot.querySelectorAll('[data-unregister-team]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const slugToDrop = btn.dataset.unregisterTeam;
-      if (confirm('Rút đội hình của hội nhóm này khỏi giải đấu?')) {
+      if (confirm(t('tdetail.team_withdraw_confirm'))) {
         client.emit('tournament:unregister_team', { tournamentId, clubSlug: slugToDrop });
       }
     });
@@ -1485,7 +1485,7 @@ function renderTeamOverview() {
 function renderTeamStandings() {
   const liveTeams = computeLiveTeamStandings();
   if (liveTeams.length === 0) {
-    standingsContainer.innerHTML = `<div class="empty-tournaments"><span class="room-list__empty-text">Chưa có đội hình CLB nào đăng ký.</span></div>`;
+    standingsContainer.innerHTML = `<div class="empty-tournaments"><span class="room-list__empty-text">${t('tdetail.team_standings_empty')}</span></div>`;
     return;
   }
   const me = myEntry();
@@ -1502,11 +1502,11 @@ function renderTeamStandings() {
       <thead>
         <tr>
           <th>#</th>
-          <th>Hội nhóm</th>
-          <th style="text-align:right;">Thắng</th>
-          <th style="text-align:right;">Hòa</th>
-          <th style="text-align:right;">Thua</th>
-          <th style="text-align:right;">Điểm</th>
+          <th>${t('tdetail.team_th_club')}</th>
+          <th style="text-align:right;">${t('tdetail.team_th_wins')}</th>
+          <th style="text-align:right;">${t('tdetail.team_th_draws')}</th>
+          <th style="text-align:right;">${t('tdetail.team_th_losses')}</th>
+          <th style="text-align:right;">${t('tdetail.th_score')}</th>
         </tr>
       </thead>
       <tbody>
@@ -1514,8 +1514,8 @@ function renderTeamStandings() {
           const isMyTeam = me && tm.roster.some((r) => r.entryId === me.entryId);
           const badge = isCompleted
             ? (tiedFirst
-                ? `<span class="team-rank-pill">Đồng hạng nhất</span>`
-                : (tm.liveRank === 1 ? `<span class="team-rank-pill">Vô địch</span>` : ''))
+                ? `<span class="team-rank-pill">${t('tdetail.team_tied_first')}</span>`
+                : (tm.liveRank === 1 ? `<span class="team-rank-pill">${t('tdetail.team_champion')}</span>` : ''))
             : '';
           return `
             <tr class="${isMyTeam ? 'is-me' : ''}">
@@ -1545,18 +1545,18 @@ function renderTeamStandings() {
               ${renderAvatarHtml(null, tm.clubName, 'pav--sm', { tag: tm.clubTag, color: tm.clubColor })}
               <span>${escapeHtml(tm.clubName)}</span>
             </div>
-            <span class="team-rank-pill">${fmtScore(tm.score)} điểm</span>
+            <span class="team-rank-pill">${t('tdetail.team_points', { n: fmtScore(tm.score) })}</span>
           </div>
           <div class="team-roster-list">
             ${tm.roster.map((r) => `
               <div class="team-roster-row${me && me.entryId === r.entryId ? ' is-me' : ''}">
                 <div class="team-roster-row__left">
-                  <span class="team-roster-row__board">Bàn ${r.boardNumber}</span>
+                  <span class="team-roster-row__board">${t('tdetail.team_board', { n: r.boardNumber })}</span>
                   <span class="team-roster-row__name">${escapeHtml(r.displayName)}</span>
                 </div>
                 <div class="team-roster-row__meta">
-                  <span>${r.wins}T / ${r.draws}H / ${r.losses}B</span>
-                  <strong>${fmtScore(r.score)} đ</strong>
+                  <span>${t('tdetail.team_wins', { n: r.wins })}</span><span>${t('tdetail.team_draws', { n: r.draws })}</span><span>${t('tdetail.team_losses', { n: r.losses })}</span>
+                  <strong>${t('tdetail.team_points', { n: fmtScore(r.score) })}</strong>
                 </div>
               </div>
             `).join('')}

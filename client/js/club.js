@@ -523,7 +523,7 @@
       field.nextElementSibling.disabled = fields.length <= 2;
     });
     $('cb-add-option').disabled = fields.length >= 6;
-    $('cb-poll-preview').textContent = [t('clubs.preview'), $('cb-question').value, ...fields.map((f) => f.value)].filter(Boolean).join(' · ');
+    $('cb-poll-preview').replaceChildren(window.PlatformShell.meta([t('clubs.preview'), $('cb-question').value, ...fields.map((f) => f.value)])); // ticket-rows.md: one span per fact
   }
 
   function addOption(value) {
@@ -552,7 +552,7 @@
 
   function previewEvent() {
     const when = $('cb-event-when').value;
-    $('cb-event-preview').textContent = [t('clubs.preview'), $('cb-event-title').value, when && fmtWhen(when)].filter(Boolean).join(' · ');
+    $('cb-event-preview').replaceChildren(window.PlatformShell.meta([t('clubs.preview'), $('cb-event-title').value, when && fmtWhen(when)]));
   }
 
   function eventRow(e, staff) {
@@ -639,7 +639,7 @@
       li.setAttribute('role', 'option');
       li.setAttribute('aria-selected', String(i === state.hint));
       li.append(el('b', h.cmd), el('span', h.args, 'cl-hint__args'), el('span', h.desc, 'cl-hint__desc'));
-      if (h.aliases?.length) li.append(el('small', h.aliases.map((w) => '/' + w).join(' · ')));
+      if (h.aliases?.length) li.append(el('small', 'Hoặc ' + h.aliases.map((w) => '/' + w).join(', ')));
       li.addEventListener('mousedown', (ev) => { ev.preventDefault(); pickHint(i); });
       return li;
     }));
@@ -856,7 +856,9 @@
     $('cb-bulk').hidden = !staff;
     $('cb-sanctions').replaceChildren(...(staff ? (c.sanctions || []) : []).map((s) => {
       const row = el('div', undefined, 'prow');
-      row.append(el('span', s.username + ' · ' + (s.kind === 'ban' ? 'Bị cấm' : 'Tắt tiếng đến ' + fmtWhen(s.untilAt))),
+      const body = el('div', undefined, 'prow__body');
+      body.append(el('div', s.username, 'prow__t'), window.PlatformShell.meta([s.kind === 'ban' ? 'Bị cấm' : 'Tắt tiếng đến ' + fmtWhen(s.untilAt)]));
+      row.append(body,
         mini('Gỡ hạn chế', () => act('POST', '/moderation', { usernames: [s.username], action: 'un' + s.kind })));
       return row;
     }));

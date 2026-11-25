@@ -1294,3 +1294,25 @@ it('lists club team tournaments in Giải của CLB with both club names and sep
   expect(spans).toContain('CLB Caro đấu CLB Renju');
   expect(row.textContent).not.toContain('·');
 });
+
+it('renders previews, sanctions and command aliases as separate facts, never a joined "a · b" string', async () => {
+  await bootClub({ ...CLUB, myRole: 'owner', sanctions: [{ username: 'xau', kind: 'ban', untilAt: null }] });
+  document.getElementById('cb-ch-members')?.click();
+  await flush();
+  const sanction = document.querySelector('#cb-sanctions .prow');
+  expect(sanction.querySelector('.prow__t').textContent).toBe('xau');
+  expect([...sanction.querySelectorAll('.prow__meta > span')].map((s) => s.textContent)).toEqual(['Bị cấm']);
+
+  const dlg = document.getElementById('cb-poll-editor');
+  dlg.showModal = dlg.showModal || jest.fn();
+  document.getElementById('cb-poll-new').onclick();
+  document.getElementById('cb-question').value = 'Ăn gì';
+  const [o1, o2] = document.querySelectorAll('#cb-options input');
+  o1.value = 'Phở'; o2.value = 'Bún';
+  document.getElementById('cb-poll-form').oninput();
+  expect([...document.querySelectorAll('#cb-poll-preview .prow__meta > span')].map((s) => s.textContent))
+    .toEqual(['clubs.preview', 'Ăn gì', 'Phở', 'Bún']);
+
+  // club.js never joins facts with a middle dot (feedback rule; ticket-rows.md)
+  expect(fs.readFileSync(path.join(__dirname, '..', 'js', 'club.js'), 'utf8')).not.toMatch(/join\(['"] · ['"]\)|\+ ' · ' \+/);
+});
