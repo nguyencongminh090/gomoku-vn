@@ -1,5 +1,5 @@
 # B468 — Bare local script/style refs escape cache-bust (recurring class)
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-25 — verify guard + 3 refs versioned (fix-log 2026-11-25-468)
 **Area:** scripts/cache-bust.js (verify), client/admin.html, client/room.html, client/profile.html
 **From:** found while fixing #463, 2026-11-25   **Depends:** B463
 

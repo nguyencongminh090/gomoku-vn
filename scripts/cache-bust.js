@@ -116,6 +116,22 @@ function computeAll(sources, read) {
   return { out, hashes, errors };
 }
 
+// #468: a local <script src> / <link rel=stylesheet href> in a page with NO ?v= is never rewritten, so an edit to
+// it is served stale from cache (#429 renju.js, #463 club-policy.js). Verify fails on any such bare ref.
+// Exempt: absolute/external URLs and the self-hosted font CSS (vendor/fonts/*, versioned separately — B468 Don't).
+const BARE_EXEMPT = /^(?:[a-z]+:|\/\/|vendor\/fonts\/)/i;
+const TAG_RE = /<script\b[^>]*?\bsrc\s*=\s*["']([^"']+)["'][^>]*>|<link\b(?=[^>]*\brel\s*=\s*["']?stylesheet)[^>]*?\bhref\s*=\s*["']([^"']+)["'][^>]*>/gi;
+
+/** Pure: `html` page text → list of local script/stylesheet refs that carry no `?v=` (comments ignored). */
+function bareRefs(html) {
+  const out = [];
+  for (const m of html.replace(/<!--[\s\S]*?-->/g, '').matchAll(TAG_RE)) {
+    const ref = m[1] || m[2];
+    if (!BARE_EXEMPT.test(ref) && !BARE_EXEMPT.test(ref.replace(/^\/(?!\/)/, '')) && !/\?v=[0-9a-f]+/.test(ref)) out.push(ref);
+  }
+  return out;
+}
+
 /** Absolute path a resolved ref is read from: a MOUNTS entry wins over client/. */
 function filePathOf(root, rel, mounts = MOUNTS) {
   for (const [prefix, dir] of Object.entries(mounts)) if (rel.startsWith(prefix)) return path.join(dir, rel.slice(prefix.length));
@@ -129,13 +145,14 @@ function run(root, write, mounts = MOUNTS) {
     return fs.existsSync(p) && fs.statSync(p).isFile() ? fs.readFileSync(p, 'utf8') : null;
   };
   const { out, errors } = computeAll(sources, read);
+  for (const f of sources) if (f.endsWith('.html')) for (const ref of bareRefs(read(f))) errors.push(`${f}: bare local ref ${ref} (add ?v=0, then --write)`);
   if (errors.length) return { ok: false, errors, stale: [] };
   const stale = sources.filter((f) => out.get(f) !== read(f));
   if (write) for (const f of stale) fs.writeFileSync(path.join(root, f), out.get(f));
   return { ok: write || stale.length === 0, errors, stale };
 }
 
-module.exports = { computeAll, resolveRef, run, filePathOf, MOUNTS, RE };
+module.exports = { computeAll, resolveRef, run, filePathOf, bareRefs, MOUNTS, RE };
 
 if (require.main === module) {
   const arg = process.argv[2];
@@ -145,7 +162,7 @@ if (require.main === module) {
   }
   const write = arg === '--write' || arg === '--bump';
   const r = run(ROOT, write);
-  if (r.errors.length) { console.log(`FAIL: ${r.errors.length} unresolvable ref(s):\n  ${r.errors.join('\n  ')}`); process.exit(1); }
+  if (r.errors.length) { console.log(`FAIL: ${r.errors.length} unresolvable/bare ref(s):\n  ${r.errors.join('\n  ')}`); process.exit(1); }
   if (write) console.log(`rewrote ${r.stale.length} file(s)${r.stale.length ? ': ' + r.stale.join(', ') : ''}`);
   const v = write ? run(ROOT, false) : r;
   if (v.ok) console.log('OK: every ?v= matches its file\'s content hash');
