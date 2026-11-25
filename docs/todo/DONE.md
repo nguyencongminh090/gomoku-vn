@@ -1,3 +1,5 @@
+- ✅ **#464.** Tournament sub-tabs wrap to 2 lines on mobile `[Model: Sonnet]` — [detail](docs/todo/B464-tournament-subtabs-wrap-mobile.md)
+
 - ✅ **#467.** Verify full 2-round team event e2e + restart hydration `[Model: Opus]` — [detail](docs/todo/B467-team-event-e2e-restart-check.md)
 
 - ✅ **#466.** Verify team tournament page in English locale `[Model: Sonnet]` — [detail](docs/todo/B466-team-tournament-english-check.md)
