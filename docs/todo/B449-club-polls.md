@@ -1,5 +1,5 @@
 # B449 — Club chat: member polls (bình chọn)
-**Status:** BUILT, uncommitted — tests + real-browser pass 2026-11-24; decided 2026-11-24 (see [planning](../../features/club-polls/planning.md#decisions-user-2026-11-24--all-recommended-options)), branch `feature/449-club-polls`
+**Status:** ✅ DONE 2026-11-25 — merged to `dev` (2f395a2a); tests + real-browser pass; reviewed 2026-11-25. Not deployed.
 **Area:** `server/` (migration 020, ClubChatCommands, ClubService, routes/clubs), `client/js/club.js` + `club.html`, i18n, tests
 **From:** [features/club-polls](../../features/club-polls/planning.md)   **Depends:** B447
 

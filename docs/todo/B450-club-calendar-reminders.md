@@ -1,5 +1,5 @@
 # B450 — Club calendar + reminders for scheduled events
-**Status:** BUILT, merged to `dev` 2026-11-25 — tests + real-browser pass (incl. 020+021 on a copy of the PC DB, en locale, bell); decided 2026-11-25 (see [planning](../../features/club-calendar/planning.md#decisions-user-2026-11-25--all-recommended-options)); not deployed
+**Status:** ✅ DONE 2026-11-25 — merged to `dev` (ddd252d9), reviewed; not deployed — tests + real-browser pass (incl. 020+021 on a copy of the PC DB, en locale, bell); decided 2026-11-25 (see [planning](../../features/club-calendar/planning.md#decisions-user-2026-11-25--all-recommended-options)); not deployed
 **Area:** migration 021, `ClubChatCommands` (`/lich`, `parseEventArg`), `ClubService` (RSVP, `remindDueEvents`), `routes/clubs`, `NotificationService` (`club_event`), `server/index.js` sweep, `client/js/club.js` + `club.html`, `platform-shell.js`, i18n, tests
 **From:** [features/club-calendar](../../features/club-calendar/planning.md)   **Depends:** B447
 

@@ -1,3 +1,6 @@
+- ✅ **#451.** Club channel links rewrite the URL to `/#ch=…` (`<base href="/">`); reload lands on home `[Model: Sonnet]` — [detail](docs/todo/B451-club-channel-hash-base-href.md)
+- ✅ **#450.** Club calendar + reminders for scheduled events `[Model: Opus 5]` — [detail](docs/todo/B450-club-calendar-reminders.md)
+- ✅ **#449.** Club chat: member polls (bình chọn) `[Model: Opus 5]` — [detail](docs/todo/B449-club-polls.md)
 - ✅ **#452.** Phone tab bar "Tôi" placeholder `href="#"` goes to `/` under `<base href="/">` before `/me` answers `[Model: Sonnet]` — [detail](docs/todo/B452-shell-me-tab-hash-placeholder.md)
 - ✅ **#446.** Club pages redesign: CL4 "Hội quán" shell (rail, channels, chat centre, members) `[Model: Opus 5]` — [detail](docs/todo/B446-club-hoi-quan-redesign.md)
 - ✅ **#447.** Club chat slash commands + notifications, admin toggles in club settings `[Model: Opus 5]` — [detail](docs/todo/B447-club-chat-slash-notify.md)
