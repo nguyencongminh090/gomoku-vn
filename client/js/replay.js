@@ -355,7 +355,10 @@ document.addEventListener('keydown', (e) => {
 // Utilities
 // ---------------------------------------------------------------------------
 function getResultTextFull(g) {
+  // #471: GameEngine writes 'win' (five in a row) and 'agreement' (draw); older names kept for legacy rows.
   const reasonMap = {
+    win: t('history.reason_normal'),
+    agreement: t('history.reason_draw_agreement'),
     normal: t('history.reason_normal'),
     resign: t('game.btn_resign'),
     timeout: t('history.reason_timeout'),

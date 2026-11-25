@@ -71,5 +71,4 @@ in the detail file / fix-log).
 - **#468.** Bare local script/style refs escape cache-bust (admin, room, profile) + verify guard `[Model: Sonnet]` — [detail](docs/todo/B468-bare-local-refs-cache-bust-guard.md)
 - **#469.** Team pairing card: black stone dot near-invisible in dark mode `[Model: Sonnet]` — [detail](docs/todo/B469-team-black-stone-dot-dark.md)
 - **#470.** Tournament match board renders at 150 px on desktop `[Model: Sonnet]` — [detail](docs/todo/B470-tmatch-desktop-board-tiny.md)
-- **#471.** Tournament games history shows raw reason codes ("won — win") `[Model: Haiku]` — [detail](docs/todo/B471-tournament-history-reason-raw.md)
 - **#472.** Match page keeps the aborted game live after a server restart `[Model: Opus]` — [detail](docs/todo/B472-tmatch-stale-after-restart.md)
