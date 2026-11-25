@@ -464,11 +464,20 @@
     try {
       let q = mode === 'older' ? '?before=' + c.firstId : mode === 'newer' ? '?after=' + c.lastId : '';
       const open = mode === 'newer' ? pollCards().slice(-20) : [];
+      if (mode === 'newer') {
+        const visible = [...$('cb-chat-log').querySelectorAll('.cb-chat__msg')].map((n) => n.dataset.id);
+        if (visible.length) q += '&visible=' + visible.slice(0, 200).join(',');
+      }
       const sentV = open.map((n) => n.dataset.v);
       if (open.length) q += '&polls=' + open.map((n) => n.dataset.id).join(',');
       const res = await fetch(base() + '/messages' + q, { credentials: 'same-origin' });
       if (!res.ok) return;
-      const { messages, polls } = await res.json();
+      const { messages, polls, removed } = await res.json();
+      if (removed?.length) {
+        const stale = new Set(removed.map(String));
+        for (const row of $('cb-chat-log').querySelectorAll('.cb-chat__msg')) if (stale.has(row.dataset.id)) row.remove();
+        markDays();
+      }
       if (polls) open.forEach((card, i) => { if (polls[card.dataset.id] && card.dataset.v === sentV[i]) renderPoll(card, polls[card.dataset.id]); });
       const log = $('cb-chat-log');
       const scroller = $('cb-stream');
@@ -772,6 +781,71 @@
     more.textContent = t('clubs.members_all', { n: plain.length });
   }
 
+  function renderHistory() {
+    const query = $('cb-log-search').value.trim().toLocaleLowerCase('vi');
+    const rows = (state.club.history || []).filter((entry) => [entry.type, entry.actor?.username,
+      entry.target?.username, historyRow(entry).textContent].join(' ').toLocaleLowerCase('vi').includes(query));
+    $('cb-history').replaceChildren(...(rows.length ? rows.map(historyRow) : [el('p', t('clubs.history_none'), 'pnote')]));
+  }
+
+  function renderRoster() {
+    const c = state.club;
+    const role = c.myRole;
+    const staff = isStaff();
+    const query = $('cb-member-search').value.trim().toLocaleLowerCase('vi');
+    const filter = $('cb-role-filter').value;
+    const members = c.leaderboard.filter((m) => (!filter || filter === m.role)
+      && (m.username + ' ' + m.displayName).toLocaleLowerCase('vi').includes(query));
+    if ($('cb-member-sort').value === 'name') members.sort((a, b) => a.displayName.localeCompare(b.displayName, 'vi'));
+    $('cb-bulk').hidden = !staff;
+    $('cb-sanctions').replaceChildren(...(staff ? (c.sanctions || []) : []).map((s) => {
+      const row = el('div', undefined, 'prow');
+      row.append(el('span', s.username + ' · ' + (s.kind === 'ban' ? 'Bị cấm' : 'Tắt tiếng đến ' + fmtWhen(s.untilAt))),
+        mini('Gỡ hạn chế', () => act('POST', '/moderation', { usernames: [s.username], action: 'un' + s.kind })));
+      return row;
+    }));
+    const actions = staff || isMember();
+    $('cb-actions-th').hidden = !actions;
+    $('cb-members-body').replaceChildren(...members.map((m) => {
+      const tr = document.createElement('tr');
+      const name = document.createElement('td');
+      const link = el('a', m.displayName);
+      link.href = '/u/' + encodeURIComponent(m.username);
+      if (staff && window.ClubPolicy.canModerate(role, m.role)) {
+        const check = el('input');
+        check.type = 'checkbox';
+        check.value = m.username;
+        check.setAttribute('aria-label', m.displayName);
+        name.append(check);
+      }
+      name.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'pav--sm'), link);
+      tr.append(name, el('td', t('clubs.role_' + m.role)));
+      if (actions) {
+        const td = document.createElement('td');
+        td.className = 'num';
+        const enc = encodeURIComponent(m.username);
+        if (isMember() && !m.mine && window.ChallengeModal) {
+          const ch = el('button', t('clubs.challenge'), 'pbtn pbtn--sm');
+          ch.type = 'button';
+          ch.onclick = () => window.ChallengeModal.open({ to: { username: m.username, displayName: m.displayName, avatarUrl: m.avatarUrl } });
+          td.append(ch, ' ');
+        }
+        if (staff) {
+          // Officers can't act on staff; nobody removes the owner (the server enforces the same).
+          const canKick = window.ClubPolicy.canModerate(role, m.role);
+          if (canKick) td.append(mini(t('clubs.kick'), () => act('DELETE', '/members/' + enc, null, 'clubs.confirm_kick')));
+          if (role === 'owner' && m.role !== 'owner') {
+            td.append(' ', mini(t(m.role === 'officer' ? 'clubs.demote' : 'clubs.promote'),
+              () => act('PUT', '/members/' + enc + '/role', { role: m.role === 'officer' ? 'member' : 'officer' })));
+            td.append(' ', mini(t('clubs.transfer'), () => act('PUT', '/members/' + enc + '/role', { role: 'owner' }, 'clubs.confirm_transfer')));
+          }
+        }
+        tr.append(td);
+      }
+      return tr;
+    }));
+  }
+
   function render(c) {
     state.club = c;
     if (c.lastMessageId !== undefined) {
@@ -835,7 +909,7 @@
         row.append(mini(t('clubs.revoke'), () => act('DELETE', '/invites/' + encodeURIComponent(p.username))));
         return row;
       }));
-      $('cb-history').replaceChildren(...((c.history || []).length ? c.history.map(historyRow) : [el('p', t('clubs.history_none'), 'pnote')]));
+      renderHistory();
       $('cb-policy').value = c.joinPolicy;
       $('cb-policy').hidden = $('cb-policy-label').hidden = role !== 'owner';
       const pending = c.pending || [];
@@ -848,39 +922,7 @@
       }) : [el('p', t('clubs.no_pending'), 'pnote')]));
     }
 
-    const actions = staff || isMember();
-    $('cb-actions-th').hidden = !actions;
-    $('cb-members-body').replaceChildren(...c.leaderboard.map((m) => {
-      const tr = document.createElement('tr');
-      const name = document.createElement('td');
-      const link = el('a', m.displayName);
-      link.href = '/u/' + encodeURIComponent(m.username);
-      name.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'pav--sm'), link);
-      tr.append(name, el('td', t('clubs.role_' + m.role)));
-      if (actions) {
-        const td = document.createElement('td');
-        td.className = 'num';
-        const enc = encodeURIComponent(m.username);
-        if (isMember() && !m.mine && window.ChallengeModal) {
-          const ch = el('button', t('clubs.challenge'), 'pbtn pbtn--sm');
-          ch.type = 'button';
-          ch.onclick = () => window.ChallengeModal.open({ to: { username: m.username, displayName: m.displayName, avatarUrl: m.avatarUrl } });
-          td.append(ch, ' ');
-        }
-        if (staff) {
-          // Officers can't act on staff; nobody removes the owner (the server enforces the same).
-          const canKick = window.ClubPolicy.canModerate(role, m.role);
-          if (canKick) td.append(mini(t('clubs.kick'), () => act('DELETE', '/members/' + enc, null, 'clubs.confirm_kick')));
-          if (role === 'owner' && m.role !== 'owner') {
-            td.append(' ', mini(t(m.role === 'officer' ? 'clubs.demote' : 'clubs.promote'),
-              () => act('PUT', '/members/' + enc + '/role', { role: m.role === 'officer' ? 'member' : 'officer' })));
-            td.append(' ', mini(t('clubs.transfer'), () => act('PUT', '/members/' + enc + '/role', { role: 'owner' }, 'clubs.confirm_transfer')));
-          }
-        }
-        tr.append(td);
-      }
-      return tr;
-    }));
+    renderRoster();
     $('cb-body').replaceChildren(...c.leaderboard.map((m) => {
       const tr = document.createElement('tr');
       const name = document.createElement('td');
@@ -957,6 +999,17 @@
       const url = location.origin + '/c/' + encodeURIComponent(slug);
       try { await navigator.clipboard.writeText(url); $('cb-msg').textContent = t('clubs.link_copied'); } catch (_) { $('cb-msg').textContent = url; }
     };
+    $('cb-member-search').oninput = renderRoster;
+    $('cb-role-filter').onchange = $('cb-member-sort').onchange = renderRoster;
+    $('cb-log-search').oninput = renderHistory;
+    $('cb-bulk-action').onchange = () => { $('cb-duration').hidden = $('cb-bulk-action').value !== 'mute'; };
+    $('cb-bulk').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const usernames = [...$('cb-members-body').querySelectorAll('input:checked')].map((n) => n.value);
+      if (!usernames.length) { $('cb-msg').textContent = 'Chọn ít nhất một thành viên.'; return; }
+      if (!window.confirm('Áp dụng tác vụ cho ' + usernames.join(', ') + '?')) return;
+      if (await act('POST', '/moderation', { action: $('cb-bulk-action').value, usernames, minutes: Number($('cb-minutes').value) })) await load();
+    };
     $('cb-poll-new').onclick = () => openPoll('');
     $('cb-poll-cancel').onclick = () => $('cb-poll-editor').close();
     $('cb-add-option').onclick = () => addOption('').focus();
@@ -1028,6 +1081,7 @@
       const sent = await act('POST', '/messages', { text });
       if (sent) {
         $('cb-chat-input').value = '';
+        if (sent.kind === 'moderated') await load();
         if (sent.kind === 'help') {
           $('cb-chat-input').value = '/';
           $('cb-chat-input').focus();

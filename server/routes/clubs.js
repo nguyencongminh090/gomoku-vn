@@ -189,6 +189,10 @@ router.delete('/:slug/invites/:username', ...write, h((req, res) => {
   res.json({ ok: true });
 }));
 
+router.post('/:slug/moderation', ...write, h((req, res) => {
+  res.json(svc.moderate(req.user.userId, req.params.slug, req.body || {}));
+}));
+
 router.post('/:slug/polls', ...write, h((req, res) => {
   res.status(201).json(svc.createPoll(req.user.userId, req.params.slug, req.body || {}));
 }));
@@ -218,6 +222,7 @@ const readAuth = [verifyToken, (req, res, next) => {
 router.get('/:slug/messages', ...readAuth, h((req, res) => {
   res.set('Cache-Control', 'no-store');
   const body = { messages: svc.listMessages(req.user.userId, req.params.slug, req.query) };
+  if (req.query.visible) body.removed = svc.removedMessages(req.user.userId, req.params.slug, req.query.visible);
   if (req.query.polls) body.polls = svc.refreshPolls(req.user.userId, req.params.slug, req.query.polls);
   res.json(body);
 }));

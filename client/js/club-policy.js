@@ -12,6 +12,8 @@
     { kind: 'challenge', words: ['giaohuu', 'challenge'], toggle: 'cmdChallenge' },
     { kind: 'poll', words: ['binhchon', 'poll'], toggle: 'cmdPoll' },
     { kind: 'calendar', words: ['lich', 'calendar'], toggle: 'cmdCalendar' },
+    { kind: 'mute', words: ['tattieng', 'mute'], staff: true },
+    { kind: 'kick', words: ['duoi', 'kick'], staff: true },
     { kind: 'help', words: ['trogiup', 'help'] },
   ];
   const find = (word) => commands.find((command) => command.words.includes(word.toLowerCase()));

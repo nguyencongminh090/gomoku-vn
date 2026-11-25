@@ -72,7 +72,6 @@ in the detail file / fix-log).
 
 
 
-- **#455.** Club moderation `[Model: Sonnet]` — [detail](docs/todo/B455-club-moderation.md)
 
 - **#456.** Mentions `[Model: Sonnet]` — [detail](docs/todo/B456-mentions.md)
 

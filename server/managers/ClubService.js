@@ -230,10 +230,57 @@ function deleteClub(userId, slug) {
 // Membership
 // ---------------------------------------------------------------------------
 
+function checkBan(clubId, userId) {
+  if (db().prepare("SELECT 1 FROM club_sanctions WHERE club_id=? AND user_id=? AND kind='ban'").get(clubId, userId))
+    throw new ClubError('CLUB_BANNED', 403, 'Bạn đang bị cấm vào nhóm.');
+}
+
+function checkMute(clubId, userId) {
+  if (db().prepare("SELECT 1 FROM club_sanctions WHERE club_id=? AND user_id=? AND kind='mute' AND until_at>?").get(clubId, userId, now()))
+    throw new ClubError('CLUB_MUTED', 403, 'Bạn đang bị tắt tiếng trong nhóm.');
+}
+
+function moderate(actorId, slug, { action, usernames, minutes }) {
+  return db().transaction(() => {
+    const club = getClub(slug);
+    requireStaff(club, actorId);
+    const actor = roleOf(club.id, actorId);
+    if (!['mute', 'ban', 'kick', 'unmute', 'unban'].includes(action)
+        || !Array.isArray(usernames) || usernames.length < 1 || usernames.length > 50
+        || usernames.some((u) => typeof u !== 'string' || !/^[a-z0-9_]{3,20}$/i.test(u))
+        || (action === 'mute' && (!Number.isInteger(minutes) || minutes < 1 || minutes > 40320))) {
+      throw new ClubError('CLUB_MOD_INVALID', 400, 'Kiểm tra thành viên và thời hạn (1–40320 phút).');
+    }
+    const until = action === 'mute' ? new Date(Date.now() + minutes * 60000).toISOString() : null;
+    for (const name of new Set(usernames.map((u) => u.toLowerCase()))) {
+      const target = userIdByUsername(name);
+      const role = roleOf(club.id, target);
+      if (!policy.canModerate(actor, role)) throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn không có quyền với người này.');
+      if (action === 'unban' || action === 'unmute') {
+        const changed = db().prepare('DELETE FROM club_sanctions WHERE club_id=? AND user_id=? AND kind=?')
+          .run(club.id, target, action === 'unban' ? 'ban' : 'mute').changes;
+        if (changed) log(club.id, action, actorId, target);
+        continue;
+      }
+      if (!policy.isMember(role)) throw new ClubError('CLUB_NOT_MEMBER', 404, 'Người này không phải thành viên.');
+      if (action === 'kick') { remove(actorId, slug, target); continue; }
+      db().prepare('INSERT INTO club_sanctions (club_id,user_id,kind,until_at) VALUES (?,?,?,?) ON CONFLICT(club_id,user_id) DO UPDATE SET kind=excluded.kind,until_at=excluded.until_at')
+        .run(club.id, target, action, until);
+      if (action === 'ban') {
+        db().prepare('DELETE FROM club_members WHERE club_id=? AND user_id=?').run(club.id, target);
+        db().prepare('DELETE FROM club_invites WHERE club_id=? AND user_id=?').run(club.id, target);
+      }
+      log(club.id, action, actorId, target, until || '');
+    }
+    return { ok: true };
+  })();
+}
+
 /** @returns {'member'|'pending'} resulting role */
 function join(userId, slug) {
   return db().transaction(() => {
     const club = getClub(slug);
+    checkBan(club.id, userId);
     if (roleOf(club.id, userId)) throw new ClubError('CLUB_ALREADY_MEMBER', 409, 'Bạn đã ở trong nhóm này.');
     const invited = db().prepare('SELECT 1 FROM club_invites WHERE club_id = ? AND user_id = ?').get(club.id, userId);
     if (club.join_policy === 'open' || invited) {
@@ -270,6 +317,7 @@ function approve(actorId, slug, targetId) {
   db().transaction(() => {
     const club = getClub(slug);
     if (!isStaff(roleOf(club.id, actorId))) throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn không có quyền.');
+    checkBan(club.id, targetId);
     if (roleOf(club.id, targetId) !== 'pending') throw new ClubError('CLUB_NOT_PENDING', 404, 'Không có yêu cầu này.');
     if (countMembers(club.id) >= MAX_MEMBERS) throw new ClubError('CLUB_FULL', 409, 'Nhóm đã đủ thành viên.');
     if (countUserClubs(targetId) >= MAX_CLUBS_PER_USER) throw new ClubError('CLUB_TARGET_LIMIT', 409, 'Người này đã ở đủ số nhóm tối đa.');
@@ -301,6 +349,7 @@ function invite(actorId, slug, targetId) {
   return db().transaction(() => {
     const club = getClub(slug);
     requireStaff(club, actorId);
+    checkBan(club.id, targetId);
     if (roleOf(club.id, targetId)) throw new ClubError('CLUB_ALREADY_MEMBER', 409, 'Người này đã ở trong nhóm hoặc đang chờ duyệt.');
     const open = db().prepare('SELECT COUNT(*) AS n FROM club_invites WHERE club_id = ?').get(club.id).n;
     if (open >= MAX_INVITES) throw new ClubError('CLUB_INVITE_LIMIT', 409, `Tối đa ${MAX_INVITES} lời mời đang chờ.`);
@@ -598,6 +647,7 @@ const pollState = (club, userId, role, id) => pollStates(club.id, userId, isStaf
 /** Vote for option `option` (0-based), or `null` to take the vote back. One vote per member; changing replaces it. */
 function votePoll(userId, slug, messageId, option) {
   const { club, role, poll, id } = pollFor(userId, slug, messageId);
+  checkMute(club.id, userId);
   if (pollClosed(poll)) throw new ClubError('CLUB_POLL_CLOSED', 409, 'Bình chọn đã đóng.');
   if (option === null) {
     db().prepare('DELETE FROM club_poll_votes WHERE message_id = ? AND user_id = ?').run(id, userId);
@@ -614,6 +664,7 @@ function votePoll(userId, slug, messageId, option) {
 /** Creator or staff close a poll early. Closing a closed poll is a no-op. */
 function closePoll(userId, slug, messageId) {
   const { club, role, poll, id } = pollFor(userId, slug, messageId);
+  checkMute(club.id, userId);
   if (poll.creator_id !== userId && !isStaff(role)) throw new ClubError('CLUB_FORBIDDEN', 403, 'Chỉ người tạo hoặc ban quản trị đóng được bình chọn.');
   if (!pollClosed(poll)) db().prepare('UPDATE club_polls SET closed_at = ? WHERE message_id = ?').run(now(), id);
   return pollState(club, userId, role, id);
@@ -677,6 +728,7 @@ const rateLimit = (userId) => {
 function postMessage(userId, slug, text) {
   const club = getClub(slug);
   const role = requireMember(club, userId);
+  checkMute(club.id, userId);
   const raw = typeof text === 'string' ? text : '';
   const settings = chat.readSettings(club.chat_settings);
   const cmd = chat.parseCommand(raw);
@@ -686,6 +738,12 @@ function postMessage(userId, slug, text) {
     const definition = policy.find(cmd.word);
     if (definition.staff && !isStaff(role)) throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn không có quyền.');
     if (definition.toggle && !settings[definition.toggle]) throw new ClubError('CLUB_COMMAND_DISABLED', 403, `Lệnh /${cmd.word} đang tắt trong nhóm này.`);
+    if (cmd.kind === 'kick' || cmd.kind === 'mute') {
+      const [name, minutes, ...extra] = cmd.arg.split(/\s+/);
+      if (extra.length || (cmd.kind === 'kick' && minutes)) throw new ClubError('CLUB_MOD_INVALID', 400, 'Cú pháp không hợp lệ.');
+      moderate(userId, slug, { action: cmd.kind, usernames: [name.replace(/^@/, '')], minutes: Number(minutes) });
+      return { kind: 'moderated' };
+    }
     if (cmd.kind === 'help') return { kind: 'help', commands: policy.available(role, settings).map((c) => c.kind) };
     if (cmd.kind === 'pin') return pinCommand(club, role, userId, cmd.arg, settings);
     if (cmd.kind === 'poll') return storePoll(club, userId, role, chat.parsePollArg(cmd.arg), settings);
@@ -755,6 +813,7 @@ function createPoll(userId, slug, input) {
   const club = getClub(slug);
   const role = requireMember(club, userId);
   const settings = chat.readSettings(club.chat_settings);
+  checkMute(club.id, userId);
   if (!settings.cmdPoll) throw new ClubError('CLUB_COMMAND_DISABLED', 403, 'Bình chọn đang tắt.');
   rateLimit(userId);
   return storePoll(club, userId, role, chat.validatePoll(input.question, input.options), settings);
@@ -801,11 +860,22 @@ function calendarCommand(club, role, userId, arg) {
 /** Test seam: forget the whole-club fan-out windows. */
 const _resetFanOut = () => lastFanOut.clear();
 
+function removedMessages(userId, slug, visible) {
+  const club = getClub(slug);
+  requireMember(club, userId);
+  const ids = String(visible).split(',').slice(0, CHAT_KEEP).map(Number).filter(Number.isSafeInteger);
+  const retained = new Set(db().prepare('SELECT id FROM club_messages WHERE club_id=? ORDER BY id DESC LIMIT ?').all(club.id, CHAT_KEEP).map((r) => r.id));
+  return ids.filter((id) => !retained.has(id));
+}
+
 function deleteMessage(userId, slug, messageId) {
   const club = getClub(slug);
   requireStaff(club, userId);
-  const r = db().prepare('DELETE FROM club_messages WHERE id = ? AND club_id = ?').run(Number.parseInt(messageId, 10) || 0, club.id);
-  if (!r.changes) throw new ClubError('CLUB_MESSAGE_NOT_FOUND', 404, 'Không tìm thấy tin nhắn.');
+  db().transaction(() => {
+    const row = db().prepare('DELETE FROM club_messages WHERE club_id=? AND id=? RETURNING sender_id').get(club.id, Number(messageId));
+    if (!row) throw new ClubError('CLUB_MESSAGE_NOT_FOUND', 404, 'Không tìm thấy tin nhắn.');
+    log(club.id, 'delete_message', userId, row.sender_id, String(messageId));
+  })();
 }
 
 /** Wins in the last 7 days among confirmed members (#235). Any finished game counts, rated or not. */
@@ -827,11 +897,11 @@ function weeklyBoard(clubId) {
     .map((r, i) => ({ rank: i + 1, username: r.username, displayName: r.display_name, avatarUrl: avatarOf(r.user_id, r.avatar_v), wins: r.wins, played: r.played }));
 }
 
-function clubHistory(clubId) {
+function clubHistory(clubId, limit = HISTORY_SHOWN) {
   return db().prepare(`
     SELECT l.id, l.type, l.detail, l.created_at, a.username AS a_user, a.display_name AS a_name, t.username AS t_user, t.display_name AS t_name
     FROM club_log l LEFT JOIN users a ON a.id = l.actor_id LEFT JOIN users t ON t.id = l.target_id
-    WHERE l.club_id = ? ORDER BY l.id DESC LIMIT ?`).all(clubId, HISTORY_SHOWN)
+    WHERE l.club_id = ? ORDER BY l.id DESC LIMIT ?`).all(clubId, limit)
     .map((r) => ({
       id: r.id, type: r.type, detail: r.detail, at: r.created_at,
       actor: r.a_user ? { username: r.a_user, displayName: r.a_name } : null,
@@ -886,7 +956,9 @@ function getClubDetail(slug, viewerId, category) {
       SELECT u.username, u.display_name FROM club_invites i JOIN users u ON u.id = i.user_id
       WHERE i.club_id = ? ORDER BY i.created_at`).all(club.id)
       .map((p) => ({ username: p.username, displayName: p.display_name }));
-    body.history = clubHistory(club.id);
+    body.history = clubHistory(club.id, LOG_KEEP);
+    body.sanctions = db().prepare(`SELECT u.username,s.kind,s.until_at AS untilAt FROM club_sanctions s
+      JOIN users u ON u.id=s.user_id WHERE s.club_id=? AND (s.until_at IS NULL OR s.until_at>?) ORDER BY u.username`).all(club.id, now());
   }
   return body;
 }
@@ -906,7 +978,7 @@ function userIdByUsername(username) {
 }
 
 module.exports = {
-  ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
+  removedMessages, moderate, ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
   COLORS, createClub, updateClub, deleteClub, join, leave, approve, remove, setRole, invite, revokeInvite,
   createEvent, deleteEvent, rsvpEvent, remindDueEvents, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage, _resetFanOut,
   createPoll, refreshPolls, votePoll, closePoll, pollVoters, MAX_OPEN_POLLS,

@@ -291,3 +291,19 @@ it('shares alias permissions and returns help privately', async () => {
   expect(help.body.commands).not.toContain('pin');
   expect(messages()).toHaveLength(1);
 });
+
+it('rolls back mixed-rank bulk actions and enforces mutes and bans across entry points', async () => {
+  const url = '/api/clubs/' + SLUG;
+  const mod = (action, usernames) => call('POST', url + '/moderation', 'off', { action, usernames, minutes: 5 });
+  expect((await mod('ban', ['mem', 'own'])).status).toBe(403);
+  expect((await say('mem', 'hi')).status).toBe(201);
+  expect((await say('off', '/mute @mem 10')).status).toBe(201);
+  expect((await say('mem', '/poll q | a | b')).body.code).toBe('CLUB_MUTED');
+  expect((await mod('ban', ['mem'])).status).toBe(200);
+  expect((await call('POST', url + '/join', 'mem')).body.code).toBe('CLUB_BANNED');
+  expect((await call('POST', url + '/invites/mem', 'own')).body.code).toBe('CLUB_BANNED');
+  expect((await detail('out')).body.sanctions).toBeUndefined();
+  expect((await mod('unban', ['mem'])).status).toBe(200);
+  await call('POST', url + '/join', 'mem');
+  await call('POST', url + '/members/mem/approve', 'own');
+});

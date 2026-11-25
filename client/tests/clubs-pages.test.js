@@ -485,7 +485,7 @@ describe('club page', () => {
       const [post, poll] = global.fetch.mock.calls;
       expect(post[0]).toBe('/api/clubs/caro/messages');
       expect(JSON.parse(post[1].body)).toEqual({ text: 'xin chào' });
-      expect(poll[0]).toBe('/api/clubs/caro/messages?after=8');
+      expect(poll[0]).toBe('/api/clubs/caro/messages?after=8&visible=7,8');
       expect(document.getElementById('cb-chat-input').value).toBe('');
     });
 
@@ -815,7 +815,7 @@ describe('chat commands + notifications (B447)', () => {
       expect(input().getAttribute('aria-expanded')).toBe('true');
       await boot(clubAs('officer'));
       type('/');
-      expect(hints()).toEqual(['/ghim', '/giaohuu', '/binhchon', '/lich', '/trogiup']);
+      expect(hints()).toEqual(['/ghim', '/giaohuu', '/binhchon', '/lich', '/tattieng', '/duoi', '/trogiup']);
       type('/b');
       expect(hints()).toEqual(['/binhchon']);
       type('/gh');
@@ -825,7 +825,7 @@ describe('chat commands + notifications (B447)', () => {
     it('disabled commands are not offered; no hints once a space is typed or for plain text', async () => {
       await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdChallenge: false, cmdPoll: false, cmdCalendar: false } }));
       type('/');
-      expect(hints()).toEqual(['/ghim', '/trogiup']);
+      expect(hints()).toEqual(['/ghim', '/tattieng', '/duoi', '/trogiup']);
       type('/ghim hello');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
       type('hello /');
@@ -1087,7 +1087,7 @@ describe('chat commands + notifications (B447)', () => {
         const before = card();
         jest.advanceTimersByTime(8000);
         await flush(); await flush();
-        expect(global.fetch.mock.calls.at(-1)[0]).toBe('/api/clubs/caro/messages?after=8&polls=7');
+        expect(global.fetch.mock.calls.at(-1)[0]).toBe('/api/clubs/caro/messages?after=8&visible=7,8&polls=7');
         expect(card()).toBe(before);
         expect(opts()[0].querySelector('.cb-poll__n').textContent).toBe('clubs.poll_votes{"n":4}');
       } finally {
@@ -1192,7 +1192,7 @@ describe('chat commands + notifications (B447)', () => {
         global.fetch.mockClear();
         document.getElementById('cb-ch-chat').click();
         await flush(); await flush();
-        expect(global.fetch.mock.calls.map(([u]) => u)).toEqual(['/api/clubs/caro/messages?after=4']);
+        expect(global.fetch.mock.calls.map(([u]) => u)).toEqual(['/api/clubs/caro/messages?after=4&visible=4']);
         expect([...document.querySelectorAll('.cb-chat__text')].map((n) => n.textContent)).toEqual(['old', 'new']);
         expect(dot().hidden).toBe(true);
       } finally {
@@ -1223,4 +1223,13 @@ describe('chat commands + notifications (B447)', () => {
     expect(target({ type: 'club_request', payload: { club: { slug: 'caro' } } })).toBe('/c/caro#ch=requests');
     expect(target({ type: 'club_invite', payload: { club: { slug: 'caro' } } })).toBe('/c/caro');
   });
+});
+
+it('filters the roster by role and keeps sanction controls scoped to staff', async () => {
+  await bootClub({ ...CLUB, myRole: 'member' });
+  const filter = document.getElementById('cb-role-filter');
+  filter.value = 'officer';
+  filter.onchange();
+  expect(document.getElementById('cb-members-body').textContent).not.toContain('clubs.role_owner');
+  expect(document.getElementById('cb-bulk').hidden).toBe(true);
 });
