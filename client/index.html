@@ -43,7 +43,7 @@
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
   <link rel="stylesheet" href="css/rules-guide.css?v=d385a4ef" />
   <link rel="stylesheet" href="css/rooms-hall.css?v=3aa2d39f" />
-  <link rel="stylesheet" href="css/rooms-h.css?v=18436642" />
+  <link rel="stylesheet" href="css/rooms-h.css?v=953c52db" />
   <link rel="stylesheet" href="css/home-hero.css?v=ea8e5925" />
   <link rel="stylesheet" href="css/home-lamp.css?v=3d83c4c7" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
@@ -53,15 +53,15 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=808e91ee" />
+  <link rel="modulepreload" href="js/i18n.js?v=5613d1d7" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=349e6629" />
   <link rel="modulepreload" href="js/platform-shell.js?v=a00af3b1" />
-  <link rel="modulepreload" href="js/lobby.js?v=7fd21ea5" />
-  <link rel="modulepreload" href="js/private-chat.js?v=2b185d0f" />
-  <link rel="modulepreload" href="js/tournaments.js?v=1b8980f4" />
+  <link rel="modulepreload" href="js/lobby.js?v=6ac85df3" />
+  <link rel="modulepreload" href="js/private-chat.js?v=8e9c981b" />
+  <link rel="modulepreload" href="js/tournaments.js?v=d3294e38" />
   <link rel="modulepreload" href="js/room-rules-guide.js?v=69333b4f" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=6714f42b" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=a8faf13c" />
   <link rel="modulepreload" href="js/home-lamp.js?v=bbe72945" />
 
 </head>
@@ -197,7 +197,7 @@
 
   <!-- ══════════════════════════ SCREEN: Phòng (room list) ══════════════════ -->
   <!-- #440 direction H (features/rooms-redesign-v4/h-hai-cot.html): sticky counts bar → online rail (desktop) +
-       rule tabs, filters, compact table cards. Rendered by js/rooms-h.js; counts / tabs / cards / roster fill in live. -->
+       rule tabs, sort, compact table cards. Rendered by js/rooms-h.js; counts / tabs / cards / roster fill in live. -->
   <div class="tab-panel" id="panel-tables">
     <div class="rooms-bar">
       <span class="vstat"><i aria-hidden="true"></i><b id="rooms-n-online">0</b><span data-i18n="rooms.online">đang online</span></span>
@@ -221,7 +221,6 @@
         <div class="vtabs rooms-tabs" id="rooms-tabs" role="tablist" aria-label="Luật chơi" data-i18n-aria="rooms.tabs_aria"></div>
         <div id="rooms-main" role="tabpanel">
           <div class="rooms-tools">
-            <div class="vchips" id="rooms-filters" role="group" aria-label="Lọc bàn" data-i18n-aria="rooms.filters_aria"></div>
             <label class="rooms-sort"><span data-i18n="rooms.sort">Sắp xếp</span><select class="vselect" id="rooms-sort"></select></label>
           </div>
           <div id="room-list" class="rooms-grid" aria-live="off"></div>
@@ -643,6 +642,6 @@
 <script src="js/action-delegate.js?v=7420bbed"></script>
 <script src="js/challenge-modal.js?v=77805a23"></script>
 <script src="js/home-challenge.js?v=a4c4bc5e"></script>
-<script type="module" src="js/index-entry.js?v=35f45f6b"></script>
+<script type="module" src="js/index-entry.js?v=7fb3de4a"></script>
 </body>
 </html>

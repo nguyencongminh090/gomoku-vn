@@ -31,7 +31,7 @@ function fakeClient() {
   };
 }
 
-function mount({ me = { userId: 'me', isGuest: false }, myRatings = [], rule = null, seatAlert = null } = {}) {
+function mount({ me = { userId: 'me', isGuest: false }, rule = null } = {}) {
   document.body.innerHTML = BODY;
   window.eval(GUIDE);
   window.eval(SRC);
@@ -42,13 +42,11 @@ function mount({ me = { userId: 'me', isGuest: false }, myRatings = [], rule = n
   return window.RoomsH.create({
     root: document.getElementById('panel-tables'),
     client,
-    seatAlert,
     t,
     avatar: (url, name, cls) => `<span class="pav ${cls}" data-url="${url || ''}" aria-hidden="true"></span>`, // PlatformShell.avatar: initials/photo, no name text
     icon: (n) => `<svg class="icon" data-i="${n}"></svg>`,
     me: () => me,
     openCreate: (r) => created.push(r),
-    fetchJson: () => Promise.resolve({ ratings: myRatings }),
     storage: { getItem: (k) => store.get(k) || null, setItem: (k, v) => store.set(k, v) },
   });
 }
@@ -174,7 +172,7 @@ describe('cards (card v3)', () => {
   });
 });
 
-describe('#382 "Xem thêm" + server-side filters', () => {
+describe('#382 "Xem thêm" + server-side sort', () => {
   it('"Xem thêm" counts the rule\'s tables beyond the page and fetches the next page for this rule', () => {
     mount();
     client.fire('lobby:update', { stats: stats({ rooms: 40 }), rooms: [room('#A'), room('#B')] });
@@ -187,19 +185,17 @@ describe('#382 "Xem thêm" + server-side filters', () => {
     expect($('rooms-more').textContent).toBe('lobby.rooms_more(n=37)');
   });
 
-  it('a filter asks the server (debounced) and the grid shows only its answer; patches add nothing new', () => {
+  it('a non-default sort asks the server (debounced) and the grid shows only its answer; patches add nothing new', () => {
     jest.useFakeTimers();
     mount();
     client.fire('lobby:update', { stats: stats(), rooms: [room('#A'), room('#B', { state: 'playing', playerCount: 2 })] });
-    document.querySelector('[data-f="open"]').click();
-    document.querySelector('[data-f="t:fast"]').click();
     $('rooms-sort').value = 'time';
     $('rooms-sort').dispatchEvent(new Event('change'));
     expect(client.acks).toHaveLength(1); // roster only so far
     jest.advanceTimersByTime(300);
     const q = client.acks.filter((a) => a.ev === 'lobby:rooms_query');
     expect(q).toHaveLength(1);
-    expect(q[0].data).toEqual({ rule: 'freestyle', offset: 0, open: true, time: ['fast'], sort: 'time' });
+    expect(q[0].data).toEqual({ rule: 'freestyle', offset: 0, sort: 'time' });
     q[0].cb(null, { rooms: [room('#A')], matched: 1, stats: stats() });
     expect(cards()).toEqual(['#A']);
     expect($('rooms-more').hidden).toBe(true);
@@ -207,11 +203,12 @@ describe('#382 "Xem thêm" + server-side filters', () => {
     expect(cards()).toEqual(['#A']);
   });
 
-  it('a reply for a previous tab or filter is dropped', () => {
+  it('a reply for a previous tab or sort is dropped', () => {
     jest.useFakeTimers();
     mount();
     client.fire('lobby:update', { stats: stats(), rooms: [] });
-    document.querySelector('[data-f="open"]').click();
+    $('rooms-sort').value = 'rank';
+    $('rooms-sort').dispatchEvent(new Event('change'));
     jest.advanceTimersByTime(300);
     const stale = client.acks.filter((a) => a.ev === 'lobby:rooms_query').at(-1);
     document.querySelector('[data-tab="caro"]').click();
@@ -219,17 +216,14 @@ describe('#382 "Xem thêm" + server-side filters', () => {
     expect(cards()).toEqual([]);
   });
 
-  it('"Gần trình tôi" is disabled with a reason without own Elo in the rule; enabled with it', async () => {
-    mount({ myRatings: [{ category: 'caro', rating: 1800, provisional: false }] });
-    client.fire('lobby:update', { stats: stats(), rooms: [] });
-    await flush();
-    const near = () => document.querySelector('[data-f="near"]');
-    expect(near().disabled).toBe(true);
-    expect(near().title).toBe('rooms.near_off(rule=rule.freestyle)');
-    document.querySelector('[data-tab="caro"]').click();
-    expect(near().disabled).toBe(false);
-    mount({ me: { userId: 'g', isGuest: true } });
-    expect(document.querySelector('[data-f="near"]').disabled).toBe(true);
+});
+
+describe('no filter chips', () => {
+  it('the tools row holds the sort select only', () => {
+    mount();
+    expect(document.querySelector('[data-f]')).toBeNull();
+    expect($('rooms-filters')).toBeNull();
+    expect([...$('rooms-sort').options].map((o) => o.value)).toEqual(['state', 'rank', 'time']);
   });
 });
 
@@ -256,15 +250,16 @@ describe('empty tab', () => {
     expect(cards()).toEqual(['#C']);
   });
 
-  it('a filter change shows no false "empty" until the server answers', () => {
+  it('a sort change shows no false "empty" until the server answers', () => {
     jest.useFakeTimers();
     mount();
     client.fire('lobby:update', { stats: stats(), rooms: [room('#A')] });
-    document.querySelector('[data-f="open"]').click();
+    $('rooms-sort').value = 'rank';
+    $('rooms-sort').dispatchEvent(new Event('change'));
     expect(document.querySelector('#room-list .vempty')).toBeNull();
     jest.advanceTimersByTime(300);
     client.acks.filter((a) => a.ev === 'lobby:rooms_query').at(-1).cb(null, { rooms: [], matched: 0, stats: stats() });
-    expect(document.querySelector('#room-list .vempty b').textContent).toBe('rooms.empty_filtered');
+    expect(document.querySelector('#room-list .vempty b').textContent).toBe('rooms.empty(rule=rule.freestyle)');
   });
 });
 
@@ -366,55 +361,5 @@ describe('static guards', () => {
   it('the bars sit under the 56px nav; body overflow-x is never hidden (#215 sticky)', () => {
     expect(css).toMatch(/\.rooms-bar \{ position: sticky; top: 56px;/);
     expect(css).not.toMatch(/overflow-x: hidden/);
-  });
-});
-
-describe('#438 "Báo khi có bàn" chip', () => {
-  const fakeAlert = (armed = null) => {
-    const sa = { cur: armed, calls: [], muted: 0 };
-    sa.get = () => sa.cur;
-    sa.arm = (f) => { sa.calls.push(['arm', f]); sa.cur = f; window.dispatchEvent(new CustomEvent('seatalert:change')); return true; };
-    sa.disarm = () => { sa.calls.push(['disarm']); sa.cur = null; window.dispatchEvent(new CustomEvent('seatalert:change')); };
-    sa.mutedUntil = () => sa.muted;
-    return sa;
-  };
-  const chip = () => document.querySelector('[data-f="alert"]');
-
-  it('no chip without a seatAlert (the rooms suites above keep their filter row)', () => {
-    mount();
-    expect(chip()).toBeNull();
-  });
-
-  it('off by default; a click arms the CURRENT rule + filters, a second click disarms; no table refetch', () => {
-    const sa = fakeAlert();
-    mount({ rule: 'caro', seatAlert: sa, myRatings: [] });
-    expect(chip().getAttribute('aria-pressed')).toBe('false');
-    document.querySelector('[data-f="t:fast"]').click();
-    client.acks.length = 0;
-    chip().click();
-    expect(sa.calls).toEqual([['arm', { rule: 'caro', near: false, time: ['fast'] }]]);
-    expect(chip().getAttribute('aria-pressed')).toBe('true');
-    expect(client.acks).toEqual([]);
-    chip().click();
-    expect(sa.calls[1]).toEqual(['disarm']);
-    expect(chip().getAttribute('aria-pressed')).toBe('false');
-  });
-
-  it('near rides along only when the player can use it (has an Elo in this rule)', async () => {
-    const sa = fakeAlert();
-    mount({ rule: 'freestyle', seatAlert: sa, myRatings: [] });
-    document.querySelector('[data-f="near"]').click(); // disabled: no Elo
-    chip().click();
-    expect(sa.calls[0][1].near).toBe(false);
-  });
-
-  it('lit while armed (even for another rule) and the tooltip names what is saved; redraws on seatalert:change', () => {
-    const sa = fakeAlert({ rule: 'renju', near: true, time: ['mid', 'fast'] });
-    mount({ rule: 'freestyle', seatAlert: sa });
-    expect(chip().getAttribute('aria-pressed')).toBe('true');
-    expect(chip().title).toBe('rooms.alert_tip(what=rule.renju, rooms.f_near, rooms.t_fast, rooms.t_mid)');
-    sa.cur = null;
-    window.dispatchEvent(new CustomEvent('seatalert:change'));
-    expect(chip().getAttribute('aria-pressed')).toBe('false');
   });
 });
