@@ -106,12 +106,14 @@ const { parseEventArg } = policy;
 function parseMentions(raw) {
   const seen = new Set();
   let all = false;
+  let officers = false;
   for (const m of String(raw || '').matchAll(MENTION_RE)) {
     const name = m[2].toLowerCase();
+    if (name === 'officers') { officers = true; continue; }
     if (ALL_WORDS.includes(name)) { all = true; continue; }
     if (seen.size < MAX_MENTIONS) seen.add(name);
   }
-  return { usernames: [...seen], all };
+  return { usernames: [...seen], all, ...(officers ? { officers } : {}) };
 }
 
 module.exports = {

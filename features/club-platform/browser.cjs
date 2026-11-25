@@ -96,6 +96,20 @@ async function run() {
       await page.locator('#cb-log-search').fill('mute');
       await page.locator('#cb-history').getByText(/Hoa Mai/).waitFor();
       await shoot('moderation-log');
+    } else if (slice === 'mentions') {
+      const member = await joinMember('hoamai', 'Hoa Mai');
+      await page.reload();
+      await input.fill('Mời @hoa');
+      await page.getByRole('option').getByText('@hoamai').waitFor();
+      await shoot('mentions');
+      await input.press('Tab');
+      assert.equal(await input.inputValue(), 'Mời @hoamai ');
+      await input.press('Enter');
+      const sent = await member.request.post(base + '/api/clubs/' + club.slug + '/messages', { data: { text: 'Chào @officers' } });
+      assert.ok(sent.ok());
+      await page.reload();
+      await page.locator('.is-mentioned').getByText('@officers').waitFor();
+      await shoot('mention-received');
     } else throw new Error('Unknown slice');
   } finally {
     try { if (browser) await browser.close(); } finally { app.kill('SIGTERM'); }

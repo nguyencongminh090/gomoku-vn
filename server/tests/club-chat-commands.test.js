@@ -307,3 +307,14 @@ it('rolls back mixed-rank bulk actions and enforces mutes and bans across entry 
   await call('POST', url + '/join', 'mem');
   await call('POST', url + '/members/mem/approve', 'own');
 });
+
+it('deduplicates officer and username mentions, returns private highlights and throttles group pings', async () => {
+  await say('mem', 'hi @officers @off');
+  expect(notes('off', 'club_mention')).toHaveLength(1);
+  expect(notes('own', 'club_mention')).toHaveLength(1);
+  const get = (u) => call('GET', '/api/clubs/' + SLUG + '/messages', u);
+  expect((await get('off')).body.messages[0].mentioned.sort()).toEqual(['off', 'officers']);
+  expect((await get('mem2')).body.messages[0]).toMatchObject({ mentioned: [] });
+  expect((await get('mem2')).body.messages[0].meta).toBeUndefined();
+  expect((await say('mem', 'again @officers')).status).toBe(429);
+});

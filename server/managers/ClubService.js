@@ -589,6 +589,10 @@ function listMessages(userId, slug, { before, after } = {}) {
       username: r.username, displayName: r.display_name, avatarUrl: avatarOf(r.sender_id, r.avatar_v),
     };
     if (r.meta) { try { out.meta = JSON.parse(r.meta); } catch (_) { /* corrupt meta: show the row bare */ } }
+    if (out.kind === 'text' && out.meta?.recipients) {
+      out.mentioned = out.meta.recipients[userId] || [];
+      delete out.meta;
+    }
     if (polls.has(r.id)) out.poll = polls.get(r.id);
     return out;
   });
@@ -752,16 +756,33 @@ function postMessage(userId, slug, text) {
   }
   const body = dmText.clean(raw);
   if (!body) throw new ClubError('CLUB_MESSAGE_EMPTY', 400, 'Tin nhắn trống.');
-  const mentions = chat.parseMentions(raw);
+  const mentions = chat.parseMentions(body);
   const toAll = mentions.all && isStaff(role) && settings.notifyAll;
-  if (toAll && coolingDown(club.id + ':all')) throw new ClubError('CLUB_NOTIFY_COOLDOWN', 429, 'Chỉ báo cả nhóm 1 lần mỗi 10 phút.');
-  const id = db().transaction(() => insertMessage(club.id, userId, body))();
-  if (toAll) {
-    lastFanOut.set(club.id + ':all', Date.now());
-    notifyMany(memberIds(club.id, userId), 'club_all', userId, senderPayload(club, userId, id));
-  } else if (settings.notifyMention && mentions.usernames.length) {
-    notifyMany(memberIds(club.id, userId, mentions.usernames), 'club_mention', userId, senderPayload(club, userId, id));
+  const staffMention = mentions.officers && settings.notifyMention;
+  const cooldown = toAll ? club.id + ':all' : staffMention ? club.id + ':officers:' + userId : null;
+  if (cooldown && coolingDown(cooldown)) throw new ClubError('CLUB_NOTIFY_COOLDOWN', 429, 'Vui lòng chờ trước khi nhắc lại nhóm.');
+  const recipients = Object.create(null);
+  if (toAll || staffMention || (settings.notifyMention && mentions.usernames.length)) {
+    const eligible = db().prepare(`SELECT m.user_id, m.role, lower(u.username) AS name
+      FROM club_members m JOIN users u ON u.id=m.user_id
+      WHERE m.club_id=? AND m.role!='pending' AND m.user_id!=?
+      AND NOT EXISTS (SELECT 1 FROM club_sanctions s WHERE s.club_id=m.club_id AND s.user_id=m.user_id
+        AND (s.kind='ban' OR s.until_at>?))`).all(club.id, userId, now());
+    for (const member of eligible) {
+      const words = [];
+      if (toAll) words.push('all', 'tatca');
+      if (staffMention && isStaff(member.role)) words.push('officers');
+      if (settings.notifyMention && mentions.usernames.includes(member.name)) words.push(member.name);
+      if (words.length) recipients[member.user_id] = words;
+    }
   }
+  const id = db().transaction(() => {
+    const mid = insertMessage(club.id, userId, body, 'text', { recipients });
+    const ids = Object.keys(recipients);
+    if (ids.length) notifyMany(ids, toAll ? 'club_all' : 'club_mention', userId, senderPayload(club, userId, mid));
+    return mid;
+  })();
+  if (cooldown) lastFanOut.set(cooldown, Date.now());
   return { id };
 }
 

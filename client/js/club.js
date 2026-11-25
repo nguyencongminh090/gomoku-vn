@@ -230,7 +230,7 @@
    * Decoded text as nodes; @username of a club member is highlighted (mine gets is-me). @all / @tatca only
    * when the server would have notified for it (staff author, notifyAll on). Never innerHTML.
    */
-  function textWithMentions(raw, author) {
+  function textWithMentions(raw, author, delivered) {
     const allCounts = !!chatSet().notifyAll && ['owner', 'officer'].includes(roleOf(author));
     const box = el('div', undefined, 'cb-chat__text');
     const text = decode(raw);
@@ -241,10 +241,11 @@
     for (const m of text.matchAll(/(^|[^A-Za-z0-9_@])@([A-Za-z0-9_]{3,20})(?![A-Za-z0-9_])/g)) {
       const name = m[2].toLowerCase();
       const all = name === 'all' || name === 'tatca';
-      if (all ? !allCounts : !members.has(name)) continue;
+      const staffGroup = name === 'officers' && chatSet().notifyMention;
+      if (!delivered?.includes(name) && !staffGroup && (all ? !allCounts : !members.has(name))) continue;
       const startAt = m.index + m[1].length;
       if (startAt > at) box.append(text.slice(at, startAt));
-      const isMe = all || name === me;
+      const isMe = delivered ? delivered.includes(name) : all || name === me;
       mentionsMe = mentionsMe || isMe;
       box.append(el('b', '@' + m[2], 'cb-chat__at' + (isMe ? ' is-me' : '')));
       at = startAt + 1 + m[2].length;
@@ -384,7 +385,7 @@
       const role = roleOf(m.username);
       if (role === 'owner' || role === 'officer') who.append(el('span', t('clubs.role_' + role), 'cl-role'));
       who.append(time);
-      const { box, mentionsMe } = textWithMentions(m.text, m.username);
+      const { box, mentionsMe } = textWithMentions(m.text, m.username, m.mentioned);
       if (mentionsMe && !m.mine) row.classList.add('is-mentioned');
       body.append(who, box);
       row.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'cl-av40'), body);
@@ -609,7 +610,19 @@
   /** While the input is just "/word" (no space yet), list the matching commands. */
   function renderHints() {
     const m = /^\/([A-Za-z]*)$/.exec($('cb-chat-input').value);
-    const list = m ? commandHints(m[1].toLowerCase()) : [];
+    const input = $('cb-chat-input');
+    const caret = input.selectionStart ?? input.value.length;
+    const at = /(?:^|[^A-Za-z0-9_@])@([A-Za-z0-9_]*)$/.exec(input.value.slice(0, caret));
+    let list = m ? commandHints(m[1].toLowerCase()) : [];
+    if (at && isMember()) {
+      const names = state.club.leaderboard.filter((x) => !x.mine).map((x) => [x.username, x.displayName]);
+      if (chatSet().notifyMention) names.unshift(['officers', 'Ban quản trị']);
+      if (isStaff() && chatSet().notifyAll) names.unshift(['all', 'Tất cả thành viên']);
+      const prefix = at[1].toLowerCase();
+      const end = caret + /^\w*/.exec(input.value.slice(caret))[0].length;
+      list = names.filter(([name]) => name.toLowerCase().startsWith(prefix)).slice(0, 8)
+        .map(([name, desc]) => ({ cmd: '@' + name, desc, start: caret - prefix.length - 1, end }));
+    }
     if (!list.length) { hideHints(); return; }
     state.hints = list;
     state.hint = Math.min(state.hint, list.length - 1);
@@ -619,7 +632,7 @@
       li.setAttribute('role', 'option');
       li.setAttribute('aria-selected', String(i === state.hint));
       li.append(el('b', h.cmd), el('span', h.args, 'cl-hint__args'), el('span', h.desc, 'cl-hint__desc'));
-      if (h.aliases.length) li.append(el('small', h.aliases.map((w) => '/' + w).join(' · ')));
+      if (h.aliases?.length) li.append(el('small', h.aliases.map((w) => '/' + w).join(' · ')));
       li.addEventListener('mousedown', (ev) => { ev.preventDefault(); pickHint(i); });
       return li;
     }));
@@ -631,7 +644,9 @@
   function pickHint(i) {
     const h = state.hints[i];
     if (!h) return;
-    $('cb-chat-input').value = h.cmd + ' ';
+    const input = $('cb-chat-input');
+    if (h.start !== undefined) input.setRangeText(h.cmd + ' ', h.start, h.end + (input.value[h.end] === ' ' ? 1 : 0), 'end');
+    else input.value = h.cmd + ' ';
     hideHints();
     $('cb-chat-input').focus();
   }
