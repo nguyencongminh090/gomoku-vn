@@ -1,3 +1,5 @@
+- ✅ **#236.** Club-vs-club team tournament backend & schema `[Model: Opus]` — [detail](docs/todo/B236-club-team-tournament.md)
+
 - ✅ **#458.** Club activity `[Model: Sonnet]` — [detail](docs/todo/B458-club-activity.md)
 
 - ✅ **#453.** Create Room: player scope — only creator's club mates (or invitees) may sit `[Model: Sonnet]` — [detail](docs/todo/F453-club-only-seats.md)

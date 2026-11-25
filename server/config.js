@@ -190,7 +190,7 @@ const MAX_EVENTS_PER_SECOND = 50; // Socket flood protection
 const FLOOD_DISCONNECT_STREAK = 5; // Consecutive over-limit 1s windows before force-disconnect
 
 // --- Tournament (features/tournament/, TODO.md #48) ---
-const TOURNAMENT_FORMATS = ['swiss', 'round_robin', 'double_elim'];
+const TOURNAMENT_FORMATS = ['swiss', 'round_robin', 'double_elim', 'team'];
 // Per-match scheduling deadline (decision 2 in features/tournament/planning.md):
 // counted from when a pairing is announced, not per-round/per-tournament.
 // 48h gives a same-day-negotiate, next-day-play window without forcing same-day

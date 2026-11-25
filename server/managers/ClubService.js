@@ -541,25 +541,103 @@ function staffClubId(userId, slug) {
 }
 
 /**
- * tournamentId → {slug, name} for every club-hosted tournament, one query. The lobby tournament list
- * shows/filters by it (B210); club_id is only in the DB (not on the in-memory tournament) and is NULLed
- * when the club is deleted, so this is the single source of truth.
+ * Validate a captain's club team roster for a team tournament (B236).
+ * Actor must be confirmed owner/officer of an unlocked club; every username must be
+ * a distinct confirmed member of that club. Returns roster ordered by rating DESC
+ * in `category`, then username ASC (unrated after rated).
+ */
+function clubRosterForTournament(actorId, slug, usernames, category) {
+  if (!actorId) throw new ClubError('GUEST_FORBIDDEN', 403, 'Khách không dùng được nhóm.');
+  const club = getClub(slug);
+  checkAccess(club, actorId, true);
+  requireStaff(club, actorId);
+  if (!Array.isArray(usernames) || usernames.length < 1 || usernames.length > 30
+      || usernames.some((u) => typeof u !== 'string' || !u.trim())) {
+    throw new ClubError('CLUB_ROSTER_INVALID', 400, 'Danh sách đội hình không hợp lệ.');
+  }
+  const normalized = usernames.map((u) => u.trim().toLowerCase());
+  if (new Set(normalized).size !== normalized.length) {
+    throw new ClubError('DUPLICATE_ROSTER_MEMBER', 400, 'Đội hình không được có thành viên trùng lặp.');
+  }
+  const cat = CATEGORIES.includes(category) ? category : CATEGORIES[0];
+  const placeholders = normalized.map(() => '?').join(',');
+  const rows = db().prepare(`
+    SELECT u.id AS user_id, u.username, u.display_name, r.rating
+    FROM club_members m
+    JOIN users u ON u.id = m.user_id
+    LEFT JOIN ratings r ON r.user_id = u.id AND r.category = ?
+    WHERE m.club_id = ? AND m.role != 'pending' AND LOWER(u.username) IN (${placeholders})
+  `).all(cat, club.id, ...normalized);
+  if (rows.length !== normalized.length) {
+    throw new ClubError('CLUB_NOT_MEMBER', 400, 'Mọi kỳ thủ trong đội hình phải là thành viên chính thức của nhóm.');
+  }
+  rows.sort((a, b) => (Number(b.rating != null) - Number(a.rating != null))
+    || ((b.rating ?? 0) - (a.rating ?? 0))
+    || a.username.localeCompare(b.username));
+  return {
+    club: { id: club.id, slug: club.slug, name: club.name, tag: club.tag, color: club.color },
+    roster: rows.map((r, idx) => ({
+      userId: r.user_id,
+      username: r.username,
+      displayName: r.display_name,
+      boardNumber: idx + 1,
+      ratingAtReg: r.rating == null ? null : Math.round(r.rating),
+    })),
+  };
+}
+
+/**
+ * tournamentId → {slug, name, slugs} for every club-hosted or club-team tournament.
+ * The lobby tournament list shows/filters by it (B210, B236).
  */
 function tournamentClubs() {
   const map = new Map();
   for (const r of db().prepare('SELECT t.id, c.slug, c.name FROM tournaments t JOIN clubs c ON c.id = t.club_id WHERE c.hidden=0').all()) {
-    map.set(r.id, { slug: r.slug, name: r.name });
+    map.set(r.id, { slug: r.slug, name: r.name, slugs: [r.slug] });
+  }
+  for (const r of db().prepare(`
+    SELECT tt.tournament_id AS id, c.slug, c.name
+    FROM tournament_teams tt JOIN clubs c ON c.id = tt.club_id
+    WHERE c.hidden = 0 ORDER BY tt.team_order ASC
+  `).all()) {
+    const cur = map.get(r.id);
+    if (!cur) map.set(r.id, { slug: r.slug, name: r.name, slugs: [r.slug] });
+    else if (!cur.slugs.includes(r.slug)) cur.slugs.push(r.slug);
   }
   return map;
 }
 
-/** The club's tournaments (all statuses — the tournament list is public too), newest first. */
+/** The club's tournaments (hosted OR entered as a team — B236), newest first. */
 function clubTournaments(clubId) {
-  return db().prepare(`
+  const rows = db().prepare(`
     SELECT t.id, t.name, t.format, t.status, t.created_at, t.started_at,
            (SELECT COUNT(*) FROM tournament_players p WHERE p.tournament_id = t.id AND p.withdrawn = 0) AS players
-    FROM tournaments t WHERE t.club_id = ? ORDER BY t.created_at DESC, t.id LIMIT 50`).all(clubId)
-    .map((t) => ({ id: t.id, name: t.name, format: t.format, status: t.status, createdAt: t.created_at, startedAt: t.started_at, players: t.players }));
+    FROM tournaments t
+    WHERE t.club_id = @clubId
+       OR EXISTS (SELECT 1 FROM tournament_teams tt WHERE tt.tournament_id = t.id AND tt.club_id = @clubId)
+    ORDER BY t.created_at DESC, t.id LIMIT 50`).all({ clubId });
+  if (!rows.length) return [];
+  const teamIds = rows.filter((r) => r.format === 'team').map((r) => r.id);
+  const teamsByTid = new Map();
+  if (teamIds.length) {
+    const q = teamIds.map(() => '?').join(',');
+    for (const tr of db().prepare(`
+      SELECT tt.tournament_id, tt.club_slug, tt.club_name, tt.club_tag, tt.club_color, tt.final_rank
+      FROM tournament_teams tt LEFT JOIN clubs c ON c.id = tt.club_id
+      WHERE tt.tournament_id IN (${q}) AND (c.id IS NULL OR c.hidden = 0)
+      ORDER BY tt.team_order ASC
+    `).all(...teamIds)) {
+      if (!teamsByTid.has(tr.tournament_id)) teamsByTid.set(tr.tournament_id, []);
+      teamsByTid.get(tr.tournament_id).push({
+        slug: tr.club_slug, name: tr.club_name, tag: tr.club_tag, color: tr.club_color, finalRank: tr.final_rank,
+      });
+    }
+  }
+  return rows.map((t) => ({
+    id: t.id, name: t.name, format: t.format, status: t.status,
+    createdAt: t.created_at, startedAt: t.started_at, players: t.players,
+    ...(t.format === 'team' ? { teams: teamsByTid.get(t.id) || [] } : {}),
+  }));
 }
 
 function requireMember(club, userId) {
@@ -1052,7 +1130,7 @@ function userIdByUsername(username) {
 module.exports = {
   clubActivity, removeContent, checkAccess, clubHistory, reportMessage, removedMessages, moderate, ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
   COLORS, createClub, updateClub, deleteClub, join, leave, approve, remove, setRole, invite, revokeInvite,
-  createEvent, deleteEvent, rsvpEvent, remindDueEvents, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage, _resetFanOut,
+  createEvent, deleteEvent, rsvpEvent, remindDueEvents, staffClubId, clubRosterForTournament, tournamentClubs, listMessages, postMessage, deleteMessage, _resetFanOut,
   createPoll, refreshPolls, votePoll, closePoll, pollVoters, MAX_OPEN_POLLS,
   clubForImageEdit, setImageVersion, getClub, listClubs, getClubDetail, clubsOfUser, userIdByUsername,
 };
