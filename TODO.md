@@ -70,4 +70,3 @@ in the detail file / fix-log).
 - **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — direct route (CloudFront→Caddy) LIVE; open: peak-hour check + real-browser game `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
 - **#473.** Tournament match shows initials instead of uploaded avatars `[Model: Sonnet]` — [detail](docs/todo/B473-tmatch-avatars.md)
 - **#482.** Club chat: delete retired slash aliases one release after #477 `[Model: Haiku]` — [detail](docs/todo/B482-club-chat-retired-commands-removal.md)
-- **#483.** Club chat (phone): composer floats mid-screen when the stream is short `[Model: Haiku]` — [detail](docs/todo/B483-club-phone-composer-floats.md)

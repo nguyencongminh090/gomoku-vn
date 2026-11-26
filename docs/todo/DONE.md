@@ -1,3 +1,4 @@
+- ✅ **#483.** Club chat (phone): composer floats mid-screen when the stream is short `[Model: Haiku]` — [detail](docs/todo/B483-club-phone-composer-floats.md)
 - ✅ **#481.** Admin club report queue shows escaped text `[Model: Haiku]` — [detail](docs/todo/B481-admin-club-report-escaped-text.md)
 - ✅ **#480.** Club events: month calendar + create sheet (Vietnam time) `[Model: Opus]` — [detail](docs/todo/B480-club-event-calendar.md)
 - ✅ **#479.** Club chat: poll setup sheet `[Model: Sonnet]` — [detail](docs/todo/B479-club-poll-sheet.md)
