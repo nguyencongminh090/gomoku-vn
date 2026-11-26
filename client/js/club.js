@@ -2053,11 +2053,6 @@
         return;
       }
       const sent = await act('POST', '/messages', { text });
-      if (!sent && command?.retired === 'members') { // the text stays; offer the channel that does this now
-        const link = el('a', t('clubs.cmd_moved_link'));
-        link.href = location.pathname + location.search + '#ch=members'; // <base href="/"> (#451)
-        $('cb-msg').append(' ', link);
-      }
       if (sent) {
         $('cb-chat-input').value = '';
         syncMentionCap();
