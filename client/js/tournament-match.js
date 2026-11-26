@@ -461,12 +461,16 @@ function renderCard(el, player) {
     <div class="seatcard__id"><div class="seatcard__name">${escapeHtml(player.displayName)}</div></div>
     <div class="seatcard__clock" data-clock-text></div>`;
   el.querySelector('.seatcard__name').title = player.displayName;
-  // CSP forbids inline onerror — fall back to initials from here.
-  const img = el.querySelector('.seatcard__img');
-  if (img) img.addEventListener('error', () => img.replaceWith(document.createTextNode(img.dataset.ini)), { once: true });
+  bindAvatarFallback(el);
 }
 
-// Same rule as room-ui.js avatarInner (#473: the server does not send avatarUrl here yet).
+// CSP forbids inline onerror — a photo that fails to load falls back to initials from here.
+function bindAvatarFallback(root) {
+  root.querySelectorAll('.seatcard__img').forEach((img) =>
+    img.addEventListener('error', () => img.replaceWith(document.createTextNode(img.dataset.ini)), { once: true }));
+}
+
+// Same rule as room-ui.js avatarInner; avatarUrl comes from the server (players + series scores, #473).
 function avatarInner(player) {
   const ini = escapeHtml(initials(player.displayName));
   const url = player.avatarUrl;
@@ -517,15 +521,16 @@ function renderScorePanel(isSeries) {
   placeScore();
   if (!isSeries) { scoreHeroEl.innerHTML = ''; return; }
   // seriesInfo.scores is null until the series' first game finishes — show both players at 0.
-  const scores = seriesInfo.scores || gameState.players.map((p) => ({ displayName: p.displayName, score: 0 }));
+  const scores = seriesInfo.scores || gameState.players.map((p) => ({ displayName: p.displayName, score: 0, avatarUrl: p.avatarUrl }));
   scorePanelTitleEl.textContent = seriesInfo.seriesMode === 'raceToMargin'
     ? t('tmatch.score_title_race_to_margin', { target: seriesInfo.seriesTargetScore })
     : t('tmatch.score_title_fixed_count', { n: seriesInfo.seriesGameCount });
-  const side = (s) => `<div class="score-hero__p"><span class="score-hero__av">${escapeHtml(initials(s.displayName))}</span><span class="score-hero__name">${escapeHtml(s.displayName)}</span></div>`;
+  const side = (s) => `<div class="score-hero__p"><span class="score-hero__av">${avatarInner(s)}</span><span class="score-hero__name">${escapeHtml(s.displayName)}</span></div>`;
   const [a, b] = scores;
   scoreHeroEl.innerHTML = a && b
     ? `<div class="score-hero__top">${side(a)}<span class="score-hero__num">${Number(a.score) || 0} – ${Number(b.score) || 0}</span>${side(b)}</div>`
     : '';
+  bindAvatarFallback(scoreHeroEl);
 }
 
 function escapeHtml(str) {

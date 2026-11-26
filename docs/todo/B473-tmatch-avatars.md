@@ -1,5 +1,5 @@
 # B473 — Tournament match shows initials instead of uploaded avatars
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-26 — avatarUrl on match players + series scores; see [fix-log](../fix-log/2026-11-26-473-tmatch-avatars.md)
 **Area:** server/socket/handlers/TournamentMatchHandler.js (tmatch:init players), client/js/tournament-match.js
 **From:** match page redesign (ui/tmatch-room-sync), 2026-11-25   **Depends:** ui/tmatch-room-sync merged
 

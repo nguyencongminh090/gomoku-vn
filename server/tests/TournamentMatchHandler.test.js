@@ -626,8 +626,8 @@ describe('TournamentMatchHandler — series transition (_endMatch)', () => {
     expect(ended.data.series).toEqual({
       seriesComplete: false,
       scores: [
-        { displayName: entry1.displayName, score: 1 },
-        { displayName: entry2.displayName, score: 0 },
+        { displayName: entry1.displayName, score: 1, avatarUrl: null },
+        { displayName: entry2.displayName, score: 0, avatarUrl: null },
       ],
     });
     // The GameEngine itself is torn down (a fresh one is built for the next
@@ -1549,8 +1549,84 @@ describe('TournamentMatchHandler — Renju opening (#427)', () => {
     const last = io._toEmitted['tournament-match:p1'].filter((e) => e.event === 'tmatch:swap2_state').pop().data;
     expect(last.openingPhase).toBe('play');
     expect(last.players).toEqual([
-      { userId: 'u1', displayName: 'Player One', color: 'BLACK' },
-      { userId: 'u2', displayName: 'Player Two', color: 'WHITE' },
+      { userId: 'u1', displayName: 'Player One', color: 'BLACK', avatarUrl: null },
+      { userId: 'u2', displayName: 'Player Two', color: 'WHITE', avatarUrl: null },
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #473 — match players and series scores carry the same avatarUrl as the room
+// ---------------------------------------------------------------------------
+
+describe('TournamentMatchHandler — avatars (#473)', () => {
+  const U1_URL = '/api/profile/avatar/u1.webp?v=7';
+
+  beforeAll(() => {
+    const ins = database.db.prepare(
+      "INSERT OR REPLACE INTO users (id, username, password_hash, display_name, created_at, avatar_v) VALUES (?, ?, 'x', ?, ?, ?)");
+    ins.run('u1', 'p1user', 'Player One', Date.now(), 7); // uploaded photo
+    ins.run('u2', 'p2user', 'Player Two', Date.now(), null); // no photo
+  });
+  afterAll(() => { database.db.prepare("DELETE FROM users WHERE id IN ('u1', 'u2')").run(); });
+
+  const avatars = (players) => players.map((p) => [p.userId, p.avatarUrl]);
+
+  test('startMatch tmatch:init players carry avatarUrl (null without a photo)', () => {
+    setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const init = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:init').data;
+    expect(avatars(init.players)).toEqual([['u1', U1_URL], ['u2', null]]);
+  });
+
+  test('tmatch:subscribe and resyncOnConnect send the same avatarUrl', () => {
+    setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const spectator = makeSocket(io, 'viewer', 'Viewer');
+    TournamentMatchHandler.register(io, spectator);
+    fire(spectator, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' });
+    expect(avatars(sockEmit(spectator, 'tmatch:init').data.players)).toEqual([['u1', U1_URL], ['u2', null]]);
+
+    const p1socket = makeSocket(io, 'u1', 'Player One');
+    TournamentMatchHandler.resyncOnConnect(io, p1socket);
+    expect(avatars(sockEmit(p1socket, 'tmatch:init').data.players)).toEqual([['u1', U1_URL], ['u2', null]]);
+  });
+
+  test('a guest player gets no avatar lookup (null), even with a userId', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    entry1.isGuest = true;
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const init = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:init').data;
+    expect(init.players[0].avatarUrl).toBeNull();
+  });
+
+  test('series scores carry avatarUrl, and the colour-flipped game keeps them on the right player', () => {
+    const { tournament, pairing, entry1, entry2 } = setupTournamentAndPairing();
+    tournament.ruleSet = ruleSet({ seriesMode: 'fixedCount', seriesGameCount: 3 });
+    pairing.games = [{ index: 0, winnerEntryId: entry1.entryId }];
+    pairing.seriesScore = { [entry1.entryId]: 1, [entry2.entryId]: 0 };
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const init = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:init').data;
+    expect(init.series.scores).toEqual([
+      { displayName: 'Player One', score: 1, avatarUrl: U1_URL },
+      { displayName: 'Player Two', score: 0, avatarUrl: null },
+    ]);
+    expect(avatars(init.players)).toEqual([['u2', null], ['u1', U1_URL]]); // game 2: seats flipped
+  });
+
+  test('tmatch:swap2_state players keep avatarUrl (the page replaces its players with these)', () => {
+    const ctx = setupTournamentAndPairing({ boardSize: 15 });
+    ctx.tournament.ruleSet = ruleSet({ boardSize: 15, winningRule: 'renju', openingRule: 'taraguchi10' });
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const s1 = makeSocket(io, 'u1', 'Player One');
+    TournamentMatchHandler.register(io, s1);
+    fire(s1, 'tmatch:swap2_place', { tournamentId: 't1', pairingId: 'p1', x: 7, y: 7 });
+    const st = io._toEmitted['tournament-match:p1'].filter((e) => e.event === 'tmatch:swap2_state').pop().data;
+    expect(avatars(st.players)).toEqual([['u1', U1_URL], ['u2', null]]);
   });
 });
