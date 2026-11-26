@@ -101,4 +101,55 @@ function getUserRecentGames(userId, limit, offset = 0) {
   `).all({ id: userId, limit, offset });
 }
 
-module.exports = { getLastRoomSettings, setLastRoomSettings, getProfileByUsername, getProfileById, getUiSkin, updateProfile, setAvatarVersion, getUserGameStats, getUserRecentGames, getUserRankedResults, countUserRankedWins };
+// Head-to-head (#484). A game seen from @id's side; guest seats have a NULL id, so guests
+// group by the name stored on the game while accounts group by id.
+const OPPONENT_GAMES = `
+  SELECT CASE WHEN black_player_id IS @id THEN white_player_id ELSE black_player_id END AS opp_id,
+         CASE WHEN black_player_id IS @id THEN white_player_name ELSE black_player_name END AS opp_name,
+         CASE WHEN black_player_id IS @id THEN 'BLACK' ELSE 'WHITE' END AS my_color,
+         winner_color, ended_at
+  FROM games
+  WHERE (black_player_id = @id OR white_player_id = @id) AND ended_at IS NOT NULL
+`;
+const OPPONENT_KEY = "COALESCE(opp_id, 'guest:' || opp_name)";
+
+/** Per-opponent record, most-played first (then latest). losses = games - wins - draws. */
+function getUserOpponents(userId, limit, offset = 0) {
+  return stmt(`
+    SELECT u.username, COALESCE(u.display_name, opp_name) AS name,
+           COUNT(*) AS games,
+           SUM(CASE WHEN winner_color = 'DRAW' THEN 1 ELSE 0 END) AS draws,
+           SUM(CASE WHEN winner_color = my_color THEN 1 ELSE 0 END) AS wins,
+           MAX(ended_at) AS last_at
+    FROM (${OPPONENT_GAMES}) LEFT JOIN users u ON u.id = opp_id
+    GROUP BY ${OPPONENT_KEY}
+    ORDER BY games DESC, last_at DESC, ${OPPONENT_KEY}
+    LIMIT @limit OFFSET @offset
+  `).all({ id: userId, limit, offset });
+}
+
+function countUserOpponents(userId) {
+  return stmt(`SELECT COUNT(DISTINCT ${OPPONENT_KEY}) AS n FROM (${OPPONENT_GAMES})`).get({ id: userId }).n;
+}
+
+// One opponent: an account id (@opp) or, with @opp NULL, a guest's stored name (@name).
+const VERSUS = `ended_at IS NOT NULL AND (
+  (black_player_id = @id AND white_player_id IS @opp AND (@opp IS NOT NULL OR white_player_name = @name))
+  OR (white_player_id = @id AND black_player_id IS @opp AND (@opp IS NOT NULL OR black_player_name = @name)))`;
+
+/** @param {{id:string}|{guest:string}} opponent */
+const versusParams = (userId, opponent) => ({ id: userId, opp: opponent.id || null, name: opponent.id ? null : opponent.guest });
+
+function getUserGamesVs(userId, opponent, limit, offset = 0) {
+  return stmt(`
+    SELECT id, black_player_id, black_player_name, white_player_name, winner_color, ended_at
+    FROM games WHERE ${VERSUS}
+    ORDER BY ended_at DESC, id LIMIT @limit OFFSET @offset
+  `).all({ ...versusParams(userId, opponent), limit, offset });
+}
+
+function countUserGamesVs(userId, opponent) {
+  return stmt(`SELECT COUNT(*) AS n FROM games WHERE ${VERSUS}`).get(versusParams(userId, opponent)).n;
+}
+
+module.exports = { getUserOpponents, countUserOpponents, getUserGamesVs, countUserGamesVs, getLastRoomSettings, setLastRoomSettings, getProfileByUsername, getProfileById, getUiSkin, updateProfile, setAvatarVersion, getUserGameStats, getUserRecentGames, getUserRankedResults, countUserRankedWins };

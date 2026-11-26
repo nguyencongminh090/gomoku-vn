@@ -199,20 +199,60 @@ function gameRow(g, userId) {
   return { id: g.id, opponent: black ? g.white_player_name : g.black_player_name, result, endedAt: g.ended_at };
 }
 
-// Paginated game history for the profile (B202). Same privacy switch as the profile's game list:
-// hidden → only the owner sees it.
+/** One opponent's head-to-head record (#484); guests have no username. */
+function opponentRow(o) {
+  return { name: o.name, username: o.username || null, games: o.games, wins: o.wins, draws: o.draws, losses: o.games - o.wins - o.draws };
+}
+
+/** The user whose history is asked for, or null once a 404/403 has been sent. */
+function historyOwner(req, res) {
+  const user = database.getProfileByUsername(String(req.params.username).slice(0, 40));
+  if (!user) { res.status(404).json({ error: 'Không tìm thấy người chơi.', code: 'PROFILE_NOT_FOUND' }); return null; }
+  res.set('Cache-Control', 'no-store');
+  if (user.hide_history && optionalUserId(req) !== user.id) {
+    res.status(403).json({ error: 'Người chơi ẩn lịch sử ván.', code: 'HISTORY_HIDDEN' });
+    return null;
+  }
+  return user;
+}
+
+const pageOf = (req) => Math.max(1, parseInt(req.query.page, 10) || 1);
+const paginationOf = (page, total) => ({ page, limit: GAMES_PAGE, total, totalPages: Math.ceil(total / GAMES_PAGE) });
+
+// Paginated head-to-head records (#484), same privacy switch as the game list.
+router.get('/:username/opponents', (req, res, next) => {
+  try {
+    const user = historyOwner(req, res);
+    if (!user) return;
+    const page = pageOf(req);
+    const opponents = database.getUserOpponents(user.id, GAMES_PAGE, (page - 1) * GAMES_PAGE).map(opponentRow);
+    res.json({ opponents, pagination: paginationOf(page, database.countUserOpponents(user.id)) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Paginated game history (B202); ?vs=<username> or ?guest=<name> narrows to one opponent (#484).
+// Hidden history → only the owner sees it.
 router.get('/:username/games', (req, res, next) => {
   try {
-    const user = database.getProfileByUsername(String(req.params.username).slice(0, 40));
-    if (!user) return res.status(404).json({ error: 'Không tìm thấy người chơi.', code: 'PROFILE_NOT_FOUND' });
-    res.set('Cache-Control', 'no-store');
-    if (user.hide_history && optionalUserId(req) !== user.id) {
-      return res.status(403).json({ error: 'Người chơi ẩn lịch sử ván.', code: 'HISTORY_HIDDEN' });
+    const user = historyOwner(req, res);
+    if (!user) return;
+    const page = pageOf(req);
+    const offset = (page - 1) * GAMES_PAGE;
+    let opponent = null;
+    if (typeof req.query.vs === 'string') {
+      const other = database.getProfileByUsername(req.query.vs.slice(0, 40));
+      if (!other) return res.status(404).json({ error: 'Không tìm thấy người chơi.', code: 'PROFILE_NOT_FOUND' });
+      opponent = { id: other.id };
+    } else if (typeof req.query.guest === 'string') {
+      opponent = { guest: req.query.guest.slice(0, 80) };
     }
-    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const total = database.getUserGameStats(user.id).games;
-    const games = database.getUserRecentGames(user.id, GAMES_PAGE, (page - 1) * GAMES_PAGE).map((g) => gameRow(g, user.id));
-    res.json({ games, pagination: { page, limit: GAMES_PAGE, total, totalPages: Math.ceil(total / GAMES_PAGE) } });
+    const total = opponent ? database.countUserGamesVs(user.id, opponent) : database.getUserGameStats(user.id).games;
+    const rows = opponent
+      ? database.getUserGamesVs(user.id, opponent, GAMES_PAGE, offset)
+      : database.getUserRecentGames(user.id, GAMES_PAGE, offset);
+    res.json({ games: rows.map((g) => gameRow(g, user.id)), pagination: paginationOf(page, total) });
   } catch (err) {
     next(err);
   }
@@ -292,11 +332,13 @@ router.get('/:username', (req, res, next) => {
     }
 
     let stats = null;
-    let recent = [];
+    let opponents = [];
+    let opponentTotal = 0;
     if (showHistory) {
       const s = database.getUserGameStats(user.id);
       stats = { games: s.games, wins: s.wins || 0, draws: s.draws || 0 };
-      recent = database.getUserRecentGames(user.id, GAMES_PAGE).map((g) => gameRow(g, user.id));
+      opponents = database.getUserOpponents(user.id, GAMES_PAGE).map(opponentRow);
+      opponentTotal = database.countUserOpponents(user.id);
     }
 
     // Rated-games streak + badges (#199). Win-based parts follow hide_history; rank badges are public.
@@ -321,7 +363,8 @@ router.get('/:username', (req, res, next) => {
       streak,
       badges,
       puzzles: puzzleService.statsFor(user.id), // public: solving is not part of the hideable game history
-      recent,
+      opponents,
+      opponentTotal,
       clubs: clubService.clubsOfUser(user.id),
       isSelf,
       friendship: friendService.statusBetween(viewerId, user.id),

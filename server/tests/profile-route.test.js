@@ -149,14 +149,14 @@ describe('profile read + privacy', () => {
   it('shows stats + recent games by default, never exposes password hash or ids of others', async () => {
     const r = await req('GET', '/api/profile/alice');
     expect(r.json.stats).toEqual({ games: 1, wins: 1, draws: 0 });
-    expect(r.json.recent[0]).toMatchObject({ opponent: 'bob', result: 'win' });
+    expect(r.json.opponents[0]).toEqual({ name: expect.any(String), username: 'bob', games: 1, wins: 1, draws: 0, losses: 0 });
     expect(JSON.stringify(r.json)).not.toMatch(/password|"x"/);
     expect(r.json.isSelf).toBe(false);
     expect(r.json).not.toHaveProperty('privacy');
   });
 
   it("opponent's view of the same game is a loss", async () => {
-    expect((await req('GET', '/api/profile/bob')).json.recent[0].result).toBe('loss');
+    expect((await req('GET', '/api/profile/bob')).json.opponents[0]).toMatchObject({ wins: 0, losses: 1 });
   });
 
   it('PUT validates bio and flags, then hides history/bio from others but not from self', async () => {
@@ -168,7 +168,8 @@ describe('profile read + privacy', () => {
     const pub = (await req('GET', '/api/profile/alice')).json;
     expect(pub.bio).toBeNull();
     expect(pub.stats).toBeNull();
-    expect(pub.recent).toEqual([]);
+    expect(pub.opponents).toEqual([]);
+    expect(pub.opponentTotal).toBe(0);
 
     const me = (await req('GET', '/api/profile/alice', { cookie: UID })).json;
     expect(me).toMatchObject({ isSelf: true, bio: 'hello', privacy: { hideHistory: true, hideBio: true } });
@@ -410,10 +411,31 @@ describe('game history list (B202)', () => {
     expect(p.result).toBe('draw');
   });
 
-  it('profile payload carries the same first page via the shared row shape', async () => {
-    const prof = (await req('GET', '/api/profile/histdave')).json;
-    const p1 = (await req('GET', '/api/profile/histdave/games')).json.games;
-    expect(prof.recent).toEqual(p1);
+  it('#484 one record per account; guests group by name; rows sum to the stats', async () => {
+    const add = ins();
+    const later = new Date(Date.parse(NOW) + 3600000).toISOString();
+    add.run('h2h1', DAVE, null, 'histdave', 'GuestA', 'BLACK', later, later);   // win
+    add.run('h2h2', null, DAVE, 'GuestA', 'histdave', 'BLACK', later, later);   // loss
+    add.run('h2h3', DAVE, null, 'histdave', 'GuestB', 'draw', later, later);
+    try {
+      const prof = (await req('GET', '/api/profile/histdave')).json;
+      expect(prof.opponentTotal).toBe(3);
+      expect(prof.opponents.map((o) => [o.username, o.games])).toEqual([['bob', 23], [null, 2], [null, 1]]);
+      expect(prof.opponents[1]).toMatchObject({ name: 'GuestA', wins: 1, losses: 1, draws: 0 });
+      const sum = (k) => prof.opponents.reduce((n, o) => n + o[k], 0);
+      expect([sum('games'), sum('wins'), sum('draws')]).toEqual([prof.stats.games, prof.stats.wins, prof.stats.draws]);
+      expect((await req('GET', '/api/profile/histdave/opponents')).json.opponents).toEqual(prof.opponents);
+
+      const vsGuest = (await req('GET', '/api/profile/histdave/games?guest=GuestA')).json;
+      expect(vsGuest.games.map((g) => g.id).sort()).toEqual(['h2h1', 'h2h2']);
+      expect(vsGuest.pagination.total).toBe(2);
+      const vsBob = (await req('GET', '/api/profile/histdave/games?vs=bob&page=3')).json;
+      expect(vsBob.pagination.total).toBe(23);
+      expect(vsBob.games.map((g) => g.id)).toEqual(['h2', 'h1', 'h0']);
+      expect((await req('GET', '/api/profile/histdave/games?vs=nobody')).status).toBe(404);
+    } finally {
+      database.db.prepare("DELETE FROM games WHERE id IN ('h2h1','h2h2','h2h3')").run();
+    }
   });
 
   it('hide_history: others get 403 HISTORY_HIDDEN, the owner still reads; unknown user 404', async () => {
@@ -421,6 +443,9 @@ describe('game history list (B202)', () => {
     const other = await req('GET', '/api/profile/histdave/games', { cookie: OTHER });
     expect([other.status, other.json.code]).toEqual([403, 'HISTORY_HIDDEN']);
     expect((await req('GET', '/api/profile/histdave/games')).status).toBe(403);
+    for (const q of ['opponents', 'games?vs=bob', 'games?guest=x']) {
+      expect((await req('GET', '/api/profile/histdave/' + q, { cookie: OTHER })).status).toBe(403);
+    }
     expect((await req('GET', '/api/profile/histdave/games', { cookie: DAVE })).status).toBe(200);
     database.db.prepare('UPDATE users SET hide_history = 0 WHERE id = ?').run(DAVE);
     expect((await req('GET', '/api/profile/nobody/games')).json.code).toBe('PROFILE_NOT_FOUND');

@@ -66,6 +66,8 @@ const ROUTES = [
   ['game by id', game && `/api/games/${game.id}`, null],
   ['profile', `/api/profile/${member.username}`, M],
   ['profile games', `/api/profile/${member.username}/games`, M],
+  ['profile opponents', `/api/profile/${member.username}/opponents`, M],
+  ['profile games vs', peer && `/api/profile/${member.username}/games?vs=${peer.username}`, M],
   ['profile rating-history', `/api/profile/${member.username}/rating-history?category=${C}`, M],
   ['profile card', `/api/profile/card/${member.id}`, M],
   ['friends', '/api/friends', M],
