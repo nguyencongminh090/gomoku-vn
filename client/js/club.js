@@ -992,57 +992,175 @@
     $('cb-events').replaceChildren(...out);
   }
 
-  // --- composer command hints (B447): only commands this club enabled and this member may use ---
+  // --- composer popup (B447 commands, B478 mentions): only what this club enabled and this member may use ---
+  const CMD_ICONS = { pin: 'megaphone', challenge: 'handshake', poll: 'check-square', calendar: 'calendar' };
   function commandHints(prefix = '') {
     return window.ClubPolicy.available(state.club.myRole, chatSet()).flatMap(({ kind, words }) => {
       const word = words.find((w) => w.startsWith(prefix));
       if (!word) return [];
       const calendar = kind === 'calendar';
-      const args = kind === 'help' || (calendar && !isStaff()) ? '' : t('clubs.cmd_' + kind + '_args');
+      const args = calendar && !isStaff() ? '' : t('clubs.cmd_' + kind + '_args');
       const desc = t('clubs.cmd_' + (calendar && isStaff() ? 'calendar_staff' : kind));
-      return [{ cmd: '/' + word, args, desc, aliases: words.filter((w) => w !== word), bare: calendar || kind === 'poll' || kind === 'help' }];
+      return [{ cmd: '/' + word, kind, args, desc, aliases: words.filter((w) => w !== word), bare: calendar || kind === 'poll' }];
     });
+  }
+
+  /** Case and diacritic folding: "Đức" → "duc". */
+  const fold = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/đ/g, 'd');
+
+  /** [from, to) in `name` of the first word starting with the folded query `q`, or null. */
+  function wordMatch(name, q) {
+    let folded = '';
+    const from = [];
+    const to = [];
+    let at = 0;
+    for (const ch of name) {
+      const f = fold(ch);
+      for (let k = 0; k < f.length; k++) { from.push(at); to.push(at + ch.length); }
+      at += ch.length;
+      if (!f && to.length) to[to.length - 1] = at; // a stored combining mark belongs to its letter
+      folded += f;
+    }
+    for (let i = 0; i < folded.length; i++) {
+      if ((i === 0 || /[\s_]/.test(folded[i - 1])) && folded.startsWith(q, i)) return q ? [from[i], to[i + q.length - 1]] : [0, 0];
+    }
+    return null;
+  }
+
+  /** People first (max 8), then the groups this sender may ping. */
+  function mentionHints(query) {
+    const q = fold(query);
+    const match = (username, name) => {
+      const range = wordMatch(name, q);
+      return range || fold(username).startsWith(q) || wordMatch(username, q) ? { range } : null;
+    };
+    const people = state.club.leaderboard.filter((x) => !x.mine).flatMap((x) => {
+      const name = x.displayName || x.username;
+      const hit = match(x.username, name);
+      return hit ? [{ cmd: '@' + x.username, name, range: hit.range, person: x }] : [];
+    }).slice(0, 8);
+    const groups = [];
+    if (chatSet().notifyMention) groups.push(['officers', t('clubs.mention_officers'), t('clubs.mention_officers_desc')]);
+    if (isStaff() && chatSet().notifyAll) groups.push(['all', t('clubs.mention_all'), t('clubs.mention_all_desc')]);
+    return people.concat(groups.flatMap(([word, name, desc]) => {
+      const hit = match(word, name);
+      return hit ? [{ cmd: '@' + word, name, range: hit.range, desc }] : [];
+    }));
+  }
+
+  /** Display names are user text: the match is marked with DOM nodes only. */
+  function marked(name, range) {
+    const box = el('b');
+    if (!range || range[0] === range[1]) box.textContent = name;
+    else box.append(name.slice(0, range[0]), el('mark', name.slice(...range)), name.slice(range[1]));
+    return box;
+  }
+
+  function hintRow(h, i) {
+    const li = el('li', undefined, 'cl-hint');
+    li.id = 'cb-hint-' + i;
+    li.setAttribute('role', 'option');
+    li.setAttribute('aria-selected', String(i === state.hint));
+    const lead = h.person ? window.PlatformShell.avatar(h.person.avatarUrl, h.name, 'cl-hint__av') : el('span', undefined, 'cl-hint__tile');
+    if (!h.person) lead.append(icon(h.kind ? CMD_ICONS[h.kind] : 'users-three'));
+    const main = el('span', undefined, 'cl-hint__main');
+    const title = el('span', undefined, 'cl-hint__t');
+    const sub = el('span', undefined, 'cl-hint__sub');
+    if (h.kind) {
+      title.append(el('b', h.cmd), el('code', h.args, 'cl-hint__args'));
+      sub.append(el('span', h.desc, 'cl-hint__desc'));
+    } else {
+      title.append(marked(h.name, h.range));
+      sub.append(el('span', h.cmd));
+      if (h.desc) sub.append(el('span', h.desc, 'cl-hint__desc'));
+    }
+    main.append(title, sub);
+    li.append(lead, main);
+    if (h.aliases?.length) { // first alias only, as in the mockup; "Hoặc" is for screen readers
+      const alias = el('small', undefined, 'cl-hint__alias');
+      alias.append(el('span', t('clubs.cmd_alias'), 'cl-sr'), ' /' + h.aliases[0]);
+      li.append(alias);
+    }
+    const role = h.person && h.person.role;
+    if (role === 'owner' || role === 'officer') li.append(el('span', t('clubs.role_' + role), 'cl-role'));
+    // B478: preventDefault keeps focus (and the phone keyboard) in the input; the pick waits for click so that
+    // dragging the list scrolls it instead of choosing a row.
+    li.addEventListener('pointerdown', (ev) => ev.preventDefault());
+    li.addEventListener('mousedown', (ev) => ev.preventDefault());
+    li.addEventListener('click', () => pickHint(i));
+    return li;
+  }
+
+  /** Server rule (ClubChatCommands.parseMentions): the first 5 distinct names are notified; groups don't count. */
+  function syncMentionCap() {
+    const names = new Set();
+    for (const m of $('cb-chat-input').value.matchAll(/(^|[^A-Za-z0-9_@])@([A-Za-z0-9_]{3,20})(?![A-Za-z0-9_])/g)) {
+      const name = m[2].toLowerCase();
+      if (!['officers', 'all', 'tatca'].includes(name)) names.add(name);
+    }
+    $('cb-mention-cap').hidden = names.size < 5 || !!state.editing || !chatSet().notifyMention;
   }
 
   function hideHints() {
     state.hints = [];
     $('cb-chat-hints').hidden = true;
+    $('cb-hint-count').textContent = '';
+    syncMentionCap(); // edit start/end and picks change the text without an input event
     $('cb-chat-input').setAttribute('aria-expanded', 'false');
     $('cb-chat-input').removeAttribute('aria-activedescendant');
   }
 
-  /** While the input is just "/word" (no space yet), list the matching commands. */
+  /** While the input is just "/word" list commands; at an "@name" under the caret list people and groups. */
   function renderHints() {
-    const m = !state.editing && /^\/([A-Za-z]*)$/.exec($('cb-chat-input').value); // B476: an edit is never a command
     const input = $('cb-chat-input');
+    const m = !state.editing && /^\/([A-Za-z]*)$/.exec(input.value); // B476: an edit is never a command
     const caret = input.selectionStart ?? input.value.length;
-    const at = /(?:^|[^A-Za-z0-9_@])@([A-Za-z0-9_]*)$/.exec(input.value.slice(0, caret));
+    const at = /(?:^|[^A-Za-z0-9_@])@([\p{L}\p{M}\p{N}_]*)$/u.exec(input.value.slice(0, caret));
     let list = m ? commandHints(m[1].toLowerCase()) : [];
     if (at && isMember()) {
-      const names = state.club.leaderboard.filter((x) => !x.mine).map((x) => [x.username, x.displayName]);
-      if (chatSet().notifyMention) names.unshift(['officers', 'Ban quản trị']);
-      if (isStaff() && chatSet().notifyAll) names.unshift(['all', 'Tất cả thành viên']);
-      const prefix = at[1].toLowerCase();
-      const end = caret + /^\w*/.exec(input.value.slice(caret))[0].length;
-      list = names.filter(([name]) => name.toLowerCase().startsWith(prefix)).slice(0, 8)
-        .map(([name, desc]) => ({ cmd: '@' + name, desc, start: caret - prefix.length - 1, end }));
+      const end = caret + /^[\p{L}\p{M}\p{N}_]*/u.exec(input.value.slice(caret))[0].length;
+      list = mentionHints(at[1]).map((h) => ({ ...h, start: caret - at[1].length - 1, end }));
     }
+    syncMentionCap();
     if (!list.length) { hideHints(); return; }
     state.hints = list;
     state.hint = Math.min(state.hint, list.length - 1);
-    $('cb-chat-hints').replaceChildren(...list.map((h, i) => {
-      const li = el('li', undefined, 'cl-hint');
-      li.id = 'cb-hint-' + i;
-      li.setAttribute('role', 'option');
-      li.setAttribute('aria-selected', String(i === state.hint));
-      li.append(el('b', h.cmd), el('span', h.args, 'cl-hint__args'), el('span', h.desc, 'cl-hint__desc'));
-      if (h.aliases?.length) li.append(el('small', 'Hoặc ' + h.aliases.map((w) => '/' + w).join(', ')));
-      li.addEventListener('mousedown', (ev) => { ev.preventDefault(); pickHint(i); });
-      return li;
-    }));
-    $('cb-chat-hints').hidden = false;
-    $('cb-chat-input').setAttribute('aria-expanded', 'true');
-    $('cb-chat-input').setAttribute('aria-activedescendant', 'cb-hint-' + state.hint);
+    const box = $('cb-chat-hints');
+    const label = t(m ? 'clubs.cmd_list' : 'clubs.mention_list');
+    box.setAttribute('aria-label', label);
+    const count = t('clubs.hint_count', { n: list.length });
+    const head = el('li', undefined, 'cl-hints__head');
+    head.setAttribute('role', 'presentation');
+    head.setAttribute('aria-hidden', 'true');
+    head.append(el('span', t(m ? 'clubs.cmd_list' : 'clubs.mention_head')), el('span', m ? t('clubs.cmd_keys') : count));
+    box.replaceChildren(head, ...list.map(hintRow));
+    box.hidden = false;
+    if ($('cb-hint-count').textContent !== count) $('cb-hint-count').textContent = count;
+    input.setAttribute('aria-expanded', 'true');
+    input.setAttribute('aria-activedescendant', 'cb-hint-' + state.hint);
+    fitHints();
+    $('cb-hint-' + state.hint).scrollIntoView?.({ block: 'nearest' });
+  }
+
+  /** The list never grows past the room between the channel header and the input, minus 96px of messages. */
+  function fitHints() {
+    const box = $('cb-chat-hints');
+    if (box.hidden) return;
+    const composer = $('cb-chat-input').closest('.cl-compose__box').getBoundingClientRect();
+    const above = $('cb-editbar').offsetHeight || 0;
+    const free = composer.top - $('cb-head-title').closest('.cl-head').getBoundingClientRect().bottom - above - 96;
+    const phone = window.matchMedia?.('(max-width: 860px)').matches;
+    const max = Math.min(free, phone ? 4 * 52 + 34 : 340);
+    box.style.setProperty('--cl-hint-max', Math.max(120, max) + 'px');
+  }
+
+  /** On-screen keyboard open (not pinch-zoom): fold the club chrome so stream, popup and input fit. */
+  function syncKeyboard() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const open = vv.height * (vv.scale || 1) < 0.75 * window.innerHeight;
+    $('cb-app').classList.toggle('is-kbd', open);
+    fitHints();
   }
 
   function pickHint(i) {
@@ -1486,6 +1604,7 @@
         if (!result) { $('cb-poll-error').textContent = $('cb-msg').textContent; return; }
         $('cb-poll-editor').close();
         $('cb-chat-input').value = '';
+        syncMentionCap();
         await fetchChat('newer');
       } finally { submit.disabled = false; }
     };
@@ -1527,8 +1646,21 @@
       hideHints();
       if (state.editing) { await saveEdit(text); return; } // B476: PATCH, never parsed as a command
       const match = /^\/([a-z]+)(?:\s+([\s\S]*))?$/i.exec(text);
-      const kind = match && window.ClubPolicy.find(match[1])?.kind;
-      const arg = match?.[2] || '';
+      const command = match && window.ClubPolicy.find(match[1]);
+      const kind = command?.kind;
+      const arg = (match?.[2] || '').trim();
+      if (kind === 'help') { // B477: the word is an alias for the "/" popup
+        $('cb-chat-input').value = '/';
+        $('cb-chat-input').focus();
+        state.hint = 0;
+        renderHints();
+        return;
+      }
+      if (kind === 'calendar' && !arg && chatSet().cmdCalendar) { // B477: no server call, the list is already here
+        $('cb-chat-input').value = '';
+        showChannel('events', { updateHash: true });
+        return;
+      }
       if (kind === 'poll' && chatSet().cmdPoll) { openPoll(arg); return; }
       if (kind === 'calendar' && isStaff() && chatSet().cmdCalendar) {
         const draft = window.ClubPolicy.parseEventArg(arg);
@@ -1542,19 +1674,17 @@
         return;
       }
       const sent = await act('POST', '/messages', { text });
+      if (!sent && command?.retired === 'members') { // the text stays; offer the channel that does this now
+        const link = el('a', t('clubs.cmd_moved_link'));
+        link.href = location.pathname + location.search + '#ch=members'; // <base href="/"> (#451)
+        $('cb-msg').append(' ', link);
+      }
       if (sent) {
         $('cb-chat-input').value = '';
-        if (sent.kind === 'moderated') await load();
-        if (sent.kind === 'help') {
-          $('cb-chat-input').value = '/';
-          $('cb-chat-input').focus();
-          renderHints();
-          return;
-        }
+        syncMentionCap();
         if (sent.kind === 'pin') load(); // the pinned bar above the stream shows the new text
-        if (sent.kind === 'calendar' || sent.kind === 'event') { // B450: /lich stores nothing in chat; show the events channel
-          if (sent.kind === 'event') await load();
-          else renderEvents(sent.events, isStaff()); // fresh list from the reply
+        if (sent.kind === 'event') { // B450: /lich stores nothing in chat; show the events channel
+          await load();
           showChannel('events', { updateHash: true });
           return;
         }
@@ -1566,7 +1696,9 @@
     $('cb-chat-input').addEventListener('input', () => { state.hint = 0; renderHints(); });
     $('cb-chat-input').addEventListener('keydown', composerKeys);
     bindActions();
-    $('cb-chat-input').addEventListener('blur', () => setTimeout(hideHints, 150)); // let a click on a hint land first
+    $('cb-chat-input').addEventListener('blur', hideHints); // rows preventDefault on press, so picking never blurs
+    $('cb-chat-hints').addEventListener('mousedown', (ev) => ev.preventDefault()); // nor does its scrollbar
+    window.visualViewport?.addEventListener('resize', syncKeyboard);
     setInterval(() => {
       if (document.hidden) return;
       if (state.ch === 'chat' && state.chat.loaded) fetchChat('newer');

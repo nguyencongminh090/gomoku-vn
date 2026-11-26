@@ -1,5 +1,5 @@
 # B477 — Club chat: slash command cleanup
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-26 — retired policy flags, CLUB_COMMAND_MOVED, aliases routed on client, new popup rows; full `npm test` + browser pass (390 px + desktop, both themes, isolated DB)
 **Area:** `client/js/club-policy.js`, `server/managers/ClubService.js` (postMessage), `client/js/club.js` (hints, submit), i18n, tests
 **From:** [features/club-chat-refactor](../../features/club-chat-refactor/planning.md) §2, table approved 2026-11-26 (Q3)   **Depends:** —
 
@@ -18,6 +18,8 @@
 ## Traps
 - `mergeSettings` returns a 400 on unknown keys. If a toggle is ever retired, keep its key as an accepted no-op.
 - Record in this file: delete the retired aliases one release after deploy.
+- Follow-up: B482 removes the retired aliases.
+- Notes: popup order and the single alias follow mockup `slash`; a bare `/lich` shows the already-loaded list.
 ## Done when
 - Backend: a retired word gives `CLUB_COMMAND_MOVED` for staff and members, and the other commands are unchanged.
 - jsdom: the popup lists only the available commands, and the alias opens the popup.

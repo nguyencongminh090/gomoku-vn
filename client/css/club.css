@@ -265,11 +265,25 @@ dialog .cb-in:focus-visible { outline: 0 !important; border-color: var(--c-brand
 .cb-chat__at { font-weight: 800; color: var(--cc-text); }
 .cb-chat__at.is-me { margin: 0 -2px; padding: 0 2px; border-radius: 4px; background: var(--cc-tint); }
 .cb-chat__msg.is-mentioned { background: var(--cc-tint); }
-.cl-hints { margin: 0 0 6px; padding: 4px; list-style: none; border-radius: 12px; background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); }
-.cl-hint { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 8px 12px; border-radius: 8px; cursor: pointer; }
-.cl-hint[aria-selected="true"], .cl-hint:hover { background: var(--c-fill); }
-.cl-hint__args { color: var(--c-ink-2); font-family: var(--font-mono, monospace); font-size: 13px; }
-.cl-hint__desc { flex-basis: 100%; color: var(--c-ink-2); font-size: 13px; }
+/* B477/B478: one popup row = leading tile or avatar, two lines, then alias or role */
+.cl-hints { max-height: min(340px, var(--cl-hint-max, 340px)); margin: 0 0 6px; padding: 4px; overflow: auto; overscroll-behavior: contain; list-style: none; border-radius: 12px; background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border), var(--shadow-pop-soft); }
+.cl-hints[hidden] { display: none; }
+.cl-hints__head { display: flex; justify-content: space-between; gap: 8px; padding: 6px 10px 4px; font-size: 12px; font-weight: 800; color: var(--c-ink-2); }
+.cl-hint { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; min-height: 52px; padding: 6px 10px; scroll-margin: 4px; border-radius: 10px; cursor: pointer; }
+.cl-hint:hover { background: var(--c-hover); }
+.cl-hint[aria-selected="true"] { background: var(--c-fill); box-shadow: inset 3px 0 0 var(--cc-text); }
+.cl-hint__av { width: 32px; height: 32px; font-size: 12px; }
+.cl-hint__tile { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 9px; background: var(--cc-tint); color: var(--cc-text); }
+.cl-hint__main { display: flex; flex-direction: column; min-width: 0; }
+.cl-hint__t, .cl-hint__sub { display: flex; gap: 8px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.cl-hint__t { align-items: baseline; }
+.cl-hint__t b { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.cl-hint__t mark { background: none; color: var(--cc-text); text-decoration: underline; text-underline-offset: 3px; }
+.cl-hint__args { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--c-ink-2); font-family: var(--font-mono, monospace); font-size: 13px; }
+.cl-hint__sub, .cl-hint__alias { color: var(--c-ink-2); font-size: 13px; }
+.cl-hint__desc { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cl-compose__note { margin: 0 0 6px; font-size: 13px; color: var(--c-ink-2); }
+.cl-compose__note[hidden] { display: none; }
 .cl-dot { flex: none; width: 8px; height: 8px; margin-left: auto; border-radius: 50%; background: var(--c-ink); }
 
 /* B449: poll card. The bar is the button's own background (--pct set inline from server counts). */
@@ -432,6 +446,7 @@ dialog.cl-editor::backdrop { transition: background-color var(--cl-base) var(--c
   .cl-head__sub { display: none; }
   .cl-stream { padding: 12px; }
   .cl-compose { padding: 8px 12px 10px; }
+  .cl-hq.is-kbd :is(.cl-rail, .cl-chan) { display: none; }   /* B478: keyboard open */
   .cl-page { padding: 12px; }
   /* thành-viên table → one card per member: name + role, then the actions wrapped full-width (no sideways scroll) */
   #cb-panel-members thead { display: none; }
