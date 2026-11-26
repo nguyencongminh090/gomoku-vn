@@ -47,7 +47,7 @@
     box.replaceChildren(node('h2', d.name), node('p', d.description), action(slug, d.hidden ? 'show' : 'hide'),
       action(slug, d.locked ? 'unlock' : 'lock'), action(slug, 'delete'), node('h3', 'Tin nhắn'));
     for (const m of d.messages) {
-      const row = node('div', m.username + ' · ' + (m.body || m.kind), 'prow');
+      const row = node('div', m.username + ' · ' + (m.body ? decode(m.body) : m.kind), 'prow');
       row.append(action(slug, 'remove', m.id));
       box.append(row);
     }

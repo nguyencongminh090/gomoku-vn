@@ -66,3 +66,23 @@ test('admin.html loads escape-utils.js before admin-clubs.js', () => {
   expect(esc).toBeGreaterThan(-1);
   expect(esc).toBeLessThan(page.indexOf('js/admin-clubs.js'));
 });
+
+// B481 follow-up: the club detail message list printed the stored (escaped) body raw too.
+test('club detail message list decodes &lt;/&gt; and renders as text, not elements', async () => {
+  document.body.innerHTML = HTML;
+  const dir = { ...DIRECTORY, total: 1, clubs: [{ slug: 'c', name: 'Club' }], reports: [] };
+  const club = { name: 'Club', description: 'd', hidden: false, locked: false, log: [],
+    messages: [{ id: 5, username: 'ann', body: '15 phút &lt;b&gt;sửa&lt;/b&gt;', kind: 'text' }, { id: 6, username: 'bob', body: '', kind: 'poll' }, { id: 7, username: 'cy', body: null, kind: 'pin' }] };
+  global.fetch = jest.fn((url) => Promise.resolve({ ok: true, status: 200,
+    json: () => Promise.resolve(url.startsWith('/api/admin/clubs/c') ? club : dir) }));
+  window.HTMLElement.prototype.scrollIntoView = () => {};
+  window.eval(ESC);
+  window.eval(SRC);
+  window.AdminClubs.init();
+  await settle();
+  document.querySelector('#ac-list button').click();
+  await settle();
+  const rows = [...document.querySelectorAll('#ac-detail .prow')];
+  expect(rows.map((r) => r.firstChild.textContent)).toEqual(['ann · 15 phút <b>sửa</b>', 'bob · poll', 'cy · pin']);
+  expect(document.querySelector('#ac-detail b')).toBeNull();
+});
