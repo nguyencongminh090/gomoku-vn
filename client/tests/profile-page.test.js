@@ -18,7 +18,7 @@ const PROFILE = {
   avatarUrl: null, bio: 'hi <b>there</b>',
   ratings: [{ category: 'caro', rating: 1650, rank: 7, games: 40, provisional: false, delta7: 14 }],
   stats: { games: 10, wins: 6, draws: 1 },
-  recent: [{ id: 'g1', opponent: 'bob', result: 'win', endedAt: '2026-10-01T00:00:00.000Z' }],
+  opponents: [{ name: 'bob', username: 'bobby', games: 10, wins: 6, losses: 3, draws: 1 }], opponentTotal: 1,
   isSelf: false,
 };
 
@@ -134,7 +134,7 @@ describe('profile page', () => {
   });
 
   it('shows the history-private note when stats are withheld', async () => {
-    await boot({ ...PROFILE, stats: null, recent: [], bio: null });
+    await boot({ ...PROFILE, stats: null, opponents: [], opponentTotal: 0, bio: null });
     expect(document.getElementById('pf-recent-note').textContent).toBe('profile.history_hidden');
     expect(document.getElementById('pf-stats').children).toHaveLength(0);
     expect(document.getElementById('pf-stats-note').hidden).toBe(false);
@@ -366,19 +366,16 @@ describe('profile page', () => {
       expect(bar.hidden).toBe(false);
       expect([...bar.children].map((i) => [i.className, i.style.width])).toEqual([['w', '60%'], ['d', '10%'], ['l', '30%']]);
       expect(bar.getAttribute('aria-label')).toBe('profile.wdl_aria{"w":6,"d":1,"l":3}');
-      await boot({ ...PROFILE, stats: { games: 0, wins: 0, draws: 0 }, recent: [] });
+      await boot({ ...PROFILE, stats: { games: 0, wins: 0, draws: 0 }, opponents: [], opponentTotal: 0 });
       expect(document.getElementById('pf-wdl').hidden).toBe(true);
       expect(document.getElementById('pf-recent-note').textContent).toBe('profile.no_recent');
     });
 
-    it('game table: Ngày, Đối thủ (replay link), Kết quả as text; "Xem cả N ván" label', async () => {
-      await boot({ ...PROFILE, stats: { games: 12, wins: 1, draws: 0 } });
+    it('#484 head-to-head table: opponent, wins, losses, draws', async () => {
+      await boot(PROFILE);
       const cells = [...document.querySelectorAll('#pf-recent tr td')];
-      expect(cells).toHaveLength(3);
-      expect(cells[1].querySelector('a').textContent).toBe('bob');
-      expect(cells[2].textContent).toBe('profile.win');
-      expect(cells[2].classList.contains('pf-res--win')).toBe(true);
-      expect(document.getElementById('pf-more-label').textContent).toBe('profile.load_all{"n":12}');
+      expect(cells.map((c) => c.textContent)).toEqual(['bob', '6', '3', '1']);
+      expect(cells[0].querySelector('button').getAttribute('aria-expanded')).toBe('false');
     });
 
     it('own profile: Sao chép liên kết copies the /u/ link and confirms', async () => {
@@ -409,25 +406,52 @@ describe('profile page', () => {
     expect(document.getElementById('pf-content').hidden).toBe(true);
   });
 
-  describe('game history (B202)', () => {
-    it('rows link to /replay/<id>; "load more" is shown only when more games exist and appends the next page', async () => {
-      await boot({ ...PROFILE, stats: { games: 12, wins: 1, draws: 0 } });
-      expect(document.querySelector('#pf-recent a').getAttribute('href')).toBe('/replay/g1');
-      expect(document.getElementById('pf-more').hidden).toBe(false);
-      global.fetch.mockImplementation((u) => (String(u).includes('/games?page=2')
-        ? Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ games: [{ id: 'g2', opponent: 'cy', result: 'loss', endedAt: '2026-10-02T00:00:00.000Z' }], pagination: { page: 2, limit: 10, total: 12, totalPages: 2 } }) })
-        : Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) })));
-      document.getElementById('pf-more').click();
-      await new Promise((r) => setTimeout(r, 0)); await new Promise((r) => setTimeout(r, 0));
-      expect([...document.querySelectorAll('#pf-recent a')].map((a) => a.getAttribute('href'))).toEqual(['/replay/g1', '/replay/g2']);
-      expect(global.fetch.mock.calls.at(-1)[0]).toBe('/api/profile/alice/games?page=2');
-      expect(document.getElementById('pf-more').hidden).toBe(true);
+  describe('head-to-head (#484)', () => {
+    const game = (id) => ({ id, opponent: 'bob', result: 'loss', endedAt: '2026-10-02T00:00:00.000Z' });
+    const reply = (body) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+    const settle = async () => { await flush(); await flush(); };
+    const hrefs = () => [...document.querySelectorAll('#pf-recent a')].map((a) => a.getAttribute('href'));
+    const gameCalls = () => global.fetch.mock.calls.map((c) => String(c[0])).filter((u) => u.includes('/games?'));
+
+    it('click lazily loads that opponent\'s games, pages, collapses and reopens without refetching', async () => {
+      await boot(PROFILE);
+      expect(gameCalls()).toEqual([]);
+      global.fetch.mockImplementation((u) => reply(String(u).includes('page=2')
+        ? { games: [game('g2')], pagination: { page: 2, totalPages: 2 } }
+        : { games: [game('g1')], pagination: { page: 1, totalPages: 2 } }));
+      const btn = document.querySelector('.pf-opp__btn');
+      btn.click(); await settle();
+      expect(gameCalls()).toEqual(['/api/profile/alice/games?vs=bobby&page=1']);
+      expect(btn.getAttribute('aria-expanded')).toBe('true');
+      expect(hrefs()).toEqual(['/replay/g1']);
+      document.querySelector('.pf-game-more button').click(); await settle();
+      expect(hrefs()).toEqual(['/replay/g1', '/replay/g2']);
+      expect(document.querySelector('.pf-game-more')).toBeNull();
+      btn.click();
+      expect(hrefs()).toEqual([]);
+      btn.closest('tr').querySelector('td:last-child').click(); await settle(); // anywhere on the row
+      expect(hrefs()).toEqual(['/replay/g1', '/replay/g2']);
+      expect(gameCalls()).toHaveLength(2);
     });
 
-    it('no "load more" when the first page already holds every game or history is hidden', async () => {
-      await boot({ ...PROFILE, stats: { games: 1, wins: 1, draws: 0 } });
+    it('a guest opponent is asked for by name; a failed load leaves the row closed for retry', async () => {
+      await boot({ ...PROFILE, opponents: [{ name: 'Khách 1', username: null, games: 1, wins: 0, losses: 1, draws: 0 }] });
+      global.fetch.mockImplementation(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }));
+      const btn = document.querySelector('.pf-opp__btn');
+      btn.click(); await settle();
+      expect(gameCalls()).toEqual(['/api/profile/alice/games?guest=' + encodeURIComponent('Khách 1') + '&page=1']);
+      expect(btn.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('"load more" appears only when more opponents exist and appends the next page', async () => {
+      await boot(PROFILE);
       expect(document.getElementById('pf-more').hidden).toBe(true);
-      await boot({ ...PROFILE, stats: null, recent: [] });
+      await boot({ ...PROFILE, opponentTotal: 2 });
+      expect(document.getElementById('pf-more').hidden).toBe(false);
+      global.fetch.mockImplementation(() => reply({ opponents: [{ name: 'cy', username: 'cy', games: 1, wins: 1, losses: 0, draws: 0 }], pagination: { page: 2, totalPages: 2 } }));
+      document.getElementById('pf-more').click(); await settle();
+      expect([...document.querySelectorAll('.pf-opp__btn')].map((b) => b.textContent)).toEqual(['bob', 'cy']);
+      expect(global.fetch.mock.calls.at(-1)[0]).toBe('/api/profile/alice/opponents?page=2');
       expect(document.getElementById('pf-more').hidden).toBe(true);
     });
   });

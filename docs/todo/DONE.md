@@ -1,3 +1,4 @@
+- ✅ **#484.** Profile: per-opponent W/L/D table, click for that opponent's games `[Model: Sonnet]` — [detail](docs/todo/F484-profile-opponents.md)
 - ✅ **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — direct route (CloudFront→Caddy) live; closed with exceptions `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
 - ✅ **#473.** Tournament match shows initials instead of uploaded avatars `[Model: Sonnet]` — [detail](docs/todo/B473-tmatch-avatars.md)
 - ✅ **#482.** Club chat: delete retired slash aliases one release after #477 `[Model: Haiku]` — [detail](docs/todo/B482-club-chat-retired-commands-removal.md)

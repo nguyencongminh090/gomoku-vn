@@ -215,54 +215,112 @@
     renderBadges(p);
     renderOrg(p);
 
-    const list = $('pf-recent');
-    const note = $('pf-recent-note');
-    list.replaceChildren();
-    note.hidden = true;
-    if (!p.stats) {
-      note.hidden = false;
-      note.textContent = t('profile.history_hidden');
-    } else if (!p.recent.length) {
-      note.hidden = false;
-      note.textContent = t('profile.no_recent');
-    }
-    list.append(...p.recent.map(gameRow));
-    $('pf-recent-tbl').hidden = !p.recent.length;
-    $('pf-ref').hidden = !p.recent.length;
-    gamesPage = 1;
-    // Show the button only when more finished games exist than the first page carried.
-    $('pf-more').hidden = !p.stats || p.stats.games <= p.recent.length;
-    if (p.stats) $('pf-more-label').textContent = t('profile.load_all', { n: p.stats.games });
+    renderOpponents(p);
 
     $('pf-content').hidden = false;
     drawChart(p);
     if (location.hash === '#games') $('pf-games').scrollIntoView();
   }
 
-  let gamesPage = 1;
+  let oppPage = 1;
 
-  /** One table row per game: Ngày, Đối thủ (link to the replay, stretched over the row), Kết quả (text + colour). */
-  function gameRow(g) {
-    const tr = el('tr', undefined, 'pf-game');
-    const when = g.endedAt ? new Date(g.endedAt).toLocaleDateString(lang(), { day: '2-digit', month: '2-digit' }) : '';
-    const opp = el('td', undefined, 'pf-game__o');
-    const a = el('a', g.opponent, 'pf-ell');
-    a.href = '/replay/' + encodeURIComponent(g.id);
-    opp.appendChild(a);
-    tr.append(el('td', when, 'num'), opp, el('td', t('profile.' + g.result), 'pf-res pf-res--' + g.result));
+  /** Head-to-head table (#484): one row per opponent, click to list the games against them. */
+  function renderOpponents(p) {
+    const opponents = p.opponents || [];
+    const note = $('pf-recent-note');
+    note.hidden = !!p.stats && opponents.length > 0;
+    note.textContent = note.hidden ? '' : t(p.stats ? 'profile.no_recent' : 'profile.history_hidden');
+    $('pf-recent').replaceChildren(...opponents.map(opponentRow));
+    $('pf-recent-tbl').hidden = !opponents.length;
+    $('pf-ref').hidden = !opponents.length;
+    oppPage = 1;
+    $('pf-more').hidden = opponents.length >= (p.opponentTotal || 0);
+  }
+
+  async function getHistory(path) {
+    const res = await fetch('/api/profile/' + encodeURIComponent(username) + path, { credentials: 'same-origin' });
+    return res.ok ? res.json() : null;
+  }
+
+  function opponentRow(o) {
+    const tr = el('tr', undefined, 'pf-opp');
+    const btn = el('button', undefined, 'pf-opp__btn');
+    btn.type = 'button';
+    btn.setAttribute('aria-expanded', 'false');
+    btn.append(SHELL().icon('ph-regular-caret-down'), el('span', o.name, 'pf-ell'));
+    const name = el('td', undefined, 'pf-opp__o');
+    name.appendChild(btn);
+    tr.append(name, el('td', String(o.wins), 'num pf-res--win'), el('td', String(o.losses), 'num pf-res--loss'), el('td', String(o.draws), 'num pf-res--draw'));
+
+    const query = o.username ? 'vs=' + encodeURIComponent(o.username) : 'guest=' + encodeURIComponent(o.name);
+    const rows = []; // detail rows, kept so a reopen needs no refetch
+    let page = 0;
+    let busy = false;
+    const open = () => btn.getAttribute('aria-expanded') === 'true';
+    const show = () => { let after = tr; for (const r of rows) { after.after(r); after = r; } };
+
+    async function loadPage() {
+      if (busy) return;
+      busy = true;
+      try {
+        const data = await getHistory('/games?' + query + '&page=' + (page + 1));
+        if (!data) throw new Error('history');
+        if (page && rows.length) rows.pop().remove(); // previous "load more" row
+        page = data.pagination.page;
+        rows.push(...data.games.map(gameRow));
+        if (page < data.pagination.totalPages) rows.push(moreRow());
+        if (open()) show();
+      } catch (_) {
+        if (!page) btn.setAttribute('aria-expanded', 'false'); // click again to retry
+      } finally { busy = false; }
+    }
+
+    function moreRow() {
+      const row = el('tr', undefined, 'pf-game-more');
+      const cell = el('td');
+      cell.colSpan = 4;
+      const more = el('button', t('profile.load_more'), 'pbtn');
+      more.type = 'button';
+      more.onclick = loadPage;
+      cell.appendChild(more);
+      row.appendChild(cell);
+      return row;
+    }
+
+    // On the row, not a stretched pseudo-element: the button's pressed transform would shrink it mid-click.
+    tr.onclick = () => {
+      const next = !open();
+      btn.setAttribute('aria-expanded', String(next));
+      if (!next) rows.forEach((r) => r.remove());
+      else if (page) show();
+      else loadPage();
+    };
     return tr;
   }
 
-  async function loadMoreGames() {
+  /** One game against the opened opponent: date (link to the replay, stretched over the row), result. */
+  function gameRow(g) {
+    const tr = el('tr', undefined, 'pf-game');
+    const when = g.endedAt ? new Date(g.endedAt).toLocaleDateString(lang(), { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    const date = el('td', undefined, 'pf-game__d num');
+    const a = el('a', when);
+    a.href = '/replay/' + encodeURIComponent(g.id);
+    date.appendChild(a);
+    const result = el('td', t('profile.' + g.result), 'pf-res pf-res--' + g.result);
+    result.colSpan = 3;
+    tr.append(date, result);
+    return tr;
+  }
+
+  async function loadMoreOpponents() {
     const btn = $('pf-more');
     btn.disabled = true;
     try {
-      const res = await fetch('/api/profile/' + encodeURIComponent(username) + '/games?page=' + (gamesPage + 1), { credentials: 'same-origin' });
-      if (!res.ok) return;
-      const { games, pagination } = await res.json();
-      $('pf-recent').append(...games.map(gameRow));
-      gamesPage = pagination.page;
-      btn.hidden = pagination.page >= pagination.totalPages;
+      const data = await getHistory('/opponents?page=' + (oppPage + 1));
+      if (!data) return;
+      $('pf-recent').append(...data.opponents.map(opponentRow));
+      oppPage = data.pagination.page;
+      btn.hidden = data.pagination.page >= data.pagination.totalPages;
     } catch (_) { /* button stays; user can retry */ } finally { btn.disabled = false; }
   }
 
@@ -407,7 +465,7 @@
     // /profile.html has no /u/<name> segment: nothing to fetch (#272).
     if (!/^\/u\/./.test(location.pathname)) { location.replace('/'); return; }
     SHELL().build(null);
-    $('pf-more').onclick = loadMoreGames;
+    $('pf-more').onclick = loadMoreOpponents;
     $('pf-copy').onclick = copyLink;
     load();
   });
