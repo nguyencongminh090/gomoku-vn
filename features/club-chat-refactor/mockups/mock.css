@@ -1,0 +1,193 @@
+/* Club chat refactor mockups. Real styles come from client/css (tokens, platform, club). This file holds:
+   (1) mockup chrome (.mk-*-chrome: scene tabs, fake top nav and tab bar, simulated keyboard), and
+   (2) the NEW components, written as they would land in club.css (scoped to .cl-hq or the dialogs). */
+
+/* ---------- (1) mockup chrome ---------- */
+body { margin: 0; font-family: Nunito, system-ui, sans-serif; background: var(--c-bg); color: var(--c-ink); }
+.mk-tab { position: fixed; z-index: 99; right: 8px; bottom: 8px; display: flex; flex-wrap: wrap; gap: 4px; max-width: 560px; padding: 6px; border-radius: 12px; background: var(--c-surface-2); box-shadow: var(--shadow-pop); font-size: 12px; }
+.mk-tab a { padding: 4px 8px; border-radius: 6px; color: var(--c-ink-2); text-decoration: none; font-weight: 800; }
+.mk-tab a[aria-current] { background: var(--c-ink); color: var(--c-on-ink); }
+.mk-nav { display: flex; align-items: center; gap: 18px; height: 56px; padding: 0 20px; border-bottom: 1px solid var(--c-border); background: var(--c-bg); }
+.mk-nav b { font-size: 22px; font-weight: 800; }
+.mk-nav b i { font-style: normal; color: var(--c-brand-text); }
+.mk-nav nav { display: flex; gap: 4px; flex: 1; }
+.mk-nav nav span { padding: 8px 12px; border-radius: 10px; color: var(--c-ink-2); font-weight: 700; }
+.mk-nav nav span.on { background: var(--c-fill); color: var(--c-ink); }
+.mk-nav .pav { width: 32px; height: 32px; }
+.mk-tabbar { display: none; }
+.mk-kbd { display: none; }
+@media (max-width: 860px) {
+  .mk-nav nav { display: none; }
+  .mk-nav { justify-content: space-between; }
+  .mk-tabbar { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); height: 68px; border-top: 1px solid var(--c-border); background: var(--c-bg); }
+  .mk-tabbar span { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--c-ink-2); font-size: 12px; font-weight: 700; }
+  .mk-tabbar .icon { width: 24px; height: 24px; }
+  /* simulated on-screen keyboard: covers the tab bar like a real one (visual viewport shrinks, layout does not) */
+  .mk-kbd { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; height: 300px; display: grid; place-items: center; background: #2b2d31; color: #b5b9c0; font-size: 13px; font-weight: 800; letter-spacing: .02em; }
+  :root[data-mode="light"] .mk-kbd { background: #d1d4da; color: #4a4f57; }
+  body.mk-has-kbd .cl-hq { height: calc(100dvh - var(--cl-nav-h) - 300px); }
+  /* M2: keyboard open (visualViewport.height < 75% of innerHeight → .is-kbd on .cl-hq) → the club chrome
+     (rail, banner, channel strip: ~190px) folds away so the stream, the popup and the input share what is left. */
+  .cl-hq.is-kbd :is(.cl-rail, .cl-chan) { display: none; }
+}
+
+/* ---------- (2) new components ---------- */
+
+/* Message row: actions move out of the grid into a floating toolbar (no third column any more). */
+.cl-hq .cb-chat__msg { position: relative; grid-template-columns: 40px minmax(0, 1fr); margin: 0 -8px; padding: 6px 8px; border-radius: 12px; }
+.cl-hq .cb-chat__msg.is-mentioned { margin: 0 -8px; }
+@media (hover: hover) and (pointer: fine) {
+  .cl-hq .cb-chat__msg:hover, .cl-hq .cb-chat__msg:focus-within, .cl-hq .cb-chat__msg.is-hover { background: var(--c-hover); }
+}
+.cb-chat__edited { flex: none; font-size: 12px; color: var(--c-ink-2); }
+.cl-hq .cb-chat__msg.is-selected, .cl-hq .cb-chat__msg.is-editing { background: var(--cc-tint); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cc-text) 70%, transparent); }
+
+/* Desktop toolbar (role=toolbar, roving tabindex): appears on hover and on keyboard focus. */
+.cb-tools { position: absolute; z-index: 2; top: -16px; right: 8px; display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border), var(--shadow-pop-soft); opacity: 0; pointer-events: none; transform: translateY(2px); transition: opacity var(--cl-fast) var(--cl-ease), transform var(--cl-fast) var(--cl-ease); }
+.cb-tools .cl-ib { width: 36px; height: 36px; border-radius: 9px; }
+.cb-tools .cl-ib--danger:hover { background: color-mix(in srgb, var(--c-error) 14%, transparent); color: var(--c-error); }
+@media (hover: hover) and (pointer: fine) {
+  .cb-chat__msg:hover > .cb-tools, .cb-chat__msg.is-hover > .cb-tools { opacity: 1; pointer-events: auto; transform: none; }
+}
+.cb-chat__msg:focus-within > .cb-tools, .cb-chat__msg.is-hover > .cb-tools { opacity: 1; pointer-events: auto; transform: none; }   /* .is-hover = menu open (and the mockup's forced hover) */
+.cl-hq .cb-chat__msg.is-hover { background: var(--c-hover); }
+/* Touch: no toolbar; the ⋯ button stays in the accessibility tree, visible only when focused. */
+@media (hover: none), (pointer: coarse) {
+  .cb-tools { top: 4px; right: 4px; padding: 0; background: none; box-shadow: none; }
+  .cb-tools > :not(.cb-tools__more) { display: none; }
+  .cb-tools:not(:focus-within) .cb-tools__more { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .cl-hq .cb-chat__msg { -webkit-touch-callout: none; user-select: none; }   /* rows only; the sheet offers "Sao chép" + "Chọn văn bản" (Q5) */
+  .cl-hq .cb-chat__msg.is-selecting { -webkit-touch-callout: default; user-select: text; }
+}
+
+/* Desktop ⋯ menu (APG menu button) */
+.cb-menu { position: absolute; z-index: 5; top: 26px; right: 8px; display: flex; flex-direction: column; min-width: 200px; padding: 6px; border-radius: 14px; background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border), var(--shadow-pop); }
+.cb-menu[hidden] { display: none; }
+.cb-menu--up { top: auto; bottom: calc(100% + 22px); }   /* above the toolbar, which sits 16px over the row */
+.cb-act { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 0 12px; border: 0; border-radius: 9px; background: none; color: var(--c-ink); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.cb-act:hover, .cb-act:focus-visible { background: var(--c-fill); }
+.cb-act .icon { color: var(--c-ink-2); }
+.cb-act--danger, .cb-act--danger .icon { color: var(--c-error); }
+.cb-act kbd { margin-left: auto; font: 12px var(--font-mono, monospace); color: var(--c-ink-2); }
+
+/* Sheets and dialogs: one component. Phone = bottom sheet, desktop = centred dialog. */
+dialog.cb-sheet { width: min(30rem, calc(100% - 2rem)); max-height: 88dvh; margin: auto; padding: 0; overflow: auto; border: 0; border-radius: 20px; background: var(--c-surface); color: var(--c-ink); box-shadow: var(--shadow-card); }
+dialog.cb-sheet--wide { width: min(36rem, calc(100% - 2rem)); }
+dialog.cb-sheet::backdrop { background: rgb(0 0 0 / .5); }
+dialog.cb-sheet:focus, dialog.cb-sheet:focus-visible { outline: 0 !important; }   /* opened by touch: focus sits on the sheet itself */
+.cb-sheet__in { display: flex; flex-direction: column; gap: 14px; padding: 20px 22px 22px; }
+.cb-sheet__grip { display: none; }
+.cb-sheet__head { display: flex; align-items: center; gap: 10px; }
+.cb-sheet__head h3 { flex: 1; margin: 0; font-size: 18px; font-weight: 900; }
+.cb-sheet__foot { display: flex; flex-direction: row-reverse; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+@media (max-width: 860px) {
+  dialog.cb-sheet, dialog.cb-sheet--wide { width: 100%; max-width: 100%; max-height: 92dvh; margin: auto 0 0; border-radius: 22px 22px 0 0; }
+  .cb-sheet__in { padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); }
+  .cb-sheet__grip { display: block; width: 40px; height: 4px; margin: 2px auto 4px; border-radius: 2px; background: var(--c-border-strong); }
+  .cb-sheet__foot { flex-direction: column; }
+  .cb-sheet__foot .pbtn { width: 100%; min-height: 48px; }
+}
+/* message preview quoted inside the action sheet / delete / report dialogs */
+.cb-quote { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; padding: 12px; border-radius: 14px; background: var(--c-fill); }
+.cb-quote .pav { width: 32px; height: 32px; font-size: 12px; }
+.cb-quote b { display: block; font-size: 14px; }
+.cb-quote p { margin: 2px 0 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.cb-sheet__list { display: flex; flex-direction: column; gap: 2px; }
+.cb-sheet__list .cb-act { min-height: 52px; font-size: 16px; }
+.cb-warn { margin: 0; color: var(--c-ink-2); font-size: 14px; }
+
+/* Composer: edit mode bar + check icon on the send button */
+.cb-editbar { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; padding: 6px 6px 6px 12px; border-radius: 12px; background: var(--cc-tint); }
+.cb-editbar .icon { color: var(--cc-text); }
+.cb-editbar span { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.cb-editbar b { font-size: 13px; color: var(--cc-text); }
+.cb-editbar small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-ink-2); font-size: 13px; }
+.cb-editbar .cl-ib { width: 36px; height: 36px; }
+
+/* Popup (slash + mention): one row = leading tile/avatar, then two lines */
+.cl-hq .cl-hints { max-height: min(340px, var(--cb-hint-max, 340px)); overflow: auto; overscroll-behavior: contain; box-shadow: inset 0 0 0 1px var(--c-border), var(--shadow-pop-soft); }
+.cb-hint { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; min-height: 52px; padding: 6px 10px; border-radius: 10px; cursor: pointer; }
+.cb-hint[aria-selected="true"] { background: var(--c-fill); box-shadow: inset 3px 0 0 var(--cc-text); }
+.cb-hint .pav { width: 32px; height: 32px; font-size: 12px; }
+.cb-hint__tile { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 9px; background: var(--cc-tint); color: var(--cc-text); }
+.cb-hint__main { display: flex; flex-direction: column; min-width: 0; }
+.cb-hint__t { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-weight: 800; }
+.cb-hint__t code { font: 13px var(--font-mono, monospace); color: var(--c-ink-2); font-weight: 400; }
+.cb-hint__t mark { background: none; color: var(--cc-text); text-decoration: underline; text-underline-offset: 3px; }
+.cb-hint__d { display: flex; gap: 8px; min-width: 0; overflow: hidden; color: var(--c-ink-2); font-size: 13px; white-space: nowrap; text-overflow: ellipsis; }
+.cb-hint .cl-role { font-size: 12px; }
+.cb-hints__head { display: flex; justify-content: space-between; padding: 6px 10px 4px; font-size: 12px; font-weight: 800; color: var(--c-ink-2); }
+.cb-hints__cap { padding: 8px 10px; font-size: 13px; color: var(--c-ink-2); border-top: 1px solid var(--c-border); }
+
+/* Poll sheet */
+.cb-field { display: flex; flex-direction: column; gap: 6px; }
+.cb-field__top { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; font-weight: 700; color: var(--c-ink-2); }
+.cb-field__top small { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cl-hq .cb-in, dialog .cb-in { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--c-border-strong); border-radius: 12px; background: var(--c-field, var(--c-surface)); color: var(--c-ink); font: inherit; font-size: 16px; box-sizing: border-box; }
+dialog .cb-in:focus-visible { outline: 0 !important; border-color: var(--c-brand-text); box-shadow: 0 0 0 2px var(--c-brand-text); }
+dialog .cb-in[aria-invalid="true"], dialog .cb-in[aria-invalid="true"]:focus-visible { border-color: var(--c-error); box-shadow: 0 0 0 2px var(--c-error); }
+.cb-opts { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.cb-opt { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; }
+.cb-opt__n { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--c-fill); color: var(--c-ink-2); font-size: 13px; font-weight: 900; }
+.cb-opt__btns { display: flex; gap: 2px; }
+.cb-opt__btns .cl-ib { width: 40px; height: 40px; }
+.cb-opt__btns .cl-ib:disabled { opacity: .35; cursor: default; background: none; }
+.cb-opt__err { grid-column: 2 / -1; display: flex; align-items: center; gap: 6px; margin: -2px 0 0; color: var(--c-error); font-size: 13px; font-weight: 700; }
+.cb-preview { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 16px; background: var(--c-bg); box-shadow: inset 0 0 0 1px var(--c-border); }
+.cb-preview__label { font-size: 12px; font-weight: 800; color: var(--c-ink-2); }
+.cb-summary { display: flex; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--c-error-bg); color: var(--c-ink); font-size: 14px; }
+.cb-summary .icon { color: var(--c-error); }
+.cb-summary a { color: var(--c-error); font-weight: 800; }
+
+/* Calendar (sự-kiện) */
+.cb-cal { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 12px 18px; align-items: start; }
+.cb-cal__bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cb-cal__title { margin: 0 4px; font-size: 18px; font-weight: 900; white-space: nowrap; text-align: center; }
+.cb-cal__tz { flex-basis: 100%; display: inline-flex; align-items: center; gap: 6px; color: var(--c-ink-2); font-size: 13px; font-weight: 700; }
+.cb-cal__bar .pbtn--primary { margin-left: auto; }
+.cb-grid { padding: 10px; border-radius: 16px; background: var(--c-surface); }
+.cb-grid table { width: 100%; border-collapse: separate; border-spacing: 2px; table-layout: fixed; }
+.cb-grid th { padding: 4px 0 6px; font-size: 13px; font-weight: 800; color: var(--c-ink-2); }
+.cb-grid abbr { text-decoration: none; }
+.cb-grid td { padding: 0; }
+.cb-day { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 100%; min-height: 46px; padding: 7px 0 0; border: 0; border-radius: 12px; background: none; color: var(--c-ink); font: inherit; font-weight: 800; font-variant-numeric: tabular-nums; cursor: pointer; }
+.cb-day:hover { background: var(--c-hover); }
+.cb-day.is-out { color: var(--c-ink-3); font-weight: 600; }
+.cb-day.is-past:not(.is-out) { color: var(--c-ink-2); }
+.cb-day.is-today { box-shadow: inset 0 0 0 2px var(--cc-text); }
+.cb-day[aria-selected="true"] { background: var(--c-ink); color: var(--c-on-ink); }
+.cb-day__dots { display: flex; gap: 3px; min-height: 6px; }
+.cb-day__dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--cc-text); }
+.cb-day[aria-selected="true"] .cb-day__dots i { background: var(--c-on-ink); }
+.cb-agenda { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cb-agenda h3 { margin: 0; font-size: 16px; font-weight: 900; }
+.cb-ev { display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: start; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--c-surface); }
+.cb-ev__time { display: flex; flex-direction: column; font-size: 18px; font-weight: 900; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.cb-ev__time small { font-size: 12px; font-weight: 700; color: var(--c-ink-2); }
+.cb-ev__body { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.cb-ev__t { font-weight: 800; overflow-wrap: anywhere; }
+.cb-ev__m { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: -4px; font-size: 13px; color: var(--c-ink-2); }
+.cb-ev.is-past { opacity: .7; }
+.cb-empty { margin: 0; padding: 18px; border-radius: 16px; background: var(--c-surface); color: var(--c-ink-2); text-align: center; }
+@media (max-width: 860px) {
+  .cb-cal { grid-template-columns: minmax(0, 1fr); }
+  .cb-cal__bar .pbtn--primary { order: 9; width: 100%; margin: 4px 0 0; }
+  .cb-cal__title { flex: 1; font-size: 17px; }
+  .cb-grid { padding: 6px; }
+  .cb-day { min-height: 44px; padding-top: 6px; border-radius: 10px; }
+}
+
+/* Event sheet */
+.cb-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.cb-chips .pchip { min-height: 40px; }
+.cb-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cb-tzline { display: flex; align-items: center; gap: 6px; margin: -4px 0 0; color: var(--c-ink-2); font-size: 13px; }
+
+/* Report dialog */
+.cb-radios { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; border: 0; }
+.cb-radios legend { margin-bottom: 6px; font-size: 14px; font-weight: 700; color: var(--c-ink-2); }
+.cb-radio { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border-radius: 12px; cursor: pointer; font-weight: 700; }
+.cb-radio:hover { background: var(--c-hover); }
+.cb-radio input { width: 20px; height: 20px; margin: 0; accent-color: var(--c-brand); }
+.cb-radio:has(input:checked) { background: var(--c-fill); }
+dialog textarea.cb-in { min-height: 84px; padding: 10px 12px; resize: vertical; }

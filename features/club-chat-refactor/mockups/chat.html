@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="vi" data-skin="arena" data-mode="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Club chat refactor mockup</title>
+<link rel="stylesheet" href="../../../client/css/main.css">
+<link rel="stylesheet" href="../../../client/css/tokens.css">
+<link rel="stylesheet" href="../../../client/css/platform-shell.css">
+<link rel="stylesheet" href="../../../client/css/platform.css">
+<link rel="stylesheet" href="../../../client/css/club.css">
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css">
+<link rel="stylesheet" href="mock.css">
+<script>
+  // ?mode=dark|light&scene=…&as=member|staff (mockup switches; the real page reads skin-preload.js)
+  const Q = new URLSearchParams(location.search);
+  document.documentElement.dataset.mode = Q.get('mode') === 'light' ? 'light' : 'dark';
+</script>
+</head>
+<body class="pl cl-body pshell">
+<script src="sprite.js"></script>
+<div class="mk-tab" id="mk-tab" aria-label="Mockup scenes"></div>
+
+<header class="mk-nav">
+  <b>Play<i>3CR</i></b>
+  <nav><span>Trang chủ</span><span>Phòng</span><span>Giải đấu</span><span>Xếp hạng</span><span class="on">Hội nhóm</span><span>Học</span></nav>
+  <span class="pav">TM</span>
+</header>
+
+<main class="cl-hq" id="cb-app" data-ch="chat" style="--cc: var(--club-blue)">
+  <nav class="cl-rail" aria-label="Nhóm của tôi">
+    <a class="cl-rail__club is-on" href="#"><span class="pav cl-crest pav--c-blue">KỲ</span></a>
+    <hr class="cl-rail__sep">
+    <a class="cl-rail__btn" href="#" aria-label="Tìm nhóm"><svg class="icon" aria-hidden="true"><use href="#ph-regular-magnifying-glass"></use></svg></a>
+    <a class="cl-rail__btn" href="#" aria-label="Tạo nhóm"><svg class="icon" aria-hidden="true"><use href="#ph-regular-plus-circle"></use></svg></a>
+  </nav>
+  <div class="cl-content">
+    <aside class="cl-chan">
+      <div class="cl-banner"><h1 class="cl-banner__name"><span class="cl-nm">Kỳ Hội Mùa Thu</span><small>24 thành viên</small></h1></div>
+      <nav class="cl-chans" id="cb-channels" aria-label="Kênh">
+        <div class="cl-grp">Kênh</div>
+        <button type="button" class="cl-ch" id="ch-chat"><svg class="icon" aria-hidden="true"><use href="#ph-regular-chat-circle"></use></svg><span class="cl-nm">trò-chuyện</span></button>
+        <button type="button" class="cl-ch" id="ch-events"><svg class="icon" aria-hidden="true"><use href="#ph-regular-calendar"></use></svg><span class="cl-nm">sự-kiện</span><span class="cl-count">3</span></button>
+        <button type="button" class="cl-ch"><svg class="icon" aria-hidden="true"><use href="#ph-regular-trophy"></use></svg><span class="cl-nm">giải-đấu</span></button>
+        <button type="button" class="cl-ch"><svg class="icon" aria-hidden="true"><use href="#ph-regular-ranking"></use></svg><span class="cl-nm">xếp-hạng</span></button>
+        <button type="button" class="cl-ch"><svg class="icon" aria-hidden="true"><use href="#ph-regular-users-three"></use></svg><span class="cl-nm">thành-viên</span></button>
+      </nav>
+      <div class="cl-me"><span class="pav cl-av36">TM</span><span class="cl-me__x"><b class="cl-nm">Trúc Mai</b><small class="cl-nm" id="me-role">Thành viên</small></span></div>
+    </aside>
+
+    <section class="cl-mid" aria-labelledby="cb-head-title">
+      <header class="cl-head">
+        <span class="cl-head__icon" id="head-icon"></span>
+        <h2 id="cb-head-title" class="cl-head__title cl-nm"></h2>
+        <span id="head-sub" class="cl-head__sub cl-nm"></span>
+      </header>
+      <section class="cl-panel cl-panel--chat" id="panel-chat">
+        <div class="cl-chat">
+          <div class="cl-stream" id="cb-stream">
+            <div class="cl-pinned"><svg class="icon" aria-hidden="true"><use href="#ph-regular-megaphone"></use></svg><div><b>Ghim bởi ban quản trị</b><p>Tối thứ bảy 20:00 đấu giao hữu nội bộ, ai rảnh vào nhé!</p></div></div>
+            <div id="cb-chat-log" class="cl-log" role="log" aria-live="polite"></div>
+          </div>
+          <form id="cb-chat-form" class="cl-compose" autocomplete="off">
+            <div class="cb-editbar" id="cb-editbar" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#ph-regular-pencil-simple"></use></svg>
+              <span><b>Đang sửa tin nhắn</b><small id="cb-edit-orig"></small></span>
+              <button type="button" class="cl-ib" id="cb-edit-cancel" aria-label="Huỷ sửa (Esc)" title="Huỷ sửa (Esc)"><svg class="icon" aria-hidden="true"><use href="#ph-regular-x"></use></svg></button>
+            </div>
+            <div id="cb-chat-hints" class="cl-hints" role="listbox" aria-label="Gợi ý" hidden></div>
+            <div class="cl-compose__box">
+              <input id="cb-chat-input" type="text" maxlength="500" role="combobox" aria-autocomplete="list" aria-controls="cb-chat-hints" aria-expanded="false" placeholder="Nhắn cho cả nhóm…" aria-label="Tin nhắn">
+              <button type="button" class="cl-ib" id="cb-poll-new" aria-label="Bình chọn" title="Bình chọn"><svg class="icon" aria-hidden="true"><use href="#ph-regular-check-square"></use></svg></button>
+              <button type="submit" class="cl-send" id="cb-send" aria-label="Gửi" title="Gửi"><svg class="icon" aria-hidden="true"><use href="#ph-regular-paper-plane-tilt"></use></svg></button>
+            </div>
+          </form>
+        </div>
+      </section>
+      <section class="cl-panel cl-page" id="panel-events" hidden></section>
+    </section>
+
+    <aside class="cl-mem" aria-label="Thành viên">
+      <div class="cl-grp">Ban quản trị <span class="cl-count">2</span></div>
+      <div class="cl-u"><span class="cl-u__link"><span class="pav cl-av36 pav--c-teal">HM</span><span class="cl-u__x"><b class="cl-nm">Hoa Mai</b><small>Chủ nhiệm</small></span></span></div>
+      <div class="cl-u"><span class="cl-u__link"><span class="pav cl-av36 pav--c-orange">ĐA</span><span class="cl-u__x"><b class="cl-nm">Đức Anh</b><small>Phó nhóm</small></span></span></div>
+      <div class="cl-grp">Thành viên <span class="cl-count">22</span></div>
+      <div class="cl-u"><span class="cl-u__link"><span class="pav cl-av36 pav--c-purple">MK</span><span class="cl-u__x"><b class="cl-nm">Minh Khôi</b><small>1684</small></span></span></div>
+      <div class="cl-u"><span class="cl-u__link"><span class="pav cl-av36 pav--c-pink">LC</span><span class="cl-u__x"><b class="cl-nm">Lan Chi</b><small>1612</small></span></span></div>
+      <div class="cl-u"><span class="cl-u__link"><span class="pav cl-av36 pav--c-green">QB</span><span class="cl-u__x"><b class="cl-nm">Quốc Bảo</b><small>1540</small></span></span></div>
+      <div class="cl-u"><span class="cl-u__link"><span class="pav cl-av36">TM</span><span class="cl-u__x"><b class="cl-nm">Trúc Mai</b><small>1501</small></span></span></div>
+    </aside>
+  </div>
+</main>
+
+<nav class="mk-tabbar" aria-hidden="true">
+  <span><svg class="icon"><use href="#ph-regular-door-open"></use></svg>Trang chủ</span>
+  <span><svg class="icon"><use href="#ph-regular-grid-four"></use></svg>Phòng</span>
+  <span><svg class="icon"><use href="#ph-regular-crown-simple"></use></svg>Xếp hạng</span>
+  <span><svg class="icon"><use href="#ph-regular-trophy"></use></svg>Giải</span>
+  <span><svg class="icon"><use href="#ph-regular-user-circle"></use></svg>Tôi</span>
+</nav>
+<div class="mk-kbd" id="mk-kbd" aria-hidden="true" hidden>Bàn phím điện thoại (mô phỏng)</div>
+
+<!-- Phone action sheet / desktop: same actions live in the ⋯ menu -->
+<dialog class="cb-sheet" id="sheet-actions" aria-labelledby="sheet-actions-h">
+  <div class="cb-sheet__in">
+    <div class="cb-sheet__grip"></div>
+    <h3 class="cl-sr" id="sheet-actions-h">Tác vụ tin nhắn</h3>
+    <div class="cb-quote" id="sheet-quote"></div>
+    <div class="cb-sheet__list" role="menu" id="sheet-list"></div>
+  </div>
+</dialog>
+
+<dialog class="cb-sheet" id="dlg-delete" aria-labelledby="dlg-delete-h">
+  <div class="cb-sheet__in">
+    <div class="cb-sheet__grip"></div>
+    <div class="cb-sheet__head"><h3 id="dlg-delete-h"></h3></div>
+    <div class="cb-quote" id="dlg-delete-quote"></div>
+    <p class="cb-warn" id="dlg-delete-warn"></p>
+    <div class="cb-sheet__foot">
+      <button type="button" class="pbtn pbtn--danger" id="dlg-delete-ok">Xoá tin nhắn</button>
+      <button type="button" class="pbtn" data-close autofocus>Huỷ</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="cb-sheet" id="dlg-report" aria-labelledby="dlg-report-h">
+  <form class="cb-sheet__in" method="dialog">
+    <div class="cb-sheet__grip"></div>
+    <div class="cb-sheet__head"><h3 id="dlg-report-h">Báo cáo tin nhắn</h3><button type="button" class="cl-ib" data-close aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="#ph-regular-x"></use></svg></button></div>
+    <div class="cb-quote" id="dlg-report-quote"></div>
+    <fieldset class="cb-radios">
+      <legend>Vì sao bạn báo cáo?</legend>
+      <label class="cb-radio"><input type="radio" name="why" value="spam">Spam hoặc quảng cáo</label>
+      <label class="cb-radio"><input type="radio" name="why" value="abuse" checked autofocus>Quấy rối hoặc xúc phạm</label>
+      <label class="cb-radio"><input type="radio" name="why" value="nsfw">Nội dung không phù hợp</label>
+      <label class="cb-radio"><input type="radio" name="why" value="other">Lý do khác</label>
+    </fieldset>
+    <label class="cb-field" id="report-other" hidden><span class="cb-field__top">Mô tả thêm <small>0/200</small></span><textarea class="cb-in" maxlength="200"></textarea></label>
+    <p class="cb-warn">Quản trị trang sẽ xem báo cáo. Người gửi tin nhắn không biết ai đã báo cáo.</p>
+    <div class="cb-sheet__foot">
+      <button type="submit" class="pbtn pbtn--primary">Gửi báo cáo</button>
+      <button type="button" class="pbtn" data-close>Huỷ</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="cb-sheet cb-sheet--wide" id="dlg-poll" aria-labelledby="dlg-poll-h">
+  <form class="cb-sheet__in" id="poll-form" novalidate>
+    <div class="cb-sheet__grip"></div>
+    <div class="cb-sheet__head"><h3 id="dlg-poll-h">Tạo bình chọn</h3><button type="button" class="cl-ib" data-close aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="#ph-regular-x"></use></svg></button></div>
+    <div class="cb-summary" id="poll-summary" role="alert" hidden></div>
+    <label class="cb-field"><span class="cb-field__top">Câu hỏi <small id="poll-q-n">0/140</small></span><input class="cb-in" id="poll-q" maxlength="140"></label>
+    <div class="cb-field">
+      <span class="cb-field__top"><span id="poll-opts-l">Lựa chọn</span> <small id="poll-n">0/6</small></span>
+      <ol class="cb-opts" id="poll-opts" aria-labelledby="poll-opts-l"></ol>
+      <button type="button" class="pbtn pbtn--sm" id="poll-add" style="align-self:flex-start"><svg class="icon" aria-hidden="true"><use href="#ph-regular-plus-circle"></use></svg>Thêm lựa chọn</button>
+    </div>
+    <div class="cb-preview" aria-live="polite">
+      <span class="cb-preview__label">Xem trước</span>
+      <div class="cb-chat__msg cb-chat__msg--sys" style="margin:0;padding:0;animation:none" id="poll-preview"></div>
+    </div>
+    <p class="cb-warn">Đóng sau 24 giờ. Mọi thành viên thấy số phiếu, bấm vào để xem ai đã chọn.</p>
+    <div class="cb-sheet__foot">
+      <button type="submit" class="pbtn pbtn--primary">Đăng bình chọn</button>
+      <button type="button" class="pbtn" data-close>Huỷ</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="cb-sheet cb-sheet--wide" id="dlg-event" aria-labelledby="dlg-event-h">
+  <form class="cb-sheet__in" id="event-form">
+    <div class="cb-sheet__grip"></div>
+    <div class="cb-sheet__head"><h3 id="dlg-event-h">Tạo sự kiện</h3><button type="button" class="cl-ib" data-close aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="#ph-regular-x"></use></svg></button></div>
+    <label class="cb-field"><span class="cb-field__top">Tên sự kiện <small id="ev-t-n">0/60</small></span><input class="cb-in" id="ev-title" maxlength="60" autofocus></label>
+    <div class="cb-field">
+      <span class="cb-field__top" id="ev-day-l">Ngày</span>
+      <div class="cb-chips" role="group" aria-labelledby="ev-day-l" id="ev-day-chips"></div>
+      <input class="cb-in" type="date" id="ev-date" aria-label="Chọn ngày khác">
+    </div>
+    <div class="cb-field">
+      <span class="cb-field__top" id="ev-time-l">Giờ</span>
+      <div class="cb-chips" role="group" aria-labelledby="ev-time-l" id="ev-time-chips"></div>
+      <input class="cb-in" type="time" step="900" id="ev-time" aria-label="Giờ khác">
+      <p class="cb-tzline"><svg class="icon" aria-hidden="true"><use href="#ph-regular-globe"></use></svg>Giờ Việt Nam (GMT+7). Mọi thành viên thấy cùng giờ này.</p>
+    </div>
+    <div class="cb-preview" aria-live="polite"><span class="cb-preview__label">Xem trước</span><div id="ev-preview"></div></div>
+    <div class="cb-sheet__foot">
+      <button type="submit" class="pbtn pbtn--primary">Tạo sự kiện</button>
+      <button type="button" class="pbtn" data-close>Huỷ</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="mock.js"></script>
+</body>
+</html>
