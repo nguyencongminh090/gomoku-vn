@@ -69,7 +69,6 @@ in the detail file / fix-log).
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — direct route (CloudFront→Caddy) LIVE; open: peak-hour check + real-browser game `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
 - **#473.** Tournament match shows initials instead of uploaded avatars `[Model: Sonnet]` — [detail](docs/todo/B473-tmatch-avatars.md)
-- **#475.** Club chat: edit and delete own messages (server, migration, refresh path) `[Model: Opus]` — [detail](docs/todo/B475-club-chat-edit-delete-server.md)
 - **#476.** Club chat: message actions UI (toolbar, long-press sheet, edit mode) `[Model: Sonnet]` — [detail](docs/todo/B476-club-chat-message-actions-ui.md)
 - **#477.** Club chat: slash command cleanup `[Model: Sonnet]` — [detail](docs/todo/B477-club-chat-command-cleanup.md)
 - **#478.** Club chat: mention popup gaps `[Model: Sonnet]` — [detail](docs/todo/B478-club-chat-mention-gaps.md)

@@ -669,7 +669,7 @@ function listMessages(userId, slug, { before, after } = {}) {
   let order = 'DESC';
   if (a > 0) { where += ' AND m.id > ?'; args.push(a); order = 'ASC'; } else if (b > 0) { where += ' AND m.id < ?'; args.push(b); }
   const rows = db().prepare(`
-    SELECT m.id, m.sender_id, m.body, m.kind, m.meta, m.created_at, u.username, u.display_name, u.avatar_v
+    SELECT m.id, m.sender_id, m.body, m.kind, m.meta, m.created_at, m.edited_at, u.username, u.display_name, u.avatar_v
     FROM club_messages m JOIN users u ON u.id = m.sender_id
     WHERE ${where} ORDER BY m.id ${order} LIMIT ?`).all(...args, CHAT_PAGE);
   if (order === 'DESC') rows.reverse();
@@ -679,6 +679,7 @@ function listMessages(userId, slug, { before, after } = {}) {
       id: r.id, kind: r.kind, text: r.body, createdAt: r.created_at, mine: r.sender_id === userId,
       username: r.username, displayName: r.display_name, avatarUrl: avatarOf(r.sender_id, r.avatar_v),
     };
+    if (r.edited_at) out.editedAt = r.edited_at;
     if (r.meta) { try { out.meta = JSON.parse(r.meta); } catch (_) { /* corrupt meta: show the row bare */ } }
     if (out.kind === 'text' && out.meta?.recipients) {
       out.mentioned = out.meta.recipients[userId] || [];
@@ -797,6 +798,15 @@ function memberIds(clubId, exceptId, names) {
     .map((r) => r.user_id);
 }
 
+/** Confirmed members a sender's message may ping: never the sender, nobody banned or muted. Post and edit share it. */
+function mentionEligible(clubId, senderId) {
+  return db().prepare(`SELECT m.user_id, m.role, lower(u.username) AS name
+    FROM club_members m JOIN users u ON u.id=m.user_id
+    WHERE m.club_id=? AND m.role!='pending' AND m.user_id!=?
+    AND NOT EXISTS (SELECT 1 FROM club_sanctions s WHERE s.club_id=m.club_id AND s.user_id=m.user_id
+      AND (s.kind='ban' OR s.until_at>?))`).all(clubId, senderId, now());
+}
+
 function notifyMany(userIds, type, actorId, payload) {
   if (!userIds.length) return;
   db().transaction(() => { for (const id of userIds) notifications.push(id, type, actorId, payload); })();
@@ -854,12 +864,7 @@ function postMessage(userId, slug, text) {
   if (cooldown && coolingDown(cooldown)) throw new ClubError('CLUB_NOTIFY_COOLDOWN', 429, 'Vui lòng chờ trước khi nhắc lại nhóm.');
   const recipients = Object.create(null);
   if (toAll || staffMention || (settings.notifyMention && mentions.usernames.length)) {
-    const eligible = db().prepare(`SELECT m.user_id, m.role, lower(u.username) AS name
-      FROM club_members m JOIN users u ON u.id=m.user_id
-      WHERE m.club_id=? AND m.role!='pending' AND m.user_id!=?
-      AND NOT EXISTS (SELECT 1 FROM club_sanctions s WHERE s.club_id=m.club_id AND s.user_id=m.user_id
-        AND (s.kind='ban' OR s.until_at>?))`).all(club.id, userId, now());
-    for (const member of eligible) {
+    for (const member of mentionEligible(club.id, userId)) {
       const words = [];
       if (toAll) words.push('all', 'tatca');
       if (staffMention && isStaff(member.role)) words.push('officers');
@@ -983,8 +988,16 @@ function reportMessage(userId, slug, messageId, reason) {
   const since = new Date(Date.now() - 3600000).toISOString();
   if (db().prepare('SELECT count(*) AS n FROM club_reports WHERE reporter_id=? AND created_at>?').get(userId, since).n >= 5)
     throw new ClubError('CLUB_REPORT_LIMIT', 429, 'Bạn đã gửi đủ 5 báo cáo trong giờ này.');
-  db().prepare('INSERT INTO club_reports(club_id,message_id,reporter_id,excerpt,reason,created_at) VALUES(?,?,?,?,?,?)')
-    .run(club.id, Number(messageId), userId, msg.body || msg.kind, reason.trim(), now());
+  // B475: prior bodies (oldest first) so an edit made before anyone reported can't erase the evidence.
+  const prior = db().prepare('SELECT body, edited_at AS editedAt FROM club_message_edits WHERE message_id=? ORDER BY rowid')
+    .all(Number(messageId));
+  db().prepare('INSERT INTO club_reports(club_id,message_id,reporter_id,excerpt,reason,created_at,prior) VALUES(?,?,?,?,?,?,?)')
+    .run(club.id, Number(messageId), userId, msg.body || msg.kind, reason.trim(), now(), prior.length ? JSON.stringify(prior) : null);
+}
+
+/** B475: note what happened to a reported message afterwards, for the admin queue. */
+function markReports(clubId, messageId, later) {
+  db().prepare('UPDATE club_reports SET later=? WHERE club_id=? AND message_id=?').run(JSON.stringify(later), clubId, Number(messageId));
 }
 
 function removedMessages(userId, slug, visible) {
@@ -999,17 +1012,109 @@ function removeContent(club, messageId) {
   const row = db().prepare('DELETE FROM club_messages WHERE club_id=? AND id=? RETURNING sender_id,body,kind').get(club.id, Number(messageId));
   if (row?.kind === 'pin' && row.body === dmText.clean(club.announcement))
     db().prepare("UPDATE clubs SET announcement='' WHERE id=?").run(club.id);
+  if (row) markReports(club.id, messageId, { action: 'deleted', at: now() });
   return row;
 }
 
+/**
+ * B475 (Q1): the author deletes their own message of any kind, even while muted; staff delete someone
+ * else's only when they outrank the sender (a sender who left has no role, so any staff outranks them).
+ * Hard delete, no placeholder: open tabs drop it through `removed`. Logged only when actor ≠ author.
+ */
 function deleteMessage(userId, slug, messageId) {
   const club = getClub(slug);
-  requireStaff(club, userId);
+  const role = requireMember(club, userId);
   db().transaction(() => {
+    const msg = db().prepare('SELECT sender_id FROM club_messages WHERE club_id=? AND id=?').get(club.id, Number(messageId));
+    if (!msg) throw new ClubError('CLUB_MESSAGE_NOT_FOUND', 404, 'Không tìm thấy tin nhắn.');
+    const own = msg.sender_id === userId;
+    if (!own && !policy.canModerate(role, roleOf(club.id, msg.sender_id)))
+      throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn không có quyền xoá tin nhắn này.');
     const row = removeContent(club, messageId);
-    if (!row) throw new ClubError('CLUB_MESSAGE_NOT_FOUND', 404, 'Không tìm thấy tin nhắn.');
-    log(club.id, 'delete_message', userId, row.sender_id, String(messageId));
+    if (!own) log(club.id, 'delete_message', userId, row.sender_id, String(messageId));
   })();
+}
+
+const EDIT_HISTORY = 5;
+
+/**
+ * B475: the author edits their own plain-text message. Never parsed as a command. An unchanged cleaned
+ * body is a no-op. Mentions: only individual names not yet pinged for this message notify (once per
+ * message, through the posting eligibility query); group words added by an edit never notify.
+ * `meta.pinged` = user ids ever notified for this message (only grows; seeded from `recipients`).
+ * `meta.recipients` = delivered words still present in the body, so highlighting = what was delivered.
+ * The response carries no rev: clients advance their cursor only from GET /messages.
+ */
+function editMessage(userId, slug, messageId, text) {
+  const club = getClub(slug);
+  requireMember(club, userId);
+  const id = Number(messageId);
+  const msg = db().prepare('SELECT sender_id, body, kind, meta, edited_at FROM club_messages WHERE club_id=? AND id=?').get(club.id, id);
+  if (!msg) throw new ClubError('CLUB_MESSAGE_NOT_FOUND', 404, 'Không tìm thấy tin nhắn.');
+  if (msg.sender_id !== userId) throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn chỉ sửa được tin nhắn của mình.');
+  if (msg.kind !== 'text') throw new ClubError('CLUB_EDIT_KIND', 400, 'Không sửa được loại tin nhắn này.');
+  checkMute(club.id, userId);
+  rateLimit(userId);
+  const body = dmText.clean(typeof text === 'string' ? text : '');
+  if (!body) throw new ClubError('CLUB_MESSAGE_EMPTY', 400, 'Tin nhắn trống.');
+  if (body === msg.body) return { id, text: body, editedAt: msg.edited_at, unchanged: true };
+
+  let meta = {};
+  try { meta = JSON.parse(msg.meta || '{}') || {}; } catch (_) { /* corrupt meta: start over */ }
+  const old = meta.recipients || {};
+  const pinged = new Set(Array.isArray(meta.pinged) ? meta.pinged : Object.keys(old));
+  const mentions = chat.parseMentions(body);
+  const present = (w) => (w === 'all' || w === 'tatca' ? mentions.all : w === 'officers' ? !!mentions.officers : mentions.usernames.includes(w));
+  const recipients = Object.create(null);
+  for (const [uid, words] of Object.entries(old)) {
+    const keep = words.filter(present);
+    if (keep.length) recipients[uid] = keep;
+  }
+  const fresh = [];
+  const settings = chat.readSettings(club.chat_settings);
+  if (settings.notifyMention && mentions.usernames.length) {
+    for (const member of mentionEligible(club.id, userId)) {
+      if (!mentions.usernames.includes(member.name)) continue; // parseMentions never yields group words
+      if (!pinged.has(member.user_id)) { pinged.add(member.user_id); fresh.push(member.user_id); }
+      const words = recipients[member.user_id] || (recipients[member.user_id] = []);
+      if (!words.includes(member.name)) words.push(member.name);
+    }
+  }
+  const at = now();
+  db().transaction(() => {
+    db().prepare('INSERT INTO club_message_edits (message_id, body, edited_at) VALUES (?, ?, ?)').run(id, msg.body, at);
+    db().prepare(`DELETE FROM club_message_edits WHERE message_id = ? AND rowid NOT IN (
+      SELECT rowid FROM club_message_edits WHERE message_id = ? ORDER BY rowid DESC LIMIT ?)`).run(id, id, EDIT_HISTORY);
+    const { chat_rev: rev } = db().prepare('UPDATE clubs SET chat_rev = chat_rev + 1 WHERE id = ? RETURNING chat_rev').get(club.id);
+    db().prepare('UPDATE club_messages SET body=?, meta=?, edited_at=?, edit_rev=? WHERE id=?')
+      .run(body, JSON.stringify({ ...meta, recipients, pinged: [...pinged] }), at, rev, id);
+    markReports(club.id, id, { action: 'edited', body, at });
+    notifyMany(fresh, 'club_mention', userId, senderPayload(club, userId, id));
+  })();
+  return { id, text: body, editedAt: at };
+}
+
+/**
+ * B475 refresh path for GET /messages: `rev` = clubs.chat_rev always; with `rev=n` + `visible=ids`, also the
+ * edited rows among those ids (this club only) whose edit_rev > n, as the viewer sees them.
+ */
+function editRefresh(userId, slug, { rev, visible } = {}) {
+  const club = getClub(slug);
+  requireMember(club, userId);
+  const out = { rev: club.chat_rev };
+  if (rev === undefined) return out;
+  out.edited = [];
+  const since = Number.parseInt(rev, 10);
+  const ids = String(visible || '').split(',').slice(0, CHAT_KEEP).map(Number).filter((n) => Number.isSafeInteger(n) && n > 0);
+  if (!(since >= 0) || since >= club.chat_rev || !ids.length) return out;
+  const rows = db().prepare(`SELECT id, body, meta, edited_at FROM club_messages
+    WHERE club_id = ? AND edit_rev > ? AND id IN (${ids.map(() => '?').join(',')}) ORDER BY id`).all(club.id, since, ...ids);
+  out.edited = rows.map((r) => {
+    let recipients = {};
+    try { recipients = JSON.parse(r.meta || '{}').recipients || {}; } catch (_) { /* corrupt meta: no highlight */ }
+    return { id: r.id, text: r.body, editedAt: r.edited_at, mentioned: recipients[userId] || [] };
+  });
+  return out;
 }
 
 /** Wins in the last 7 days among confirmed members (#235). Any finished game counts, rated or not. */
@@ -1137,7 +1242,7 @@ function userIdByUsername(username) {
 module.exports = {
   clubActivity, removeContent, checkAccess, clubHistory, reportMessage, removedMessages, moderate, ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
   COLORS, createClub, updateClub, deleteClub, join, leave, approve, remove, setRole, invite, revokeInvite,
-  createEvent, deleteEvent, rsvpEvent, remindDueEvents, staffClubId, clubRosterForTournament, tournamentClubs, listMessages, postMessage, deleteMessage, _resetFanOut,
+  createEvent, deleteEvent, rsvpEvent, remindDueEvents, staffClubId, clubRosterForTournament, tournamentClubs, listMessages, postMessage, deleteMessage, editMessage, editRefresh, _resetFanOut,
   createPoll, refreshPolls, votePoll, closePoll, pollVoters, MAX_OPEN_POLLS,
   clubForImageEdit, setImageVersion, getClub, listClubs, getClubDetail, clubsOfUser, userIdByUsername,
 };

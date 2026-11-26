@@ -19,9 +19,11 @@
  * DELETE /api/clubs/:slug/events/:id                staff
  * POST   /api/clubs/:slug/events/:id/rsvp           members: "tham gia" (B450) → {id, going, mine}
  * DELETE /api/clubs/:slug/events/:id/rsvp           members: take it back
- * GET    /api/clubs/:slug/messages?before=|after=[&polls=1,2]   members only (polling; polls = refresh those cards, B449)
+ * GET    /api/clubs/:slug/messages?before=|after=[&polls=1,2][&visible=ids&rev=n]   members only (polling; polls = refresh
+ *          those cards, B449; always `rev` = clubs.chat_rev, with rev=n also `edited` rows among visible ids, B475)
  * POST   /api/clubs/:slug/messages                  {text} members only; /ghim, /giaohuu, /binhchon, @mentions (B447)
- * DELETE /api/clubs/:slug/messages/:id              staff
+ * PATCH  /api/clubs/:slug/messages/:id              {text} author only, kind text, not muted (B475)
+ * DELETE /api/clubs/:slug/messages/:id              author (any kind, even muted) or staff who outrank the sender (B475)
  * POST   /api/clubs/:slug/messages/:id/vote         {option: 0-based | null} members (B449)
  * POST   /api/clubs/:slug/messages/:id/close        poll creator or staff
  * GET    /api/clubs/:slug/messages/:id/voters       members: names per option
@@ -242,6 +244,7 @@ router.get('/:slug/messages', ...readAuth, h((req, res) => {
   const body = { messages: svc.listMessages(req.user.userId, req.params.slug, req.query) };
   if (req.query.visible) body.removed = svc.removedMessages(req.user.userId, req.params.slug, req.query.visible);
   if (req.query.polls) body.polls = svc.refreshPolls(req.user.userId, req.params.slug, req.query.polls);
+  Object.assign(body, svc.editRefresh(req.user.userId, req.params.slug, req.query)); // B475: rev (+ edited)
   res.json(body);
 }));
 
@@ -252,6 +255,10 @@ router.post('/:slug/messages', ...write, h((req, res) => {
 router.delete('/:slug/messages/:id', ...write, h((req, res) => {
   svc.deleteMessage(req.user.userId, req.params.slug, req.params.id);
   res.json({ ok: true });
+}));
+
+router.patch('/:slug/messages/:id', ...write, h((req, res) => {
+  res.json(svc.editMessage(req.user.userId, req.params.slug, req.params.id, (req.body || {}).text));
 }));
 
 router.post('/:slug/messages/:id/report', ...write, h((req, res) => {
