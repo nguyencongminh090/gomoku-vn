@@ -1,5 +1,5 @@
 # B483 — Club chat (phone): composer floats mid-screen when the stream is short
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-26 — `.cl-mid { flex: 1 }` on phones; composer at the tab bar for 0/1/30 msgs, popup open or closed; [fix-log](../fix-log/2026-11-26-483-club-phone-composer.md)
 **Area:** `client/css/club.css` (`.cl-mid` in the 860px block)
 **From:** B477/B478 browser pass at 390 px, 2026-11-26   **Depends:** —
 

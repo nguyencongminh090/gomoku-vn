@@ -747,6 +747,13 @@ describe('club banner (#446): generated pattern when none; phone keeps a short s
     expect(phone).toMatch(/#cb-members-body tr \{ display: grid;/);
     expect(phone).toMatch(/#cb-members-body td:nth-child\(3\) \{ grid-column: 1 \/ -1; display: flex; flex-wrap: wrap;/);
   });
+
+  // B483: on phones .cl-hq is a flex column; a content-sized .cl-mid left the composer mid-screen on a short stream.
+  it('club.css: phone centre column fills the shell height so the composer sits at the tab bar', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'club.css'), 'utf8');
+    const phone = css.slice(css.indexOf('@media (max-width: 860px) {\n  body.pshell.cl-body'));
+    expect(phone).toMatch(/\.cl-mid \{ flex: 1;/);
+  });
 });
 
 describe('chat commands + notifications (B447)', () => {

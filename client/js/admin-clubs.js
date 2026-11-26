@@ -6,6 +6,8 @@
     remove: 'Gỡ tin nhắn', dismiss: 'Bỏ qua báo cáo', uphold: 'Gỡ tin bị báo cáo' };
   let page = 1;
   let version = 0;
+  // B481: club bodies are stored escaped (DmText.clean); decode for textContent, as club.js does.
+  const decode = (txt) => (window.EscapeUtils ? window.EscapeUtils.decodeChatText(txt) : txt);
   function node(tag, text, cls) {
     const n = document.createElement(tag);
     n.textContent = text;
@@ -64,10 +66,10 @@
     if (page > 1) $('ac-pages').append(button('Trang trước', () => { page--; return list(); }));
     if (page * 30 < d.total) $('ac-pages').append(button('Trang sau', () => { page++; return list(); }));
     $('ac-reports').replaceChildren(...d.reports.map((r) => {
-      const row = node('div', [r.name, r.reason, r.excerpt].join(' · '), 'prow');
+      const row = node('div', [r.name, r.reason, decode(r.excerpt)].join(' · '), 'prow');
       // B475: earlier bodies (evidence an edit can't erase) and what the author did after the report.
-      for (const p of r.prior || []) row.append(node('p', 'Bản trước: ' + p.body, 'pnote'));
-      if (r.later?.action === 'edited') row.append(node('p', 'Sau báo cáo, đã sửa thành: ' + r.later.body, 'pnote'));
+      for (const p of r.prior || []) row.append(node('p', 'Bản trước: ' + decode(p.body), 'pnote'));
+      if (r.later?.action === 'edited') row.append(node('p', 'Sau báo cáo, đã sửa thành: ' + decode(r.later.body), 'pnote'));
       if (r.later?.action === 'deleted') row.append(node('p', 'Sau báo cáo, đã xoá lúc ' + new Date(r.later.at).toLocaleString(), 'pnote'));
       row.append(action(r.slug, 'dismiss', r.id), action(r.slug, 'uphold', r.id));
       return row;

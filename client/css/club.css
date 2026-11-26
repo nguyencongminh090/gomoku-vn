@@ -430,6 +430,7 @@ dialog.cl-editor::backdrop { transition: background-color var(--cl-base) var(--c
   .cl-rail__club.is-on::before { left: 8px; right: 8px; top: auto; bottom: -8px; width: auto; height: 3px; border-radius: 3px; }
   .cl-rail__sep { align-self: center; width: 0; height: 32px; margin: 0 2px; border-top: 0; border-left: 2px solid var(--c-border); }
   .cl-chan { flex: none; border-right: 0; }
+  .cl-mid { flex: 1; }   /* B483: take the rest of the shell, else a short stream leaves the composer mid-screen */
   .cl-banner { height: 72px; }
   .cl-banner__name { font-size: 17px; }
   .cl-chans { flex: none; flex-direction: row; gap: 6px; padding: 8px; overflow-x: auto; }
