@@ -166,7 +166,7 @@ Tone table — one row per displayed state, the same on every page. Colours anch
 (green → grey → amber → red by severity). Glyph shapes make colour not the only cue (Q8).
 | state | i18n key (vi / en) | colour token | glyph |
 |---|---|---|---|
-| playing / in a tournament | `presence.playing` Đang chơi / Playing · `presence.tournament` Đang thi đấu / In a tournament | `--c-success` | filled dot |
+| playing / in a tournament | `presence.playing` Đang chơi / Playing · `presence.tournament` Đang thi đấu / In a tournament | `--c-success` | filled dot with a core (`core`) |
 | online, idle | `presence.online` Trực tuyến / Online | `--c-success` | filled dot |
 | watching | `presence.watching` Đang xem / Watching | `--c-success` | ring |
 | searching | `presence.searching` Đang tìm trận / Searching | `--c-success` | dotted ring |

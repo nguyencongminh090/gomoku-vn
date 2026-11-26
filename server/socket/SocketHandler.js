@@ -31,6 +31,8 @@ const TRANSPORT_LOG_MS = 10 * 60 * 1000;
 
 // Room payloads carry each member's avatar URL (null for guests / no avatar) — same shape as profile.js.
 roomManager.avatarLookup = require('../managers/avatar-lookup').avatarUrlFor;
+// #488: room members in grace carry their deadline (presence adapter reads the grace timers).
+roomManager.graceLookup = (userId) => require('../presence').graceUntil(userId);
 // Lobby cards show each seated member's rating in the room's rule pool (#364).
 roomManager.ratingLookup = require('../managers/seat-rating').seatRating;
 // F453: "Club members" rooms — who may take a seat.
@@ -127,6 +129,7 @@ function init(io) {
   friendService.setHooks({
     isOnline: (userId) => isVisiblyOnline(userId),
     activityOf: (userId) => friendService.activityFromRoom(roomManager.getRoomByUser(userId), userId),
+    statusOf: (userId) => presence.statusOf(userId, 'friend'), // #488
   });
 
   // A series player left the room → close the challenge series on what was played (#222).

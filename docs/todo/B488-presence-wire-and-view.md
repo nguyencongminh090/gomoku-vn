@@ -1,5 +1,5 @@
 # B488 — Presence: wire field `st` + client presence-view (PS-3)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-27 — `st` on friend rows (FriendService statusOf hook, friend audience), `graceUntil` on room members in grace (RoomManager.graceLookup), online-list entries unchanged (trap); `client/js/presence-view.js` (describe/secondsLeft/dotHtml, playing glyph `core`) + 9 `presence.*` keys vi+en; tests presence-view, presence-transitions #488 block, SocketHandler hook. Not loaded by any page yet (#489-#491).
 **Area:** server payloads (friends, online list, room users), client/js/presence-view.js, i18n
 **From:** features/presence-status (planning §2c/§2d tone table), 2026-11-27   **Depends:** #487
 ## Scope

@@ -143,6 +143,7 @@ const person = (r) => ({
 
 let isOnline = () => false;
 let activityOf = () => null;
+let statusOf = () => undefined;
 /**
  * @param {{isOnline?: (userId: string) => boolean, activityOf?: (userId: string) => object|null}} h
  *   visible presence (#222 picker) and what an online friend is doing (#370), for friends only
@@ -150,6 +151,7 @@ let activityOf = () => null;
 function setHooks(h = {}) {
   isOnline = h.isOnline || (() => false);
   activityOf = h.activityOf || (() => null);
+  statusOf = h.statusOf || (() => undefined); // #488 wire `st` (friend audience), additive
 }
 
 /**
@@ -178,7 +180,8 @@ function list(me) {
     if (r.status === 'accepted') {
       const online = !!isOnline(r.id);
       // Activity only for visibly-online friends: hidden presence stays hidden (#370).
-      out.friends.push({ ...person(r), online, ...(online ? (activityOf(r.id) || { activity: 'free' }) : { activity: null }) });
+      const st = statusOf(r.id);
+      out.friends.push({ ...person(r), online, ...(online ? (activityOf(r.id) || { activity: 'free' }) : { activity: null }), ...(st ? { st } : {}) });
     }
     else (r.requested_by === me ? out.outgoing : out.incoming).push(person(r));
   }

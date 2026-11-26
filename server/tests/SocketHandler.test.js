@@ -615,16 +615,19 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
 // #372 review: SocketHandler wires two different "online" predicates — they must not both be presence.
 describe('presence hooks wiring (#372 review)', () => {
   const state = require('../socket/state');
-  let challengeHooks, dmHooks;
+  let challengeHooks, dmHooks, friendHooks;
   beforeAll(() => {
     const Challenge = require('../managers/ChallengeService');
     const Dm = require('../managers/DmService');
+    const Friend = require('../managers/FriendService');
     const c = jest.spyOn(Challenge, 'setHooks');
     const d = jest.spyOn(Dm, 'setHooks');
+    const f = jest.spyOn(Friend, 'setHooks');
     init(makeIo());
     challengeHooks = c.mock.calls.at(-1)[0];
     dmHooks = d.mock.calls.at(-1)[0];
-    c.mockRestore(); d.mockRestore();
+    friendHooks = f.mock.calls.at(-1)[0];
+    c.mockRestore(); d.mockRestore(); f.mockRestore();
   });
   beforeEach(() => { sessions.clear(); state.awayUsers.clear(); state.heartbeats.clear(); });
   afterAll(() => { sessions.clear(); state.awayUsers.clear(); state.heartbeats.clear(); });
@@ -649,6 +652,15 @@ describe('presence hooks wiring (#372 review)', () => {
     state.awayUsers.add('p1');
     expect(dmHooks.isOnline('p1')).toBe(false);
     expect(dmHooks.hasSocket('p1')).toBe(true); // away tab still gets the live push
+  });
+
+  test('#488 friends get the wire `st` from the one derivation (friend audience, hide-online respected)', () => {
+    expect(friendHooks.statusOf('p1')).toEqual({ c: 'off' });
+    sessions.set('p1', { user: u });
+    expect(friendHooks.statusOf('p1')).toEqual({ c: 'on', k: 'idle' });
+    state.setHideOnline('p1', true);
+    expect(friendHooks.statusOf('p1')).toEqual({ c: 'off' });
+    state.setHideOnline('p1', false);
   });
 });
 

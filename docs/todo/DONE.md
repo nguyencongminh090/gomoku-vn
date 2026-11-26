@@ -1,3 +1,4 @@
+- ✅ **#488.** Presence: wire field `st` + client presence-view `[Model: Sonnet]` — [detail](docs/todo/B488-presence-wire-and-view.md)
 - ✅ **#487.** Presence: one server derivation module `[Model: Opus]` — [detail](docs/todo/B487-presence-core-module.md)
 - ✅ **#486.** Presence: emit-count baseline per transition `[Model: Sonnet]` — [detail](docs/todo/B486-presence-emit-baseline.md)
 - ✅ **#485.** Room chat input hidden under the iPhone keyboard bars `[Model: Sonnet]` — [detail](docs/todo/B485-ios-keyboard-chat-bar.md)

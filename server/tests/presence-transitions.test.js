@@ -232,3 +232,29 @@ describe('seated game: drop, grace, return (U5-U8, M5-M9)', () => {
     expect(roomManager.lobbyStat(room).userCount).toBe(2); // ghost viewer excluded (#158)
   });
 });
+
+describe('#488 wire: room members in grace carry graceUntil', () => {
+  beforeEach(() => {
+    seatGame();
+    for (const id of ['a', 'b', 'v']) connect(makeSocket(id, { roomPageId: room.roomId }));
+    roomManager.graceLookup = (id) => presence.graceUntil(id);
+  });
+  afterEach(() => { delete roomManager.graceLookup; });
+  const member = (id) => roomManager.serializeRoom(room).users.find((u) => u.userId === id);
+
+  test('absent while connected; the deadline while in grace; gone again after the return', () => {
+    expect(member('a')).not.toHaveProperty('graceUntil');
+    const t0 = Date.now();
+    disconnect(state.sessions.get('a'));
+    expect(member('a').graceUntil).toBe(t0 + config.DISCONNECT_GRACE_MS);
+    const back = connect(makeSocket('a', { roomPageId: room.roomId }));
+    DisconnectHandler.cancelDisconnectGrace(io, back);
+    expect(member('a')).not.toHaveProperty('graceUntil');
+  });
+
+  test('a ghost viewer (no timeout, #115) carries no deadline', () => {
+    disconnect(state.sessions.get('v'));
+    expect(member('v').presence).toBe('disconnected');
+    expect(member('v')).not.toHaveProperty('graceUntil');
+  });
+});

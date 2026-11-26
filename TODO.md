@@ -67,7 +67,6 @@ in the detail file / fix-log).
   theo 1 điểm dữ liệu. Việc tiếp theo là *thu thêm mẫu*, không phải viết code. Lệch đồng hồ máy
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
-- **#488.** Presence: wire field `st` + client presence-view `[Model: Sonnet]` — [detail](docs/todo/B488-presence-wire-and-view.md)
 - **#489.** Presence consumer: friends + challenge pickers `[Model: Sonnet]` — [detail](docs/todo/B489-presence-friends-consumers.md)
 - **#490.** Presence consumer: lobby list, rooms roster, home counts, DM window `[Model: Sonnet]` — [detail](docs/todo/B490-presence-lobby-dm-consumers.md)
 - **#491.** Presence consumer: room seats + spectators `[Model: Sonnet]` — [detail](docs/todo/B491-presence-room-consumers.md)

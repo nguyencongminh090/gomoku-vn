@@ -885,6 +885,12 @@ class RoomManager extends EventEmitter {
         role: this.getUserRole(room, u.userId),
         avatarUrl: u.isGuest || !this.avatarLookup ? null : this.avatarLookup(u.userId),
       });
+      // #488: a dropped member's grace deadline (server ms) for a countdown; absent otherwise, so the
+      // room:updated diff (JSON per user) only changes when presence itself changes.
+      if (u.presence === 'disconnected' && this.graceLookup) {
+        const until = this.graceLookup(u.userId);
+        if (typeof until === 'number') users[users.length - 1].graceUntil = until;
+      }
       // F453: only "Club members" rooms carry it, so 'all' payloads stay as they were.
       if (room.playerScope === 'clubs') users[users.length - 1].canSit = u.canSit !== false;
     }
