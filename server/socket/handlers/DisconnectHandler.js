@@ -534,7 +534,12 @@ function cancelSpectatorGrace(userId) {
  */
 function startDisconnectGrace(io, room, user) {
   const roomId = room.roomId;
-  const graceSec = Math.floor(config.DISCONNECT_GRACE_MS / 1000);
+  // #494 (Q3 A): one cumulative grace budget per player per game — returning does not refill it, so
+  // repeated drops cannot buy unlimited paused thinking time (problem 2 for casual games).
+  const ab = room.gameState ? absenceOf(room.gameState) : null;
+  if (ab && typeof ab.left[user.userId] !== 'number') ab.left[user.userId] = config.DISCONNECT_GRACE_MS;
+  const budgetMs = ab ? Math.max(0, ab.left[user.userId]) : config.DISCONNECT_GRACE_MS;
+  const graceSec = Math.ceil(budgetMs / 1000);
 
   // Clear any existing stale grace timer for this user
   const existing = disconnectTimers.get(user.userId);
@@ -601,9 +606,10 @@ function startDisconnectGrace(io, room, user) {
     finalizeSeatRelease(io, roomId, user, roomManager.releaseSeat(user.userId));
     logger.info(`[Disconnect] Grace expired for ${user.displayName}, room ${roomId} — seat released, stays as viewer`);
     reapGhostRoom(io, roomId);
-  }, config.DISCONNECT_GRACE_MS);
+  }, budgetMs);
 
-  disconnectTimers.set(user.userId, { timeout, countdown, roomId, until: Date.now() + config.DISCONNECT_GRACE_MS });
+  const since = Date.now();
+  disconnectTimers.set(user.userId, { timeout, countdown, roomId, since, until: since + budgetMs });
   logger.debug(`[Disconnect] Grace period started for ${user.displayName} in room ${roomId}`);
 }
 
@@ -645,6 +651,12 @@ function cancelDisconnectGrace(io, socket) {
   clearTimeout(entry.timeout);
   clearInterval(entry.countdown);
   disconnectTimers.delete(user.userId);
+
+  // #494: spend the time this drop used from the player's per-game grace budget.
+  if (typeof entry.since === 'number') {
+    const ab = absenceOf(room.gameState);
+    if (typeof ab.left[user.userId] === 'number') ab.left[user.userId] = Math.max(0, ab.left[user.userId] - (Date.now() - entry.since));
+  }
 
   const roomUser = room.users.get(user.userId);
   if (roomUser) roomUser.presence = 'active';

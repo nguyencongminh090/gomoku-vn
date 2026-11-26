@@ -256,3 +256,35 @@ describe('casual games keep the old pause path', () => {
     expect(events('game:absent')).toHaveLength(0);
   });
 });
+
+describe('#494 casual games: one cumulative 60 s grace per player per game (Q3 A)', () => {
+  test('problem 2 for casual: a return does not refill the grace; the second drop gets what is left', () => {
+    setup({ moves: 2, ranked: false });
+    drop('a');
+    jest.advanceTimersByTime(40_000);
+    const back = makeSocket('a', room.roomId);
+    state.sessions.set('a', back);
+    expect(DisconnectHandler.cancelDisconnectGrace(io, back)).toBe(true);
+    expect(engine.absence.left.a).toBe(20_000);
+    io.log.length = 0;
+    drop('a');
+    expect(events('game:interrupted')[0].data.secondsLeft).toBe(20);
+    jest.advanceTimersByTime(19_000);
+    expect(engine.status).toBe('ongoing');
+    jest.advanceTimersByTime(1_500);
+    expect(engine.result).toEqual({ winner: null, reason: 'disconnect' }); // casual expiry stays void
+    expect(database.saveGame).not.toHaveBeenCalled();
+  });
+
+  test('budgets are per player: the opponent still has a full 60 s', () => {
+    setup({ moves: 2, ranked: false });
+    drop('a');
+    jest.advanceTimersByTime(30_000);
+    const back = makeSocket('a', room.roomId);
+    state.sessions.set('a', back);
+    DisconnectHandler.cancelDisconnectGrace(io, back);
+    io.log.length = 0;
+    drop('b');
+    expect(events('game:interrupted')[0].data.secondsLeft).toBe(60);
+  });
+});

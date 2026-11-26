@@ -1,5 +1,5 @@
 # B494 — Casual games: cumulative grace budget (PS-9)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-27 — budget on engine.absence.left (shared bookkeeping with #493), fix-log 2026-11-27 (#494).
 **Area:** server/socket/handlers/DisconnectHandler.js
 **From:** features/presence-status (planning §3, Q3 A), 2026-11-27   **Depends:** #493
 ## Scope

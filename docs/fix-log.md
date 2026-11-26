@@ -412,3 +412,4 @@
 | 2026-11-27 00:22 | #487 presence-core: one status derivation; per-tab heartbeats fix hidden-tab 'away' hiding a visible tab (F2); grace deadlines; no wire change | [detail](docs/fix-log/2026-11-27-487-presence-core-per-tab-beats.md) |
 | 2026-11-27 00:47 | #492 room page sent every presence edge twice and flashed a returning member 'away' before room:join: URL room id in first handshake, one reporter | [detail](docs/fix-log/2026-11-27-492-room-page-single-presence-report.md) |
 | 2026-11-27 00:57 | #493 rated games no longer pause on a drop: clock runs, absence budget W per game, W out = loss 'abandon' (rated); abort/both-gone/outage void | [detail](docs/fix-log/2026-11-27-493-rated-absence-policy.md) |
+| 2026-11-27 00:59 | #494 casual games: repeated drops no longer refill the 60 s paused grace — one budget per player per game | [detail](docs/fix-log/2026-11-27-494-casual-grace-budget.md) |
