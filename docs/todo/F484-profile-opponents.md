@@ -1,5 +1,5 @@
 # F484 — Profile: head-to-head W/L/D per opponent instead of the game list
-**Status:** ✅ DONE 2026-11-26 (uncommitted, feature/484-profile-opponents): npm test 5111/5111; headless Chromium 1280+390 on a temp DB (toggle, paging, replay, 0 console errors). Trap found: main.css `button:active` scale shrinks a stretched ::after mid-click, so the handler is on the <tr>.
+**Status:** ✅ DONE 2026-11-26 (merged to dev ca995e9a, not pushed): npm test 5111/5111; headless Chromium 1280+390 on a temp DB (toggle, paging, replay, 0 console errors). Trap found: main.css `button:active` scale shrinks a stretched ::after mid-click, so the handler is on the <tr>.
 **Area:** server/db/profiles.js, server/routes/profile.js, client/{profile.html,js/profile.js,css/profile.css,js/i18n.js}
 **From:** user, 2026-11-26   **Depends:** —
 
