@@ -292,12 +292,14 @@ it('shares alias permissions and returns help privately', async () => {
   expect(messages()).toHaveLength(1);
 });
 
-it.each(['tattieng', 'mute', 'duoi', 'kick'])('B477: /%s answers MOVED to staff and members and does nothing', async (word) => {
+it.each(['tattieng', 'mute', 'duoi', 'kick'])('B482: removed /%s answers UNKNOWN to staff and members and does nothing', async (word) => {
+  const before = messages().length;
   for (const who of ['off', 'mem']) {
     const res = await say(who, '/' + word + ' @mem2 10');
     expect(res.status).toBe(400);
-    expect(res.body.code).toBe('CLUB_COMMAND_MOVED');
+    expect(res.body.code).toBe('CLUB_COMMAND_UNKNOWN');
   }
+  expect(messages()).toHaveLength(before);
   expect((await say('mem2', 'still here')).status).toBe(201);
   const help = await say('off', '/trogiup');
   expect(help.body.commands).toEqual(expect.arrayContaining(['pin', 'poll', 'calendar', 'challenge']));

@@ -7,15 +7,13 @@
   const isMember = (role) => rank(role) >= roles.member;
   const isStaff = (role) => rank(role) >= roles.officer;
   const canModerate = (role, target) => isStaff(role) && rank(role) > rank(target);
-  // `retired`: still found (so an old habit gets a pointer, never "unknown") but no longer offered. 'members' = the
-  // action lives in thành-viên now; 'popup' = typing "/" replaces it. B477: delete these one release after deploy.
+  // `retired`: still found but no longer offered. 'popup' = typing "/" replaces it (B477). /tattieng and /duoi were
+  // removed in B482: they now answer CLUB_COMMAND_UNKNOWN; mute/kick live in the thành-viên channel.
   const commands = [
     { kind: 'poll', words: ['binhchon', 'poll'], toggle: 'cmdPoll' },
     { kind: 'calendar', words: ['lich', 'calendar'], toggle: 'cmdCalendar' },
     { kind: 'challenge', words: ['giaohuu', 'challenge'], toggle: 'cmdChallenge' },
     { kind: 'pin', words: ['ghim', 'pin', 'announce'], toggle: 'cmdPin', staff: true },
-    { kind: 'mute', words: ['tattieng', 'mute'], staff: true, retired: 'members' },
-    { kind: 'kick', words: ['duoi', 'kick'], staff: true, retired: 'members' },
     { kind: 'help', words: ['trogiup', 'help'], retired: 'popup' },
   ];
   const find = (word) => commands.find((command) => command.words.includes(word.toLowerCase()));

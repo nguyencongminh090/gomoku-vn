@@ -996,12 +996,14 @@ describe('chat commands + notifications (B447)', () => {
       expect(posted()).toBe(false);
     });
 
-    it('a moved command keeps the text and links to thành-viên', async () => {
+    it('B482: a removed command (/duoi) is posted as unknown, keeps the text and offers no link', async () => {
       await boot(clubAs('officer'));
-      global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 400, json: () => Promise.resolve({ code: 'CLUB_COMMAND_MOVED' }) }));
+      expect(window.ClubPolicy.find('duoi')).toBeUndefined();
+      global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 400, json: () => Promise.resolve({ code: 'CLUB_COMMAND_UNKNOWN' }) }));
       await submit('/duoi @mem');
+      expect(global.fetch).toHaveBeenCalled();
       expect(input().value).toBe('/duoi @mem');
-      expect(document.querySelector('#cb-msg a').getAttribute('href')).toBe('/c/caro#ch=members'); // a bare hash would leave the club (<base href="/">)
+      expect(document.querySelector('#cb-msg a')).toBeNull();
     });
 
     it('/binhchon opens the poll sheet prefilled; the toggle hides the composer poll button', async () => {

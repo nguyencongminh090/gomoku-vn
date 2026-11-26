@@ -1,3 +1,4 @@
+- ✅ **#482.** Club chat: delete retired slash aliases one release after #477 `[Model: Haiku]` — [detail](docs/todo/B482-club-chat-retired-commands-removal.md)
 - ✅ **#483.** Club chat (phone): composer floats mid-screen when the stream is short `[Model: Haiku]` — [detail](docs/todo/B483-club-phone-composer-floats.md)
 - ✅ **#481.** Admin club report queue shows escaped text `[Model: Haiku]` — [detail](docs/todo/B481-admin-club-report-escaped-text.md)
 - ✅ **#480.** Club events: month calendar + create sheet (Vietnam time) `[Model: Opus]` — [detail](docs/todo/B480-club-event-calendar.md)
