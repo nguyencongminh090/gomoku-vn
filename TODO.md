@@ -67,3 +67,4 @@ in the detail file / fix-log).
   theo 1 điểm dữ liệu. Việc tiếp theo là *thu thêm mẫu*, không phải viết code. Lệch đồng hồ máy
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
+- **#485.** Room chat input hidden under the iPhone keyboard bars (awaiting device check) `[Model: Sonnet]` — [detail](docs/todo/B485-ios-keyboard-chat-bar.md)

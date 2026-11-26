@@ -289,6 +289,108 @@ describe('#218 keyboard: keep the chat field in view when the viewport shrinks',
   });
 });
 
+describe('#485 iOS: the keyboard only shrinks the visual viewport and a floating bar covers the dock', () => {
+  const IOS26 = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1';
+  const IOS18 = IOS26.replace('Version/26.0', 'Version/18.5');
+  const ANDROID = 'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/140.0 Mobile Safari/537.36';
+  const root = document.documentElement;
+  let vv, dockBase;
+  function setup({ ua = IOS26, phone = true } = {}) {
+    vv = Object.assign(new EventTarget(), { height: 800, offsetTop: 0, scale: 1 });
+    window.visualViewport = vv;
+    Object.defineProperty(window.navigator, 'userAgent', { configurable: true, value: ua });
+    Object.defineProperty(root, 'clientHeight', { configurable: true, value: 800 });
+    window.innerHeight = 800;
+    load({ phone });
+    dockBase = 800;
+    // the dock sits at the bottom of .room, so it rises by exactly --kb
+    $('rdock').getBoundingClientRect = () => ({ bottom: dockBase - (parseFloat(root.style.getPropertyValue('--kb')) || 0) });
+    $('chat-input-wrapper').scrollIntoView = jest.fn();
+  }
+  const kb = () => root.style.getPropertyValue('--kb');
+  const openKeyboard = (height = 470, offsetTop = 0) => {
+    $('chat-input').focus();
+    Object.assign(vv, { height, offsetTop });
+    vv.dispatchEvent(new Event('resize'));
+  };
+  afterEach(() => {
+    $('chat-input').blur();
+    delete window.visualViewport;
+    delete window.navigator.userAgent;
+    delete root.clientHeight;
+    window.innerHeight = 768;
+    document.body.className = '';
+    root.removeAttribute('style');
+  });
+
+  test('iOS 26: the dock is lifted above the keyboard and the floating bar, without scrolling it', () => {
+    setup();
+    openKeyboard();
+    expect(document.body.classList.contains('kb-up')).toBe(true);
+    expect(kb()).toBe('426px'); // 800 - (470 - 96)
+    expect(root.style.getPropertyValue('--kb-vis')).toBe('374px');
+    expect($('chat-input-wrapper').scrollIntoView).not.toHaveBeenCalled();
+  });
+  test('a panned viewport counts, and repeated events do not stack the lift', () => {
+    setup();
+    openKeyboard(470, 330); // iOS panned to the layout bottom: only the floating bar is left to clear
+    expect(kb()).toBe('96px');
+    vv.dispatchEvent(new Event('scroll'));
+    vv.dispatchEvent(new Event('resize'));
+    expect(kb()).toBe('96px');
+    vv.offsetTop = 0; // pan undone
+    vv.dispatchEvent(new Event('scroll'));
+    expect(kb()).toBe('426px');
+  });
+  test('detected from clientHeight when iOS shrinks innerHeight with the keyboard', () => {
+    setup();
+    window.innerHeight = 470;
+    openKeyboard();
+    expect(kb()).toBe('426px');
+  });
+  test('iOS 18 (opaque bar, already outside the viewport): no extra clearance', () => {
+    setup({ ua: IOS18 });
+    openKeyboard();
+    expect(kb()).toBe('330px');
+  });
+  test('Android visual-only resize: untouched, still the #218 scrollIntoView', () => {
+    setup({ ua: ANDROID });
+    openKeyboard();
+    expect(kb()).toBe('');
+    expect($('chat-input-wrapper').scrollIntoView).toHaveBeenCalled();
+  });
+  test('blur and keyboard dismissal both release the lift', () => {
+    setup();
+    openKeyboard();
+    $('chat-input').blur();
+    expect(document.body.classList.contains('kb-up')).toBe(false);
+    expect(kb()).toBe('');
+    openKeyboard();
+    vv.height = 800;
+    vv.dispatchEvent(new Event('resize'));
+    expect(kb()).toBe('');
+  });
+  test.each([
+    ['pinch zoom', {}, () => { vv.scale = 2; openKeyboard(400); }],
+    ['layout resized with the keyboard', {}, () => { Object.defineProperty(root, 'clientHeight', { configurable: true, value: 470 }); window.innerHeight = 470; dockBase = 470; openKeyboard(); }],
+    ['toolbar-sized change', {}, () => openKeyboard(700)],
+    ['not the phone layout', { phone: false }, () => openKeyboard()],
+  ])('%s: no lift', (_n, opts, act) => {
+    setup(opts);
+    act();
+    expect(document.body.classList.contains('kb-up')).toBe(false);
+    expect(kb()).toBe('');
+  });
+  test('CSS: room, sheet, scrim and spectator pills all follow the lift', () => {
+    expect(CSS).toMatch(/body\.arena-room\.kb-up \.room \{ height: calc\(100dvh - var\(--nav-h\) - var\(--kb\)\); \}/);
+    expect(CSS).toMatch(/\.kb-up \.rail > \.rdock \{ padding-bottom: 6px; \}/);
+    expect(CSS).toMatch(/\.kb-up \.rsheet \{ bottom: calc\(var\(--rdock-h\) \+ var\(--kb\)\);/);
+    expect(CSS).toContain('height: min(62dvh, calc(var(--kb-vis) - var(--nav-h) - var(--rdock-h) - 8px));'); // clear of the nav
+    expect(CSS).toMatch(/\.kb-up \.rsheet-scrim \{ bottom: calc\(var\(--rdock-h\) \+ var\(--kb\)\); \}/);
+    expect(CSS).toMatch(/\.kb-up \.stage__fly \{ bottom: calc\(var\(--rdock-h\) \+ 6px \+ var\(--kb\)\); \}/);
+  });
+});
+
 test('#327 CSS: phone touch targets stay 44px (leave, input, send, dock buttons, audience)', () => {
   expect(CSS).toMatch(/#btn-leave \{ min-width: 44px; min-height: 44px; \}/);
   expect(CSS).toMatch(/\.chat-input input, body\.arena-room \.chat-input button \{ min-height: 44px; \}/);

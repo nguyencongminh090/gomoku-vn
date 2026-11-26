@@ -916,6 +916,12 @@ body.arena-room .speech--mine { background: var(--c-brand); color: var(--c-on-br
 
   /* Keyboard up: the dock rides with the input (stack already released by the :focus rule above) */
   body.arena-room:has(#chat-input:focus) .rail > .stage { flex-basis: 0; }
+  /* #485 iOS keyboard: the layout does not shrink, room.js measures how far to lift (--kb) */
+  body.arena-room.kb-up .room { height: calc(100dvh - var(--nav-h) - var(--kb)); }
+  body.arena-room.kb-up .rail > .rdock { padding-bottom: 6px; }
+  body.arena-room.kb-up .rsheet { bottom: calc(var(--rdock-h) + var(--kb)); height: min(62dvh, calc(var(--kb-vis) - var(--nav-h) - var(--rdock-h) - 8px)); }
+  body.arena-room.kb-up .rsheet-scrim { bottom: calc(var(--rdock-h) + var(--kb)); }
+  body.arena-room.kb-up .stage__fly { bottom: calc(var(--rdock-h) + 6px + var(--kb)); }
 }
 @keyframes stage-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes stage-pop { from { opacity: 0; transform: translateY(6px) scale(.95); } to { opacity: 1; transform: none; } }
