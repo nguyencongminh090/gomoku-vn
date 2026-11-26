@@ -1,3 +1,4 @@
+- ✅ **#485.** Room chat input hidden under the iPhone keyboard bars `[Model: Sonnet]` — [detail](docs/todo/B485-ios-keyboard-chat-bar.md)
 - ✅ **#484.** Profile: per-opponent W/L/D table, click for that opponent's games `[Model: Sonnet]` — [detail](docs/todo/F484-profile-opponents.md)
 - ✅ **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — direct route (CloudFront→Caddy) live; closed with exceptions `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
 - ✅ **#473.** Tournament match shows initials instead of uploaded avatars `[Model: Sonnet]` — [detail](docs/todo/B473-tmatch-avatars.md)

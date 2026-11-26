@@ -1,5 +1,5 @@
 # B485 — Room chat input hidden under the iPhone keyboard bars
-**Status:** OPEN — fix implemented, waiting for a real-iPhone check
+**Status:** ✅ CLOSED 2026-11-26 — deployed (9795a6df, PR #37); closed on user request
 **Area:** client/js/room.js, client/css/room-arena.css
 **From:** user screenshot (iOS 26 Safari), 2026-11-26   **Depends:** —
 
