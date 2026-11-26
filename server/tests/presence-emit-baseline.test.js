@@ -162,6 +162,22 @@ describe('#486 presence emit baseline (today, before the refactor)', () => {
     expect(io.log).toHaveLength(2);
   });
 
+  test('#493 rated game drop: game:absent + room:updated to the room, 1 lobby patch (same count as the pause)', () => {
+    room.gameState.isRated = () => true;
+    room.gameState.currentTurn = 'a';
+    room.gameState.actedBy = new Set(['a', 'b']);
+    disconnect(io, sockets.a);
+    settle();
+    expect(count(io, room.roomId, 'game:absent')).toBe(1);
+    expect(count(io, room.roomId, 'game:interrupted')).toBe(0);
+    expect(count(io, room.roomId, 'room:updated')).toBe(1);
+    expect(count(io, 'lobby', 'lobby:online_patch')).toBe(1);
+    expect(io.log).toHaveLength(3);
+    io.log.length = 0;
+    jest.advanceTimersByTime(10_000); // the 1 s absence poll never broadcasts by itself
+    expect(io.log).toEqual([]);
+  });
+
   test('hide_online flip: 1 lobby patch, no room traffic', () => {
     state.setHideOnline('d', true);
     settle();

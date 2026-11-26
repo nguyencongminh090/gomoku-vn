@@ -1,3 +1,4 @@
+- ✅ **#493.** Rated games: running clock, absence window, abandon/abort results `[Model: Opus]` — [detail](docs/todo/B493-rated-disconnect-policy.md)
 - ✅ **#492.** Presence: one report per edge on the room page `[Model: Sonnet]` — [detail](docs/todo/B492-presence-single-report.md)
 - ✅ **#491.** Presence consumer: room seats + spectators `[Model: Sonnet]` — [detail](docs/todo/B491-presence-room-consumers.md)
 - ✅ **#490.** Presence consumer: lobby list, rooms roster, home counts, DM window `[Model: Sonnet]` — [detail](docs/todo/B490-presence-lobby-dm-consumers.md)

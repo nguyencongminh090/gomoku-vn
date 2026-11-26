@@ -364,6 +364,7 @@ function getResultTextFull(g) {
     timeout: t('history.reason_timeout'),
     draw_agreement: t('history.reason_draw_agreement'),
     board_full: t('history.reason_board_full'),
+    abandon: t('history.reason_abandon'), // #493 rated game left past its absence budget
   };
 
   if (!g.winner || g.winner === 'draw') {

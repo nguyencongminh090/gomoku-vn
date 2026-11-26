@@ -724,6 +724,19 @@ function startTimerForGame(io, room, engine, idOverride) {
     // deadline in timer:sync. See review 4.3.
     onTick: () => {},
     onTimeout: (timedOutPlayerId) => {
+      // #493 Q13: an absent player whose clock runs out during a site-wide outage is not charged with it.
+      // Lazy require: DisconnectHandler requires this module at load time.
+      if (engine.status === 'ongoing' && require('./DisconnectHandler').voidsClockTimeout(roomId, timedOutPlayerId)) {
+        engine.status = 'finished';
+        engine.result = { winner: null, reason: 'disconnect' };
+        handleGameEnd(io, room, { noScore: true });
+        io.to(roomId).emit('game:ended', { result: engine.result, scoreTable: room.scoreTable, scoreHistory: room.scoreHistory || [] });
+        io.to(roomId).emit('chat:message', {
+          from: null, fromId: null, text: 'Kết nối tới máy chủ gián đoạn. Ván đấu huỷ, không ghi điểm.',
+          code: 'GAME_OUTAGE_VOID', vars: {}, timestamp: Date.now(), isSystem: true,
+        });
+        return;
+      }
       engine.handleTimeout(timedOutPlayerId);
       handleGameEnd(io, room);
 

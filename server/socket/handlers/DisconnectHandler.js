@@ -24,8 +24,206 @@ const {
   cleanupReadyTimer,
   findSocketsByUserId,
   clearReadyState,
+  sessions,
 } = require('../state');
 const { handleGameEnd } = require('./GameHandler');
+
+// ── Rated games: absence inside a running game (#493, features/presence-status §3) ──────────────────
+// Casual games keep the pause-and-wait grace below. A rated game keeps running: the absent player's clock
+// runs as at a real board, and an absence budget W (per game, never refilled) is spent only on their own
+// turn. W out → they lose ('abandon'). Before each player has acted → abort (void) after ABORT_MS. Both
+// players gone BOTH_GONE_MS → void. During a site-wide outage (many sockets dropping at once, Q13) an
+// absent player's abandonment or clock loss is voided instead.
+const ABORT_MS = 30_000;
+const BOTH_GONE_MS = 15_000;
+const ABSENCE_POLL_MS = 1_000;
+const OUTAGE = { windowMs: 5_000, share: 0.3, min: 10, holdMs: 120_000 };
+
+/** Absence budget W for a room's time control (Chess.com-style, clamped 30-120 s; per_move = one move). */
+function absenceWindowMs(settings) {
+  const s = settings || {};
+  const base = Number(s.timerSeconds) || 0;
+  if (s.timerMode === 'per_move') return Math.max(1, base) * 1000;
+  const inc = s.timerMode === 'blitz' ? Number(s.timerIncrementSeconds) || 0 : 0;
+  return Math.round(Math.min(120, Math.max(30, 0.1 * (base + 40 * inc))) * 1000);
+}
+
+/** A rated game (engine stubs without isRated, e.g. older tests, count as casual). */
+function isRatedEngine(engine) {
+  return !!engine && typeof engine.isRated === 'function' && engine.isRated() === true;
+}
+
+const _drops = [];
+let _outageUntil = 0;
+/** Count a real drop (not an evicted tab); open the outage window when many drop together. */
+function noteDrop(now = Date.now()) {
+  _drops.push(now);
+  while (_drops.length && now - _drops[0] > OUTAGE.windowMs) _drops.shift();
+  const live = (sessions ? sessions.size : 0) + _drops.length; // each drop already left `sessions`
+  if (_drops.length >= OUTAGE.min && _drops.length >= OUTAGE.share * live) _outageUntil = now + OUTAGE.holdMs;
+}
+function inOutage(now = Date.now()) { return now < _outageUntil; }
+/** Tests only. */
+function _resetOutage() { _drops.length = 0; _outageUntil = 0; }
+
+/** The game's absence bookkeeping (budget left per player, who was absent when it ended — #495 reads it). */
+function absenceOf(engine) {
+  if (!engine.absence) engine.absence = { left: {}, absentAtEnd: [] };
+  return engine.absence;
+}
+
+function isAbortable(engine) {
+  return !(engine.actedBy && engine.players.every((p) => engine.actedBy.has(p.userId)));
+}
+
+/**
+ * GameHandler's clock-timeout path asks this (lazy require): during an outage, a player who is absent
+ * when their clock runs out is not charged with the loss (Q13, pre-mortem: tunnel blips).
+ */
+function voidsClockTimeout(roomId, userId) {
+  const e = disconnectTimers.get(userId);
+  return !!e && e.kind === 'absence' && e.roomId === roomId && inOutage();
+}
+
+function startAbsence(io, room, user) {
+  const roomId = room.roomId;
+  const engine = room.gameState;
+  const uid = user.userId;
+  const now = Date.now();
+  const roomUser = room.users.get(uid);
+  if (roomUser) roomUser.presence = 'disconnected';
+  const ab = absenceOf(engine);
+  if (typeof ab.left[uid] !== 'number') ab.left[uid] = absenceWindowMs(room.settings);
+  const abortable = isAbortable(engine);
+  const entry = {
+    kind: 'absence', roomId, since: now, last: now,
+    abortAt: abortable ? now + ABORT_MS : null,
+    until: null, countdown: null, timeout: null,
+  };
+  entry.until = abortable ? entry.abortAt : engine.currentTurn === uid ? now + ab.left[uid] : null;
+  entry.countdown = setInterval(() => absenceTick(io, roomId, user), ABSENCE_POLL_MS);
+  if (typeof entry.countdown.unref === 'function') entry.countdown.unref();
+  disconnectTimers.set(uid, entry);
+  // No clock change (it keeps running), so no timerSync: one event, then the seat's room:updated.
+  io.to(roomId).emit('game:absent', { playerId: uid, playerName: user.displayName, abortable });
+  broadcastRoomUpdate(io, room);
+  logger.debug(`[Disconnect] Rated absence started for ${user.displayName} in room ${roomId} (budget ${ab.left[uid]} ms, abortable ${abortable})`);
+}
+
+/** Stop one absence entry (its interval) and forget it. */
+function clearAbsence(uid) {
+  const e = disconnectTimers.get(uid);
+  if (!e || e.kind !== 'absence') return null;
+  clearInterval(e.countdown);
+  disconnectTimers.delete(uid);
+  return e;
+}
+
+/** Vietnamese fallback text for the system chat line (clients translate by code: sys.<code>). */
+const ABSENCE_TEXT = {
+  PLAYER_ABANDONED: (n) => `${n} không quay lại. Xử thua vì bỏ ván.`,
+  GAME_ABORTED_ABSENT: (n) => `${n} không quay lại trước khi ván bắt đầu. Ván đấu huỷ, không ghi điểm.`,
+  GAME_BOTH_ABSENT: () => 'Cả hai người chơi đều mất kết nối. Ván đấu huỷ, không ghi điểm.',
+  GAME_OUTAGE_VOID: () => 'Kết nối tới máy chủ gián đoạn. Ván đấu huỷ, không ghi điểm.',
+};
+
+/** End a rated game because of absence; exactly one ending (callers checked status === 'ongoing'). */
+function endByAbsence(io, room, { winner, reason, voided, code, name }) {
+  const engine = room.gameState;
+  const roomId = room.roomId;
+  engine.status = 'finished';
+  engine.result = { winner, reason };
+  const ab = absenceOf(engine);
+  ab.absentAtEnd = engine.players.map((p) => p.userId).filter((id) => {
+    const e = disconnectTimers.get(id);
+    return e && e.kind === 'absence' && e.roomId === roomId;
+  });
+  handleGameEnd(io, room, voided ? { noScore: true } : {});
+  io.to(roomId).emit('game:ended', { result: engine.result, scoreTable: room.scoreTable, scoreHistory: room.scoreHistory || [] });
+  io.to(roomId).emit('chat:message', {
+    from: null, fromId: null, text: ABSENCE_TEXT[code](name), code, vars: { name },
+    timestamp: Date.now(), isSystem: true,
+  });
+  // The absent seats lapse now, as the old grace expiry did (#367: they stay in the room as viewers).
+  for (const id of ab.absentAtEnd) {
+    clearAbsence(id);
+    const u = room.users.get(id);
+    finalizeSeatRelease(io, roomId, { userId: id, displayName: u ? u.displayName : '—' }, roomManager.releaseSeat(id));
+  }
+  reapGhostRoom(io, roomId);
+}
+
+function absenceTick(io, roomId, user) {
+  const uid = user.userId;
+  const entry = disconnectTimers.get(uid);
+  if (!entry || entry.kind !== 'absence' || entry.roomId !== roomId) return; // cleared elsewhere
+  const now = Date.now();
+  const dt = Math.max(0, now - entry.last); // real elapsed time: throttled intervals do not drift
+  entry.last = now;
+  const room = roomManager.getRoom(roomId);
+  const engine = room && room.gameState;
+  if (!room || !engine || engine.status !== 'ongoing') {
+    // The game ended another way (clock, resign, draw…) while they were away: hand the seat to the normal
+    // seat grace, so a disconnected player never stays seated forever.
+    clearAbsence(uid);
+    if (room && room.users.has(uid)) startSpectatorGrace(io, room, user);
+    return;
+  }
+  const ab = absenceOf(engine);
+  const other = engine.players.find((p) => p.userId !== uid);
+  const oe = other && disconnectTimers.get(other.userId);
+  if (oe && oe.kind === 'absence' && oe.roomId === roomId && now - Math.max(entry.since, oe.since) >= BOTH_GONE_MS) {
+    endByAbsence(io, room, { winner: null, reason: 'both_absent', voided: true, code: 'GAME_BOTH_ABSENT', name: user.displayName });
+    return;
+  }
+  if (entry.abortAt !== null) {
+    if (!isAbortable(engine)) { // the other player acted meanwhile: from now on it is a normal absence
+      entry.abortAt = null;
+    } else {
+      if (now >= entry.abortAt) {
+        endByAbsence(io, room, { winner: null, reason: 'abort', voided: true, code: 'GAME_ABORTED_ABSENT', name: user.displayName });
+      }
+      return;
+    }
+  }
+  if (engine.currentTurn !== uid) {
+    if (entry.until !== null) { entry.until = null; broadcastRoomUpdate(io, room); }
+    return;
+  }
+  ab.left[uid] = Math.max(0, ab.left[uid] - dt);
+  const until = now + ab.left[uid];
+  if (entry.until === null) { entry.until = until; broadcastRoomUpdate(io, room); } // the turn reached them: one update
+  else entry.until = until;
+  if (ab.left[uid] > 0) return;
+  if (inOutage(now)) {
+    endByAbsence(io, room, { winner: null, reason: 'disconnect', voided: true, code: 'GAME_OUTAGE_VOID', name: user.displayName });
+  } else {
+    endByAbsence(io, room, { winner: other ? other.userId : null, reason: 'abandon', voided: false, code: 'PLAYER_ABANDONED', name: user.displayName });
+  }
+}
+
+/** The absent player is back on the room page: the game simply goes on (it never paused). */
+function returnFromAbsence(io, socket, entry, room) {
+  const uid = socket.user.userId;
+  const engine = room.gameState;
+  if (engine.status === 'ongoing' && entry.abortAt === null && engine.currentTurn === uid) {
+    const ab = absenceOf(engine);
+    ab.left[uid] = Math.max(0, ab.left[uid] - Math.max(0, Date.now() - entry.last)); // Q2: not refilled
+  }
+  clearAbsence(uid);
+  if (engine.status !== 'ongoing') return false; // ended in between: the normal rejoin path takes over
+  const roomUser = room.users.get(uid);
+  if (roomUser) roomUser.presence = 'active';
+  socket.join(entry.roomId);
+  const timer = timerMap.get(entry.roomId);
+  const timerSync = timer ? timer.getSync() : null;
+  // game:resumed already means "back, clock as given" to every client; game:init rebuilds the returner.
+  socket.to(entry.roomId).emit('game:resumed', { playerId: uid, timerSync });
+  socket.emit('game:init', { ...engine.serialize(), timer: timer ? timer.getTimers() : null, timerSync });
+  broadcastRoomUpdate(io, room);
+  logger.debug(`[Disconnect] ${socket.user.displayName} back in rated game ${entry.roomId}`);
+  return true;
+}
 
 /**
  * Handle a socket disconnect.
@@ -37,6 +235,9 @@ const { handleGameEnd } = require('./GameHandler');
  */
 function handleDisconnect(io, socket) {
   const user = socket.user;
+  // #493 Q13: SocketHandler already removed this socket from `sessions` if it was the live one; an
+  // evicted tab (a newer socket took over) is not a drop.
+  if (sessions && !sessions.has(user.userId)) noteDrop();
   const roomId = roomManager.getRoomIdByUser(user.userId);
   if (!roomId) return;
 
@@ -60,7 +261,8 @@ function handleDisconnect(io, socket) {
   if (room && room.gameState && room.gameState.status === 'ongoing') {
     const isPlayer = room.gameState.players.some(p => p.userId === user.userId);
     if (isPlayer) {
-      startDisconnectGrace(io, room, user);
+      if (isRatedEngine(room.gameState)) startAbsence(io, room, user); // #493: the game keeps running
+      else startDisconnectGrace(io, room, user);
       return;
     }
   }
@@ -425,6 +627,9 @@ function cancelDisconnectGrace(io, socket) {
   // don't let a non-member rejoin the room socket or resume the game.
   if (!room.users.has(user.userId)) return false;
 
+  // #493: a rated game never paused — the returner just rejoins it (no waiting for the other player).
+  if (entry.kind === 'absence') return returnFromAbsence(io, socket, entry, room);
+
   // Only now tear the grace timer down. Doing this above the two checks meant
   // an early return left the game with nothing to end it: the timeout that
   // would have called handleGameEnd was already cleared and its entry gone, so
@@ -496,4 +701,7 @@ function cancelDisconnectGrace(io, socket) {
   return true;
 }
 
-module.exports = { handleDisconnect, cancelDisconnectGrace, cancelEmptyRoomGrace, cancelSpectatorGrace };
+module.exports = {
+  handleDisconnect, cancelDisconnectGrace, cancelEmptyRoomGrace, cancelSpectatorGrace,
+  absenceWindowMs, voidsClockTimeout, inOutage, ABORT_MS, BOTH_GONE_MS, _resetOutage,
+};
