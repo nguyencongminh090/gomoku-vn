@@ -69,7 +69,6 @@ in the detail file / fix-log).
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — direct route (CloudFront→Caddy) LIVE; open: peak-hour check + real-browser game `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
 - **#473.** Tournament match shows initials instead of uploaded avatars `[Model: Sonnet]` — [detail](docs/todo/B473-tmatch-avatars.md)
-- **#479.** Club chat: poll setup sheet `[Model: Sonnet]` — [detail](docs/todo/B479-club-poll-sheet.md)
 - **#480.** Club events: month calendar + create sheet (Vietnam time) `[Model: Opus]` — [detail](docs/todo/B480-club-event-calendar.md)
 - **#481.** Admin club report queue shows escaped text `[Model: Haiku]` — [detail](docs/todo/B481-admin-club-report-escaped-text.md)
 - **#482.** Club chat: delete retired slash aliases one release after #477 `[Model: Haiku]` — [detail](docs/todo/B482-club-chat-retired-commands-removal.md)

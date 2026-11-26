@@ -915,6 +915,145 @@ describe('chat commands + notifications (B447)', () => {
     });
   });
 
+  describe('poll sheet (B479)', () => {
+    const $ = (id) => document.getElementById(id);
+    const inputs = () => [...document.querySelectorAll('#cb-options input')];
+    const values = () => inputs().map((i) => i.value);
+    const btn = (row, move) => document.querySelectorAll('#cb-options .cb-opt')[row].querySelector(`[data-move="${move}"]`);
+    const disabled = (move) => inputs().map((_, i) => btn(i, move).disabled);
+    const errs = () => [...document.querySelectorAll('#cb-options .cb-opt__err')].map((p) => p.textContent);
+    const fill = (q, ...opts) => {
+      $('cb-question').value = q;
+      opts.forEach((v, i) => { if (!inputs()[i]) $('cb-add-option').onclick(); inputs()[i].value = v; });
+      $('cb-poll-form').oninput();
+    };
+    const publish = async () => { await $('cb-poll-form').onsubmit(new Event('submit')); await flush(); };
+    const posts = () => global.fetch.mock.calls.filter(([, o]) => o?.method === 'POST');
+
+    async function open() {
+      await boot(clubAs('member'));
+      $('cb-poll-editor').showModal = jest.fn();
+      $('cb-poll-editor').close = jest.fn();
+      $('cb-poll-new').onclick();
+    }
+
+    it('adds, removes and reorders by buttons; ends and the 2-option floor are disabled', async () => {
+      await open();
+      expect(disabled('up')).toEqual([true, false]);
+      expect(disabled('down')).toEqual([false, true]);
+      expect(disabled('remove')).toEqual([true, true]);
+      fill('Q', 'A', 'B', 'C');
+      expect($('cb-options-n').textContent).toBe('3/6');
+      expect(disabled('remove')).toEqual([false, false, false]);
+      btn(2, 'up').click();
+      expect(values()).toEqual(['A', 'C', 'B']);
+      btn(0, 'down').click();
+      expect(values()).toEqual(['C', 'A', 'B']);
+      expect([...document.querySelectorAll('.cb-opt__n')].map((n) => n.textContent)).toEqual(['1', '2', '3']);
+      btn(1, 'remove').click();
+      expect(values()).toEqual(['C', 'B']);
+      expect(disabled('remove')).toEqual([true, true]);
+      for (let i = 0; i < 4; i += 1) $('cb-add-option').onclick();
+      expect(inputs()).toHaveLength(6);
+      expect($('cb-add-option').disabled).toBe(true);
+    });
+
+    it('Enter in the last option adds the next one, never publishes', async () => {
+      await open();
+      const enter = (i) => { const ev = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }); inputs()[i].onkeydown(ev); return ev; };
+      expect(enter(0).defaultPrevented).toBe(true);
+      expect(inputs()).toHaveLength(2);
+      expect(document.activeElement).toBe(inputs()[1]);
+      enter(1);
+      expect(inputs()).toHaveLength(3);
+      expect(document.activeElement).toBe(inputs()[2]);
+    });
+
+    it('failed submit: summary links, every empty field marked, first one focused, nothing sent', async () => {
+      await open();
+      expect($('cb-poll-summary').hidden).toBe(true);
+      expect(errs()).toEqual(['', '']);
+      await publish();
+      expect(posts()).toHaveLength(0);
+      expect($('cb-poll-summary').hidden).toBe(false);
+      expect($('cb-poll-summary').querySelectorAll('a')).toHaveLength(3);
+      expect($('cb-question-err').textContent).toBe('clubs.poll_err_usage_question{"max":140}');
+      expect(errs()[0]).toContain('clubs.poll_err_usage_option');
+      expect(document.activeElement).toBe($('cb-question'));
+      $('cb-poll-summary').querySelectorAll('a')[2].click();
+      expect(document.activeElement).toBe(inputs()[1]);
+      const shown = $('cb-poll-summary').firstChild;
+      $('cb-poll-form').oninput();
+      expect($('cb-poll-summary').firstChild).toBe(shown); // unchanged errors are not re-announced
+      fill('Q', 'A', 'B');
+      expect($('cb-poll-summary').hidden).toBe(true);
+    });
+
+    it('duplicate (folded like the server) shows while typing and outlines both rows', async () => {
+      await open();
+      fill('Q', 'Tự do', 'x', ' tự DO ');
+      expect(inputs().map((i) => i.getAttribute('aria-invalid'))).toEqual(['true', 'false', 'true']);
+      expect(errs()).toEqual(['', '', 'clubs.poll_err_duplicate{"n":1,"max":50}']);
+      fill('Q', 'Tự do', 'x', 'Tu do'); // diacritics are not stripped
+      expect(errs()).toEqual(['', '', '']);
+    });
+
+    it('slash prefill past the limits keeps every part and flags too_long and too_many', async () => {
+      await boot(clubAs('member'));
+      $('cb-poll-editor').showModal = jest.fn();
+      input().value = '/binhchon  Ăn   gì | ' + 'a'.repeat(51) + ' |  | b | c | d | e | f | g';
+      $('cb-chat-form').onsubmit(new Event('submit'));
+      await flush();
+      expect($('cb-question').value).toBe('Ăn gì');
+      expect(values()).toEqual(['a'.repeat(51), 'b', 'c', 'd', 'e', 'f', 'g']);
+      expect(errs()[0]).toContain('clubs.poll_err_long_option');
+      expect(errs()[6]).toContain('clubs.poll_err_too_many');
+      expect(btn(6, 'remove').disabled).toBe(false);
+      $('cb-question').value = 'q'.repeat(141);
+      $('cb-poll-form').oninput();
+      expect($('cb-question-err').textContent).toContain('clubs.poll_err_long_question');
+    });
+
+    it('client checks agree with server validatePoll', async () => {
+      const { validatePoll } = require('../../server/managers/ClubChatCommands.js');
+      await open();
+      const cases = [['Q', 'A', 'B'], ['', 'A', 'B'], ['Q', 'A', ' '], ['Q', 'A', ' a'], ['Q', 'Đỏ', 'đỎ'], ['Q', 'a'.repeat(50), 'B'],
+        ['Q', 'a'.repeat(51), 'B'], ['q'.repeat(140), 'A', 'B'], ['q'.repeat(141), 'A', 'B'], ['Q', '1', '2', '3', '4', '5', '6', '7']];
+      for (const [q, ...opts] of cases) {
+        $('cb-poll-new').onclick();
+        global.fetch.mockClear();
+        fill(q, ...opts.slice(0, 6));
+        if (opts.length > 6) { $('cb-poll-editor').showModal = jest.fn(); input().value = ['/binhchon ' + q, ...opts].join('|'); $('cb-chat-form').onsubmit(new Event('submit')); await flush(); }
+        await publish();
+        expect([q, opts, posts().length > 0]).toEqual([q, opts, !validatePoll(q, opts).error]);
+      }
+    });
+
+    it('preview is the real poll card: zero votes, all disabled, follows the inputs', async () => {
+      await open();
+      fill('Mấy giờ <?>', '20h', '');
+      const prev = $('cb-poll-preview');
+      expect(prev.querySelector('.cb-poll__q').textContent).toBe('Mấy giờ <?>');
+      expect([...prev.querySelectorAll('.cb-poll__label')].map((n) => n.textContent)).toEqual(['20h', 'clubs.option 2']);
+      expect([...prev.querySelectorAll('.cb-poll__n')].map((n) => n.textContent)).toEqual(['clubs.poll_votes{"n":0}', 'clubs.poll_votes{"n":0}']);
+      expect([...prev.querySelectorAll('button')].every((b) => b.disabled)).toBe(true);
+      expect(prev.querySelector('.cb-poll__link')).toBeNull();
+      expect($('cb-question-n').textContent).toBe('11/140');
+    });
+
+    it('the server error lands in the same summary and clears on the next edit', async () => {
+      await open();
+      fill('Q', 'A', 'B');
+      global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 409, json: () => Promise.resolve({ code: 'CLUB_POLL_LIMIT', error: 'Đã đủ 3' }) }));
+      await publish();
+      expect($('cb-poll-summary').hidden).toBe(false);
+      expect($('cb-poll-summary').textContent).toBe($('cb-msg').textContent);
+      expect($('cb-poll-editor').close).not.toHaveBeenCalled();
+      $('cb-poll-form').oninput();
+      expect($('cb-poll-summary').hidden).toBe(true);
+    });
+  });
+
   describe('retired and alias commands (B477)', () => {
     const submit = async (text) => {
       input().value = text;
@@ -944,6 +1083,7 @@ describe('chat commands + notifications (B447)', () => {
       document.getElementById('cb-poll-editor').showModal = jest.fn();
       await submit('/binhchon Q | A | B');
       expect(document.getElementById('cb-question').value).toBe('Q');
+      expect([...document.querySelectorAll('#cb-options input')].map((i) => i.value)).toEqual(['A', 'B']);
       expect(posted()).toBe(false);
       await boot(clubAs('member', { chat: { ...DEFAULTS, cmdPoll: false } }));
       expect(document.getElementById('cb-poll-new').hidden).toBe(true);
@@ -1854,8 +1994,8 @@ it('renders previews, sanctions and command aliases as separate facts, never a j
   const [o1, o2] = document.querySelectorAll('#cb-options input');
   o1.value = 'Phở'; o2.value = 'Bún';
   document.getElementById('cb-poll-form').oninput();
-  expect([...document.querySelectorAll('#cb-poll-preview .prow__meta > span')].map((s) => s.textContent))
-    .toEqual(['clubs.preview', 'Ăn gì', 'Phở', 'Bún']);
+  expect(document.querySelector('#cb-poll-preview .cb-poll__q').textContent).toBe('Ăn gì');
+  expect([...document.querySelectorAll('#cb-poll-preview .cb-poll__label')].map((s) => s.textContent)).toEqual(['Phở', 'Bún']);
 
   // club.js never joins facts with a middle dot (feedback rule; ticket-rows.md)
   expect(fs.readFileSync(path.join(__dirname, '..', 'js', 'club.js'), 'utf8')).not.toMatch(/join\(['"] · ['"]\)|\+ ' · ' \+/);

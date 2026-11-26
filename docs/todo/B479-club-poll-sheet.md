@@ -1,5 +1,5 @@
 # B479 — Club chat: poll setup sheet
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-26 — poll sheet rebuilt on branch feature/479-club-poll-sheet; full `npm test` 5043/5043, cache-bust OK, Chromium pass 390 px (touch emulation) + 1280 px, both themes, temp DB. NOT tried on a real phone keyboard. n/6 sits in the options header (as in the mockup); error summary at the top of the sheet (mockup, not planning §4 "above the buttons")
 **Area:** `client/club.html` (`#cb-poll-editor`), `client/js/club.js` (openPoll/addOption/previewPoll), `client/css/club.css`, sprite (`arrow-up`, `arrow-down`), iconography registry, i18n, tests
 **From:** [features/club-chat-refactor](../../features/club-chat-refactor/planning.md) §4, mockup `poll`, 2026-11-26   **Depends:** —
 
