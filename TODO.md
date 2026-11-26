@@ -67,7 +67,6 @@ in the detail file / fix-log).
   theo 1 điểm dữ liệu. Việc tiếp theo là *thu thêm mẫu*, không phải viết code. Lệch đồng hồ máy
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
-- **#495.** Repeat abandonment: events table + limits `[Model: Sonnet]` — [detail](docs/todo/B495-abandonment-limits.md)
 - **#496.** Fair-play: per-game presence summary for staff `[Model: Sonnet]` — [detail](docs/todo/B496-fairplay-presence-summary.md)
 - **#497.** Presence: real-browser pass, 2 players + 1 spectator `[Model: Sonnet]` — [detail](docs/todo/B497-presence-real-browser-pass.md)
 - **#498.** Presence: remove deprecated wire fields `[Model: Haiku]` — [detail](docs/todo/B498-presence-remove-legacy-fields.md)

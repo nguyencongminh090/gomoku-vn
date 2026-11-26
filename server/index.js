@@ -336,6 +336,10 @@ setInterval(() => sessionManager.sweepExpiredSessions(), config.SESSION_SWEEP_IN
 const dmService = require('./managers/DmService');
 dmService.pruneExpired(Date.now(), true);
 setInterval(() => dmService.pruneExpired(Date.now(), true), 3600 * 1000).unref();
+// #495: repeat-leaver events are kept 7 days.
+const abandonmentService = require('./managers/AbandonmentService');
+abandonmentService.prune();
+setInterval(() => abandonmentService.prune(), 3600 * 1000).unref();
 // B450: club event reminders (30 min before, RSVPs only). Derived from club_events.starts_at/reminded_at, so a
 // restart or deploy loses nothing; once at boot, then every minute.
 const clubService = require('./managers/ClubService');

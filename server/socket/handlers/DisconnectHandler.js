@@ -27,6 +27,7 @@ const {
   sessions,
 } = require('../state');
 const { handleGameEnd } = require('./GameHandler');
+const abandonment = require('../../managers/AbandonmentService');
 
 // ── Rated games: absence inside a running game (#493, features/presence-status §3) ──────────────────
 // Casual games keep the pause-and-wait grace below. A rated game keeps running: the absent player's clock
@@ -127,7 +128,8 @@ function startAbsence(io, room, user) {
   const roomUser = room.users.get(uid);
   if (roomUser) roomUser.presence = 'disconnected';
   const ab = absenceOf(engine);
-  if (typeof ab.left[uid] !== 'number') ab.left[uid] = absenceWindowMs(room.settings);
+  // #495: a repeat leaver (>= 3 abandons/aborts in 24 h) gets half the budget (floor 15 s).
+  if (typeof ab.left[uid] !== 'number') ab.left[uid] = abandonment.budgetFor(uid, absenceWindowMs(room.settings), now);
   const abortable = isAbortable(engine);
   const entry = {
     kind: 'absence', roomId, since: now, last: now,
@@ -173,6 +175,10 @@ function endByAbsence(io, room, { winner, reason, voided, code, name }) {
     return e && e.kind === 'absence' && e.roomId === roomId;
   });
   handleGameEnd(io, room, voided ? { noScore: true } : {});
+  // #495: the players who left are charged for an abandonment or an abort — never for outage / both-gone voids.
+  if (reason === 'abandon' || reason === 'abort') {
+    for (const id of ab.absentAtEnd) abandonment.record(id, engine.gameId, reason);
+  }
   io.to(roomId).emit('game:ended', { result: engine.result, scoreTable: room.scoreTable, scoreHistory: room.scoreHistory || [] });
   io.to(roomId).emit('chat:message', {
     from: null, fromId: null, text: ABSENCE_TEXT[code](name), code, vars: { name },

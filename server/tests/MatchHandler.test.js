@@ -17,6 +17,9 @@ jest.mock('../socket/state', () => ({
   leaveLobby: (s) => s.leave('lobby'),
 }));
 jest.mock('../socket/home-feed', () => ({ scheduleHomeUpdate: jest.fn() }));
+// #495: repeat-leaver cooldown, driven per test.
+const mockCooldown = { ms: 0 };
+jest.mock('../managers/AbandonmentService', () => ({ cooldownLeftMs: () => mockCooldown.ms }));
 
 const roomManager = require('../managers/RoomManager');
 const MatchHandler = require('../socket/handlers/MatchHandler');
@@ -45,6 +48,7 @@ beforeEach(() => {
   for (const id of [...roomManager.rooms.keys()]) roomManager._destroyRoom(id);
   io = { sockets: { sockets: new Map() }, to: () => ({ emit() {} }) };
   database.getUserRanking.mockClear();
+  mockCooldown.ms = 0;
 });
 afterAll(() => MatchHandler._reset());
 
@@ -211,3 +215,16 @@ describe('leaving the queue', () => {
   });
 });
 
+
+describe('#495 repeat-leaver cooldown', () => {
+  it('a repeat leaver cannot queue until the cooldown ends; the error carries the minutes left', () => {
+    mockCooldown.ms = 9.2 * 60_000;
+    const s = makeSocket('m1');
+    join(s);
+    expect(s.last('match:error')).toMatchObject({ code: 'MATCH_COOLDOWN', vars: { minutes: 10 } });
+    expect(MatchHandler._queue.size()).toBe(0);
+    mockCooldown.ms = 0;
+    join(s);
+    expect(s.last('match:status')).toMatchObject({ waiting: true });
+  });
+});

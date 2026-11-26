@@ -1,5 +1,5 @@
 # B495 — Repeat abandonment: events table + limits (PS-10)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-27 — migration 027 `abandonment_events` (kind CHECK abandon|abort, FK users CASCADE, idx user_at + at); `AbandonmentService` (record / recent / budgetFor / cooldownLeftMs / prune, best-effort, guests in memory per guest id); DisconnectHandler records on abandon/abort only and halves W for a repeat leaver; MatchHandler `MATCH_COOLDOWN` with `{minutes}` (lobby-home passes vars); hourly prune in server/index.js. Tests: abandonment-limits (in-memory DB), rated-absence #495 block, MatchHandler cooldown.
 **Area:** server/db (migration), server/managers, MatchHandler, server/index.js prune
 **From:** features/presence-status (planning §3, Q5/Q12 A), 2026-11-27   **Depends:** #493
 ## Scope

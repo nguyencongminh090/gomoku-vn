@@ -15,6 +15,9 @@ jest.mock('../utils/logger', () => ({ info: jest.fn(), debug: jest.fn(), warn: j
 jest.mock('../socket/home-feed', () => ({ scheduleHomeUpdate: jest.fn(), register: jest.fn() }));
 jest.mock('../managers/rank-cache', () => ({ standingOf: () => null, ratingsOf: () => ({}), onChange: () => {} }));
 jest.mock('../db/database', () => ({ saveGame: jest.fn() }));
+// #495: the repeat-leaver store is checked by its own suite (abandonment-limits); here only the calls.
+const mockAbandon = { record: jest.fn(), budgetFor: jest.fn((id, base) => base), cooldownLeftMs: jest.fn(() => 0) };
+jest.mock('../managers/AbandonmentService', () => mockAbandon);
 jest.mock('../managers/RatingService', () => {
   const actual = jest.requireActual('../managers/RatingService');
   return { ...actual, recordGame: jest.fn(() => true) };
@@ -73,7 +76,10 @@ function drop(id) {
 }
 const events = (name) => io.log.filter((e) => e.event === name);
 
-beforeEach(() => { database.saveGame.mockClear(); RatingService.recordGame.mockClear(); DisconnectHandler._resetOutage(); });
+beforeEach(() => {
+  database.saveGame.mockClear(); RatingService.recordGame.mockClear(); DisconnectHandler._resetOutage();
+  mockAbandon.record.mockClear(); mockAbandon.budgetFor.mockImplementation((id, base) => base);
+});
 afterEach(() => {
   for (const e of state.disconnectTimers.values()) { clearTimeout(e.timeout); clearInterval(e.countdown); }
   state.disconnectTimers.clear();
@@ -327,5 +333,39 @@ describe('#494 casual games: one cumulative 60 s grace per player per game (Q3 A
     io.log.length = 0;
     drop('b');
     expect(events('game:interrupted')[0].data.secondsLeft).toBe(60);
+  });
+});
+
+describe('#495 repeat leavers', () => {
+  test('an abandonment is recorded against the leaver; an abort too', () => {
+    setup({ moves: 2 });
+    drop('a');
+    jest.advanceTimersByTime(61_500);
+    expect(mockAbandon.record).toHaveBeenCalledWith('a', engine.gameId, 'abandon');
+  });
+
+  test('abort is recorded against the absent player', () => {
+    setup({ moves: 1 });
+    drop('b');
+    jest.advanceTimersByTime(31_500);
+    expect(mockAbandon.record).toHaveBeenCalledWith('b', engine.gameId, 'abort');
+  });
+
+  test('voids are never recorded (both gone, outage)', () => {
+    setup({ moves: 2 });
+    drop('a');
+    drop('b');
+    jest.advanceTimersByTime(16_500);
+    expect(engine.result.reason).toBe('both_absent');
+    expect(mockAbandon.record).not.toHaveBeenCalled();
+  });
+
+  test('a repeat leaver gets the halved budget from the service', () => {
+    mockAbandon.budgetFor.mockImplementation((id, base) => (id === 'a' ? Math.max(15_000, base / 2) : base));
+    setup({ moves: 2 });
+    drop('a');
+    expect(engine.absence.left.a).toBe(30_000);
+    jest.advanceTimersByTime(31_500);
+    expect(engine.result).toEqual({ winner: 'b', reason: 'abandon' });
   });
 });

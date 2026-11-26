@@ -680,7 +680,7 @@ client.on('match:status', (st) => {
   }
 });
 client.on('match:error', (e) => {
-  qm.error = e && e.code ? t('err.' + e.code.toLowerCase()) : (e && e.message) || '';
+  qm.error = e && e.code ? t('err.' + e.code.toLowerCase(), e.vars) : (e && e.message) || ''; // #495 vars: MATCH_COOLDOWN minutes
   setSearching(false);
 });
 client.on('match:found', () => {
