@@ -57,6 +57,8 @@ date: 2026-10-10 (#214)
 | Rotate left / right | arrow-arc-left / arrow-arc-right | | Solved / correct | check-circle |
 | Black / white stone (editor tool) | fill-circle, fixed stone colours (.pz-stone--black/white) | | Erase | eraser |
 | Answer move | target | | Close (modal, window, stand up) | x (bold on lobby/room) |
+| Message actions (⋯ menu) | dots-three | | Report | flag |
+| Copy | copy | | Select text | text-align-left |
 
 ## Don't
 - Don't scale icons with `1em` inside small text (that produced 11–13px icons).

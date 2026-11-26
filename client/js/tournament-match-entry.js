@@ -1,7 +1,7 @@
 import './session.js?v=7d763f30';
-import './i18n.js?v=3ab3f8bf';
+import './i18n.js?v=ffe18304';
 import './ui-mode.js?v=3e1ff171';
-import './settings-panel.js?v=349e6629';
+import './settings-panel.js?v=eed57ecd';
 import './socket-client.js?v=d1a6dc84';
 import './board.js?v=91667397';
-import './tournament-match.js?v=f7c9e962';
+import './tournament-match.js?v=f96a2c2c';

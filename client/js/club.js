@@ -17,6 +17,7 @@
     category: CATEGORIES[0], weekly: false, color: 'blue', club: null, mine: undefined, ch: null,
     chat: { loaded: false, firstId: 0, lastId: 0, busy: false },
     peekId: 0, latestOther: 0, hints: [], hint: 0, // B447: unread-dot poll cursor, newest message by others; command hints
+    editing: null, // B476: the message being edited in the composer
   };
   const CHAT_POLL_MS = 8000;
   const CHAT_PAGE = 50;
@@ -272,8 +273,8 @@
 
   // --- polls (B449): tallies come from the server only; open cards refresh on the 8 s chat tick ---
   const pollCards = () => [...$('cb-chat-log').querySelectorAll('.cb-poll[data-open="1"]')];
-  /** Bumped before every vote/close POST, so a chat tick sent earlier can't repaint the card with older state. */
-  const bumpPoll = (card) => { card.dataset.v = String((Number(card.dataset.v) || 0) + 1); };
+  /** Bumped before every vote/close POST (poll card) or PATCH (message row, B476), so a chat tick sent earlier can't repaint it with older state. */
+  const bumpV = (node) => { node.dataset.v = String((Number(node.dataset.v) || 0) + 1); };
 
   /** Fill (or refill) a poll card from server state `p`. Options are buttons; tapping my own option takes the vote back. */
   function renderPoll(card, p) {
@@ -300,7 +301,7 @@
       b.append(label, el('span', t('clubs.poll_votes', { n }), 'cb-poll__n'));
       b.setAttribute('aria-label', decode(text) + ', ' + t('clubs.poll_votes', { n }));
       b.onclick = async () => {
-        bumpPoll(card);
+        bumpV(card);
         const res = await act('POST', '/messages/' + id + '/vote', { option: p.myOption === i ? null : i });
         if (res && res.poll) { renderPoll(card, res.poll); if (card.querySelector('.cb-poll__who')) showVoters(card); }
       };
@@ -320,7 +321,7 @@
       const end = el('button', t('clubs.poll_close'), 'cb-poll__link');
       end.type = 'button';
       end.onclick = async () => {
-        bumpPoll(card);
+        bumpV(card);
         const res = await act('POST', '/messages/' + id + '/close', null, 'clubs.confirm_poll_close');
         if (res && res.poll) renderPoll(card, res.poll);
       };
@@ -371,6 +372,7 @@
     const sys = m.kind === 'pin' || m.kind === 'challenge' || m.kind === 'poll';
     const row = el('div', undefined, 'cb-chat__msg' + (sys ? ' cb-chat__msg--sys' : ''));
     row.dataset.id = String(m.id);
+    msgStore.set(m.id, m);
     row.dataset.day = dayKey(m.createdAt);
     row.dataset.at = m.createdAt;
     const time = el('time', new Date(m.createdAt).toLocaleTimeString(lang(), { hour: '2-digit', minute: '2-digit' }), 'cb-chat__time');
@@ -392,29 +394,408 @@
       const role = roleOf(m.username);
       if (role === 'owner' || role === 'officer') who.append(el('span', t('clubs.role_' + role), 'cl-role'));
       who.append(time);
+      if (m.editedAt) who.append(editedLabel(m.editedAt));
       const { box, mentionsMe } = textWithMentions(m.text, m.username, m.mentioned);
       if (mentionsMe && !m.mine) row.classList.add('is-mentioned');
       body.append(who, box);
       row.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'cl-av40'), body);
     }
-    // One grid cell for the row actions: flag + delete as separate grid items overflowed the
-    // 3-column row into an implicit 2nd row (a blank ~50px gap under every message for staff).
-    const acts = el('div', undefined, 'cb-chat__acts');
-    if (isMember() && !m.mine) {
-      acts.append(iconBtn('flag', 'Báo cáo tin nhắn', async () => {
-        const reason = window.prompt('Lý do báo cáo (tối đa 200 ký tự)');
-        if (reason && await act('POST', '/messages/' + m.id + '/report', { reason })) $('cb-msg').textContent = 'Đã gửi báo cáo.';
-      }, 'cb-chat__flag'));
-    }
-    if (isStaff()) {
-      acts.append(iconBtn('trash', t('clubs.delete_message'), async () => {
-        const ok = await act('DELETE', '/messages/' + m.id, null, 'clubs.confirm_delete_message');
-        if (ok) { resetChat(); openChat(); }
-        return false;
-      }, 'cb-chat__del'));
-    }
-    if (acts.childElementCount) row.append(acts);
+    if (isMember()) row.append(toolsFor(m)); // B476: floating toolbar, out of the grid (no third column)
     return row;
+  }
+
+  // --- message actions (B476): desktop toolbar + ⋯ menu, phone long-press sheet, edit in the composer, dialogs ---
+  /** id → message as last rendered (kind, mine, username, text, mentioned); refreshed in place by edits. */
+  const msgStore = new Map();
+  const coarse = () => !!(window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches);
+  const rowOf = (id) => $('cb-chat-log').querySelector('.cb-chat__msg[data-id="' + Number(id) + '"]');
+  const msgOf = (row) => row && msgStore.get(Number(row.dataset.id));
+  const canEditMsg = (m) => m.mine && m.kind === 'text';
+  /** Q1: anyone deletes their own; staff delete others' only when they outrank the author (as the server checks). */
+  const canDeleteMsg = (m) => m.mine || window.ClubPolicy.canModerate(state.club.myRole, roleOf(m.username));
+  const copyText = (m) => (m.kind === 'challenge' ? '' : decode(m.text));
+
+  function editedLabel(at) {
+    const n = el('span', t('clubs.edited'), 'cb-chat__edited');
+    n.title = t('clubs.edited_at', { when: fmtWhen(at) });
+    return n;
+  }
+
+  /** One toolbar per row; one tab stop per row (APG toolbar, roving tabindex). */
+  function toolsFor(m) {
+    const bar = el('div', undefined, 'cb-tools');
+    bar.setAttribute('role', 'toolbar');
+    bar.setAttribute('aria-label', t('clubs.msg_actions_of', { name: m.displayName }));
+    const btn = (act, iconName, label, cls) => {
+      const b = el('button', undefined, 'cl-ib' + (cls ? ' ' + cls : ''));
+      b.type = 'button';
+      b.dataset.act = act;
+      b.tabIndex = -1;
+      b.setAttribute('aria-label', label);
+      b.title = label;
+      b.append(icon(iconName));
+      return b;
+    };
+    if (canEditMsg(m)) bar.append(btn('edit', 'pencil-simple', t('clubs.act_edit')));
+    if (!m.mine) bar.append(btn('report', 'flag', t('clubs.act_report')));
+    if (canDeleteMsg(m)) bar.append(btn('delete', 'trash', t('clubs.delete_message'), 'cl-ib--danger'));
+    const more = btn('more', 'dots-three', t('clubs.msg_actions'), 'cb-tools__more');
+    more.setAttribute('aria-haspopup', 'menu');
+    more.setAttribute('aria-expanded', 'false');
+    bar.append(more);
+    (coarse() ? more : bar.firstChild).tabIndex = 0; // touch shows only ⋯
+    return bar;
+  }
+  const toolItems = (bar) => (coarse() ? [...bar.querySelectorAll('.cb-tools__more')] : [...bar.querySelectorAll('button')]);
+
+  /** Menu / sheet items for this viewer and this message. */
+  function actionsFor(m) {
+    const list = [];
+    if (canEditMsg(m)) list.push(['edit', 'pencil-simple', t('clubs.act_edit_msg')]);
+    if (copyText(m)) list.push(['copy', 'copy', t('clubs.act_copy')]);
+    if (copyText(m) && coarse()) list.push(['select', 'text-align-left', t('clubs.act_select')]); // Q5
+    if (!m.mine) list.push(['report', 'flag', t('clubs.act_report')]);
+    if (canDeleteMsg(m)) list.push(['delete', 'trash', t(m.mine ? 'clubs.act_delete' : 'clubs.act_delete_staff'), true]);
+    return list.map(([act, iconName, label, danger]) => {
+      const b = el('button', undefined, 'cb-act' + (danger ? ' cb-act--danger' : ''));
+      b.type = 'button';
+      b.setAttribute('role', 'menuitem');
+      b.tabIndex = -1;
+      b.dataset.act = act;
+      b.append(icon(iconName), label);
+      return b;
+    });
+  }
+
+  /** Author + text, quoted in the sheet and the delete/report dialogs. */
+  function quote(m) {
+    const box = el('div');
+    const text = m.kind === 'challenge' ? t('clubs.sys_challenge', { name: m.displayName, to: m.meta?.to?.displayName || '' }) : decode(m.text);
+    box.append(el('b', m.displayName), el('p', text));
+    return [window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'cb-quote__av'), box];
+  }
+
+  const focusMore = (id) => { const b = rowOf(id)?.querySelector('.cb-tools__more'); if (b) b.focus(); };
+
+  function closeMenus(focusBack) {
+    for (const menu of document.querySelectorAll('.cb-menu')) {
+      const row = menu.closest('.cb-chat__msg');
+      menu.remove();
+      if (row) {
+        row.classList.remove('is-hover');
+        const more = row.querySelector('.cb-tools__more');
+        more.setAttribute('aria-expanded', 'false');
+        if (focusBack) more.focus();
+      }
+    }
+  }
+
+  /** Desktop ⋯ menu (APG menu button); flips up when the stream would clip it. */
+  function openMenu(btn) {
+    closeMenus();
+    const row = btn.closest('.cb-chat__msg');
+    const m = msgOf(row);
+    if (!m) return;
+    const menu = el('div', undefined, 'cb-menu');
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', t('clubs.msg_actions'));
+    menu.append(...actionsFor(m));
+    row.append(menu);
+    if (menu.getBoundingClientRect().bottom > $('cb-stream').getBoundingClientRect().bottom - 8) menu.classList.add('cb-menu--up');
+    row.classList.add('is-hover');
+    btn.setAttribute('aria-expanded', 'true');
+    menu.firstChild.focus();
+  }
+
+  // Phone sheet: the row stays marked until it closes; focus then returns to the row's ⋯ unless an action moved it.
+  let sheet = { row: null, handled: false };
+  function openSheet(row, byKeyboard) {
+    const m = msgOf(row);
+    const dlg = $('cb-sheet-actions');
+    if (!m || (dlg.open && sheet.row === row)) return; // Android: our 450 ms hold, then its own contextmenu
+    closeMenus();
+    if (sheet.row) sheet.row.classList.remove('is-selected');
+    sheet = { row, handled: false };
+    row.classList.add('is-selected');
+    $('cb-sheet-quote').replaceChildren(...quote(m));
+    $('cb-sheet-list').replaceChildren(...actionsFor(m));
+    if (!dlg.open) dlg.showModal();
+    const top = dlg.getBoundingClientRect().top;
+    const r = row.getBoundingClientRect();
+    if (top > 0 && r.bottom > top - 12) $('cb-stream').scrollTop += r.bottom - (top - 12); // keep the marked row in view
+    // touch: focus the sheet (no ring on an item); keyboard / screen reader: the first item, as the APG menu does
+    if (byKeyboard && $('cb-sheet-list').firstChild) $('cb-sheet-list').firstChild.focus();
+    else { dlg.tabIndex = -1; dlg.focus(); }
+  }
+
+  function copyMsg(m) {
+    const done = () => { $('cb-msg').textContent = t('clubs.copied'); };
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(copyText(m)).then(done, () => {});
+  }
+
+  /** Q5: native selection and the iOS/Android callout come back on this one row until a tap elsewhere. */
+  function selectText(row) {
+    row.classList.add('is-selecting');
+    const text = row.querySelector('.cb-chat__text');
+    if (text && window.getSelection) window.getSelection().selectAllChildren(text);
+    const off = (ev) => {
+      if (row.contains(ev.target)) return;
+      row.classList.remove('is-selecting');
+      document.removeEventListener('pointerdown', off, true);
+    };
+    document.addEventListener('pointerdown', off, true);
+  }
+
+  function doAct(act, row) {
+    const m = msgOf(row);
+    if (!m) return;
+    if (act === 'edit') startEdit(m);
+    else if (act === 'delete') openDelete(m);
+    else if (act === 'report') openReport(m);
+    else if (act === 'copy') copyMsg(m);
+    else if (act === 'select') selectText(row);
+  }
+
+  // --- delete / report dialogs (no window.confirm / window.prompt) ---
+  let dlgMsg = null;
+  let dlgDone = false;
+  function openDelete(m) {
+    dlgMsg = m;
+    dlgDone = false;
+    $('cb-dlg-delete-h').textContent = m.mine ? t('clubs.confirm_delete_message') : t('clubs.delete_title_other', { name: m.displayName });
+    $('cb-dlg-delete-quote').replaceChildren(...quote(m));
+    $('cb-dlg-delete-warn').textContent = t(m.mine ? 'clubs.delete_warn_own' : 'clubs.delete_warn_staff');
+    $('cb-dlg-delete').showModal();
+    $('cb-dlg-delete-cancel').focus();
+  }
+
+  async function confirmDelete() {
+    const m = dlgMsg;
+    dlgDone = true;
+    $('cb-dlg-delete').close();
+    if (!m || !(await act('DELETE', '/messages/' + m.id))) { dlgDone = false; if (m) focusMore(m.id); return; }
+    dropRows([m.id]);
+    if (m.kind === 'pin') load(); // the pinned bar clears with its row
+    $('cb-chat-input').focus(); // the row and its ⋯ are gone
+  }
+
+  function openReport(m) {
+    dlgMsg = m;
+    dlgDone = false;
+    const form = $('cb-report-form');
+    form.reset();
+    $('cb-report-more').hidden = true;
+    $('cb-report-count').textContent = '0/200';
+    $('cb-report-error').textContent = '';
+    $('cb-dlg-report-quote').replaceChildren(...quote(m));
+    $('cb-dlg-report').showModal();
+    form.querySelector('input[name="why"]:checked').focus();
+  }
+
+  async function sendReport(ev) {
+    ev.preventDefault();
+    const m = dlgMsg;
+    const why = $('cb-report-form').querySelector('input[name="why"]:checked').value;
+    const reason = why === 'other' ? $('cb-report-text').value.trim() : t('clubs.report_' + why);
+    if (!reason) {
+      $('cb-report-error').textContent = t('clubs.report_need_text');
+      $('cb-report-text').focus();
+      return;
+    }
+    const res = await act('POST', '/messages/' + m.id + '/report', { reason });
+    if (!res) { $('cb-report-error').textContent = $('cb-msg').textContent; $('cb-msg').textContent = ''; return; }
+    dlgDone = true;
+    $('cb-dlg-report').close();
+    $('cb-msg').textContent = t('clubs.report_sent');
+    focusMore(m.id);
+  }
+
+  // --- edit in the composer ---
+  function setSend(iconName, labelKey) {
+    const b = $('cb-chat-send');
+    b.replaceChildren(icon(iconName));
+    b.setAttribute('aria-label', t(labelKey));
+    b.title = t(labelKey);
+  }
+
+  function startEdit(m) {
+    if (!canEditMsg(m)) return;
+    closeMenus();
+    state.editing = m;
+    $('cb-chat-log').querySelectorAll('.is-editing').forEach((n) => n.classList.remove('is-editing'));
+    rowOf(m.id)?.classList.add('is-editing');
+    $('cb-editbar').hidden = false;
+    $('cb-edit-orig').textContent = decode(m.text);
+    const input = $('cb-chat-input');
+    input.value = decode(m.text);
+    setSend('check', 'clubs.edit_save');
+    hideHints();
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+
+  function endEdit() {
+    if (!state.editing) return;
+    state.editing = null;
+    $('cb-chat-log').querySelectorAll('.is-editing').forEach((n) => n.classList.remove('is-editing'));
+    $('cb-editbar').hidden = true;
+    $('cb-chat-input').value = '';
+    setSend('paper-plane-tilt', 'clubs.chat_send');
+    hideHints();
+  }
+
+  async function saveEdit(text) {
+    const m = state.editing;
+    if (text === decode(m.text)) { endEdit(); return; } // unchanged: no request
+    const row = rowOf(m.id);
+    if (row) bumpV(row); // a tick sent before this PATCH must not repaint the row
+    const res = await act('PATCH', '/messages/' + m.id, { text });
+    if (!res) return; // stay in edit mode with the text; the error shows in cb-msg
+    // Own text only: the stored delivered list stays; the next tick brings the server's view (the cursor never moves here)
+    if (!res.unchanged) applyEdit({ id: m.id, text: res.text, editedAt: res.editedAt, mentioned: m.mentioned });
+    endEdit();
+    $('cb-chat-input').focus();
+  }
+
+  /** Patch an edited row in place (same node): text, mention marks, "đã sửa". Never touches the unread cursors. */
+  function applyEdit(e) {
+    const m = msgStore.get(Number(e.id));
+    if (!m) return;
+    Object.assign(m, { text: e.text, editedAt: e.editedAt, mentioned: e.mentioned || [] });
+    const row = rowOf(m.id);
+    const old = row && row.querySelector('.cb-chat__body > .cb-chat__text');
+    if (!old || m.kind !== 'text') return;
+    const { box, mentionsMe } = textWithMentions(m.text, m.username, m.mentioned);
+    old.replaceWith(box);
+    row.classList.toggle('is-mentioned', mentionsMe && !m.mine);
+    const label = row.querySelector('.cb-chat__edited');
+    if (label) label.replaceWith(editedLabel(m.editedAt));
+    else row.querySelector('.cb-chat__time').after(editedLabel(m.editedAt));
+  }
+
+  /** Rows gone from the server (deleted, trimmed): drop them, and leave edit mode if it was one of them. */
+  function dropRows(ids) {
+    const gone = new Set(ids.map(Number));
+    for (const row of $('cb-chat-log').querySelectorAll('.cb-chat__msg')) if (gone.has(Number(row.dataset.id))) row.remove();
+    for (const id of gone) msgStore.delete(id);
+    if (state.editing && gone.has(state.editing.id)) endEdit();
+    markDays();
+    syncChatChrome();
+  }
+
+  /** Up-arrow in an empty composer edits my last text message (Slack, Discord). */
+  function editLast() {
+    const rows = [...$('cb-chat-log').querySelectorAll('.cb-chat__msg')].reverse();
+    const m = rows.map(msgOf).find((x) => x && canEditMsg(x));
+    if (m) startEdit(m);
+    return !!m;
+  }
+
+  function composerKeys(ev) {
+    if (state.hints.length) { hintKeys(ev); return; }
+    if (ev.isComposing || ev.keyCode === 229) return;
+    if (ev.key === 'Escape' && state.editing) { endEdit(); ev.preventDefault(); return; }
+    if (ev.key === 'ArrowUp' && !state.editing && !$('cb-chat-input').value && editLast()) ev.preventDefault();
+  }
+
+  function bindActions() {
+    const log = $('cb-chat-log');
+    log.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-act]');
+      if (!b) return;
+      const row = b.closest('.cb-chat__msg');
+      if (b.dataset.act === 'more') {
+        if (coarse()) openSheet(row, true);
+        else if (b.getAttribute('aria-expanded') === 'true') closeMenus(true);
+        else openMenu(b);
+        return;
+      }
+      if (b.closest('.cb-menu')) closeMenus();
+      doAct(b.dataset.act, row);
+    });
+    log.addEventListener('keydown', (ev) => {
+      const menu = ev.target.closest('.cb-menu');
+      const bar = !menu && ev.target.closest('.cb-tools');
+      const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+      if (menu && (ev.key === 'Escape' || ev.key === 'Tab')) { closeMenus(ev.key === 'Escape'); if (ev.key === 'Escape') ev.preventDefault(); return; }
+      if (!(menu || bar) || !keys.includes(ev.key)) return;
+      const items = menu ? [...menu.children] : toolItems(bar);
+      const prev = menu ? 'ArrowUp' : 'ArrowLeft';
+      const next = menu ? 'ArrowDown' : 'ArrowRight';
+      if (![prev, next, 'Home', 'End'].includes(ev.key)) return;
+      let i = items.indexOf(document.activeElement);
+      i = ev.key === 'Home' ? 0 : ev.key === 'End' ? items.length - 1 : (i + (ev.key === next ? 1 : -1) + items.length) % items.length;
+      if (bar) items.forEach((b, j) => { b.tabIndex = j === i ? 0 : -1; });
+      items[i].focus();
+      ev.preventDefault();
+    });
+    document.addEventListener('click', (ev) => { if (!ev.target.closest('.cb-menu, .cb-tools__more')) closeMenus(); });
+    // Long-press (450 ms; cancelled by > 8 px of movement, scroll or pointercancel). contextmenu opens the same thing.
+    let hold = null;
+    const cancelHold = () => { if (hold) { clearTimeout(hold.timer); hold = null; } };
+    log.addEventListener('pointerdown', (ev) => {
+      const row = ev.target.closest('.cb-chat__msg');
+      if (!row || ev.pointerType !== 'touch' || row.classList.contains('is-selecting') || ev.target.closest('button, a, .cb-menu')) return;
+      cancelHold();
+      hold = { x: ev.clientX, y: ev.clientY, timer: setTimeout(() => { hold = null; openSheet(row); if (navigator.vibrate) navigator.vibrate(10); }, 450) };
+    });
+    log.addEventListener('pointermove', (ev) => { if (hold && Math.hypot(ev.clientX - hold.x, ev.clientY - hold.y) > 8) cancelHold(); });
+    log.addEventListener('pointerup', cancelHold);
+    log.addEventListener('pointercancel', cancelHold);
+    $('cb-stream').addEventListener('scroll', cancelHold, { passive: true });
+    log.addEventListener('contextmenu', (ev) => {
+      const row = ev.target.closest('.cb-chat__msg');
+      // "Chọn văn bản" rows and a desktop text selection keep the native menu (copy a part of a message)
+      if (!row || row.classList.contains('is-selecting') || ev.target.closest('a')) return;
+      if (!coarse() && window.getSelection && String(window.getSelection())) return;
+      ev.preventDefault();
+      cancelHold();
+      if (coarse()) openSheet(row); else openMenu(row.querySelector('.cb-tools__more'));
+    });
+    $('cb-sheet-list').addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-act]');
+      if (!b) return;
+      const row = sheet.row;
+      sheet.handled = b.dataset.act !== 'copy'; // copy leaves focus on the row's ⋯; the others move it
+      $('cb-sheet-actions').close();
+      doAct(b.dataset.act, row);
+    });
+    $('cb-sheet-list').addEventListener('keydown', (ev) => {
+      const items = [...$('cb-sheet-list').children];
+      let i = items.indexOf(document.activeElement);
+      if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') i = (i + (ev.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      else if (ev.key === 'Home' || ev.key === 'End') i = ev.key === 'Home' ? 0 : items.length - 1;
+      else return;
+      items[i].focus();
+      ev.preventDefault();
+    });
+    $('cb-sheet-actions').addEventListener('close', () => {
+      const row = sheet.row;
+      if (row) row.classList.remove('is-selected');
+      if (row && !sheet.handled) focusMore(row.dataset.id);
+      sheet = { row: null, handled: false };
+    });
+    // Backdrop tap closes, but only a tap that also started there: lifting the finger after the long-press
+    // that opened the sheet lands a click on the backdrop too (seen in Chromium touch emulation).
+    let downOnBackdrop = false;
+    $('cb-sheet-actions').addEventListener('pointerdown', (ev) => { downOnBackdrop = ev.target === $('cb-sheet-actions'); });
+    $('cb-sheet-actions').addEventListener('click', (ev) => {
+      if (ev.target === $('cb-sheet-actions') && downOnBackdrop) $('cb-sheet-actions').close();
+      downOnBackdrop = false;
+    });
+    $('cb-dlg-delete-ok').onclick = confirmDelete;
+    $('cb-dlg-delete-cancel').onclick = () => $('cb-dlg-delete').close();
+    $('cb-dlg-delete').addEventListener('close', () => { if (!dlgDone && dlgMsg) focusMore(dlgMsg.id); });
+    $('cb-report-form').onsubmit = sendReport;
+    $('cb-report-form').addEventListener('change', () => {
+      const other = $('cb-report-form').querySelector('input[name="why"]:checked').value === 'other';
+      $('cb-report-more').hidden = !other;
+      $('cb-report-error').textContent = '';
+    });
+    $('cb-report-text').addEventListener('input', () => { $('cb-report-count').textContent = $('cb-report-text').value.length + '/200'; });
+    $('cb-dlg-report-cancel').onclick = $('cb-dlg-report-x').onclick = () => $('cb-dlg-report').close();
+    $('cb-dlg-report').addEventListener('close', () => { if (!dlgDone && dlgMsg) focusMore(dlgMsg.id); });
+    $('cb-edit-cancel').onclick = () => { endEdit(); $('cb-chat-input').focus(); };
   }
 
   // --- unread dot (B447): last-seen id per club on this device; REST only ---
@@ -464,7 +845,9 @@
   }
 
   function resetChat() {
-    state.chat = { loaded: false, firstId: 0, lastId: 0, busy: false };
+    endEdit();
+    state.chat = { loaded: false, firstId: 0, lastId: 0, busy: false }; // B476: rev (edit cursor) unset until a GET brings one
+    msgStore.clear();
     $('cb-chat-log').replaceChildren();
   }
 
@@ -482,20 +865,23 @@
     try {
       let q = mode === 'older' ? '?before=' + c.firstId : mode === 'newer' ? '?after=' + c.lastId : '';
       const open = mode === 'newer' ? pollCards().slice(-20) : [];
+      let shown = [];
       if (mode === 'newer') {
-        const visible = [...$('cb-chat-log').querySelectorAll('.cb-chat__msg')].map((n) => n.dataset.id);
-        if (visible.length) q += '&visible=' + visible.slice(0, 200).join(',');
+        shown = [...$('cb-chat-log').querySelectorAll('.cb-chat__msg')].slice(0, 200);
+        if (shown.length) q += '&visible=' + shown.map((n) => n.dataset.id).join(',');
+        if (shown.length && c.rev !== undefined) q += '&rev=' + c.rev; // B476: edits after the cursor, among these rows
       }
+      const shownV = new Map(shown.map((n) => [n.dataset.id, n.dataset.v]));
       const sentV = open.map((n) => n.dataset.v);
       if (open.length) q += '&polls=' + open.map((n) => n.dataset.id).join(',');
       const res = await fetch(base() + '/messages' + q, { credentials: 'same-origin' });
       if (!res.ok) return;
-      const { messages, polls, removed } = await res.json();
-      if (removed?.length) {
-        const stale = new Set(removed.map(String));
-        for (const row of $('cb-chat-log').querySelectorAll('.cb-chat__msg')) if (stale.has(row.dataset.id)) row.remove();
-        markDays();
-      }
+      const { messages, polls, removed, rev, edited } = await res.json();
+      if (removed?.length) dropRows(removed);
+      // B476: an edit lands only on a row not re-versioned since this tick left (my PATCH bumps it first)
+      for (const e of edited || []) { const row = rowOf(e.id); if (row && shownV.get(String(e.id)) === row.dataset.v) applyEdit(e); }
+      // The cursor moves only on GET replies that covered the visible rows: never 'older' (no edits checked), never PATCH
+      if (Number.isInteger(rev) && (mode === 'newest' || (mode === 'newer' && shown.length))) c.rev = rev;
       if (polls) open.forEach((card, i) => { if (polls[card.dataset.id] && card.dataset.v === sentV[i]) renderPoll(card, polls[card.dataset.id]); });
       const log = $('cb-chat-log');
       const scroller = $('cb-stream');
@@ -627,7 +1013,7 @@
 
   /** While the input is just "/word" (no space yet), list the matching commands. */
   function renderHints() {
-    const m = /^\/([A-Za-z]*)$/.exec($('cb-chat-input').value);
+    const m = !state.editing && /^\/([A-Za-z]*)$/.exec($('cb-chat-input').value); // B476: an edit is never a command
     const input = $('cb-chat-input');
     const caret = input.selectionStart ?? input.value.length;
     const at = /(?:^|[^A-Za-z0-9_@])@([A-Za-z0-9_]*)$/.exec(input.value.slice(0, caret));
@@ -1139,6 +1525,7 @@
       const text = $('cb-chat-input').value.trim();
       if (!text) return;
       hideHints();
+      if (state.editing) { await saveEdit(text); return; } // B476: PATCH, never parsed as a command
       const match = /^\/([a-z]+)(?:\s+([\s\S]*))?$/i.exec(text);
       const kind = match && window.ClubPolicy.find(match[1])?.kind;
       const arg = match?.[2] || '';
@@ -1177,7 +1564,8 @@
       }
     };
     $('cb-chat-input').addEventListener('input', () => { state.hint = 0; renderHints(); });
-    $('cb-chat-input').addEventListener('keydown', hintKeys);
+    $('cb-chat-input').addEventListener('keydown', composerKeys);
+    bindActions();
     $('cb-chat-input').addEventListener('blur', () => setTimeout(hideHints, 150)); // let a click on a hint land first
     setInterval(() => {
       if (document.hidden) return;

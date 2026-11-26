@@ -1,5 +1,5 @@
 # B476 — Club chat: message actions UI (toolbar, long-press sheet, edit mode)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-26 — toolbar/menu/sheet/edit mode/dialogs; 13 jsdom tests in `client/tests/clubs-pages.test.js`, full `npm test` 5013/5013, browser pass (isolated DB, 2 members)
 **Area:** `client/club.html`, `client/js/club.js`, `client/css/club.css`, `client/js/i18n.js`, sprite (`dots-three`), `docs/knowledge/ui-ux/iconography.md` registry, `client/tests/`
 **From:** [features/club-chat-refactor](../../features/club-chat-refactor/planning.md) §5, mockups `actions`/`edit`/`delete`/`report`, decided 2026-11-26   **Depends:** B475
 
@@ -34,3 +34,7 @@
 - Full `npm test` passes and `node scripts/cache-bust.js` prints OK.
 - Real browser on an isolated DB at 390 px and desktop, in both themes: two members, where an edit and a delete by one appear for the other, and the /admin club report queue shows `prior`/`later` (B475).
 - Long-press on a real device stays unverified unless it is actually tried.
+## Result (deviations)
+- Copy uses `EscapeUtils.decodeChatText` (wire escapes only `<`/`>`). "Lý do khác" sends the typed text only and requires it (server: 1–200 chars).
+- Backdrop tap closes the sheet only if the press also started on the backdrop: the finger lifting after the long-press clicks the backdrop (Chromium touch emulation). Desktop right-click keeps the native menu while text is selected. Jsdom harness now clears each boot's 8 s tick (old ticks appended rows mid-test).
+- Browser pass (isolated DB, both themes, 1280 and 390 touch): edits and deletes reached the other member on the next tick, and admin `prior`/`later` showed. Real-device long-press unverified. Found B481.

@@ -32,7 +32,7 @@
   <div class="rnav__ticket tm-ticket"><div class="tm-meta" id="match-meta"></div></div>
   <span class="rnav__spacer"></span>
   <a href="#" id="back-to-tournament" class="topnav__btn rnav__leave detail-back" data-i18n-title="tmatch.back" data-i18n-aria="tmatch.back" title="Chi tiết giải" aria-label="Chi tiết giải">
-    <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-arrow-left"></use></svg>
+    <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=078caf4b#ph-regular-arrow-left"></use></svg>
     <span class="rnav__leave-text" data-i18n="tmatch.back">Chi tiết giải</span>
   </a>
   <div class="topnav__right"></div>
@@ -68,9 +68,9 @@
         <button class="rsheet__grab" id="rsheet-grab" type="button" data-i18n-aria="room.sheet_close" aria-label="Đóng"><span aria-hidden="true"></span></button>
 
         <div class="sidebar-tabs" role="tablist">
-          <button class="tab-btn" data-tab="tab-moves" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-list-numbers"></use></svg><span class="tab-btn__label" data-i18n="tmatch.tab_moves">Nước đi</span></button>
-          <button class="tab-btn tab-btn--active" data-tab="tab-chat" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-chat-circle"></use></svg><span class="tab-btn__label" data-i18n="room.tab_chat">Chat</span></button>
-          <button class="tab-btn" data-tab="tab-users" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-eye"></use></svg><span class="tab-btn__label" data-i18n="room.tab_spectators">Khán giả</span></button>
+          <button class="tab-btn" data-tab="tab-moves" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=078caf4b#ph-regular-list-numbers"></use></svg><span class="tab-btn__label" data-i18n="tmatch.tab_moves">Nước đi</span></button>
+          <button class="tab-btn tab-btn--active" data-tab="tab-chat" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=078caf4b#ph-regular-chat-circle"></use></svg><span class="tab-btn__label" data-i18n="room.tab_chat">Chat</span></button>
+          <button class="tab-btn" data-tab="tab-users" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=078caf4b#ph-regular-eye"></use></svg><span class="tab-btn__label" data-i18n="room.tab_spectators">Khán giả</span></button>
         </div>
 
         <div class="tab-content" id="tab-moves">
@@ -84,7 +84,7 @@
             <div class="chat-input" id="chat-input-wrapper">
               <input type="text" id="chat-input" data-i18n-placeholder="room.ph_chat" placeholder="Nhập tin nhắn..."
                 maxlength="500" autocomplete="off" />
-              <button id="btn-send" type="button" data-i18n-title="room.btn_send" title="Gửi" aria-label="Gửi"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-bold-paper-plane-tilt"></use></svg></button>
+              <button id="btn-send" type="button" data-i18n-title="room.btn_send" title="Gửi" aria-label="Gửi"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=078caf4b#ph-bold-paper-plane-tilt"></use></svg></button>
             </div>
           </div>
         </div>
@@ -96,9 +96,9 @@
     </div>
 
     <div class="game-controls" id="match-actions" style="display:none;">
-      <button class="act" type="button" id="btn-time" data-i18n-title="game.btn_time"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-hourglass"></use></svg><span data-i18n="room.act_time">Xin time</span></button>
-      <button class="act" type="button" id="btn-draw" data-i18n-title="game.btn_draw"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-handshake"></use></svg><span data-i18n="room.act_draw">Cầu hoà</span></button>
-      <button class="act" type="button" id="btn-resign"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-flag"></use></svg><span data-i18n="room.act_resign">Đầu hàng</span></button>
+      <button class="act" type="button" id="btn-time" data-i18n-title="game.btn_time"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=078caf4b#ph-regular-hourglass"></use></svg><span data-i18n="room.act_time">Xin time</span></button>
+      <button class="act" type="button" id="btn-draw" data-i18n-title="game.btn_draw"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=078caf4b#ph-regular-handshake"></use></svg><span data-i18n="room.act_draw">Cầu hoà</span></button>
+      <button class="act" type="button" id="btn-resign"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=078caf4b#ph-regular-flag"></use></svg><span data-i18n="room.act_resign">Đầu hàng</span></button>
     </div>
 
     <div class="seatcard seatcard--bottom" id="seatcard-bottom" aria-live="polite"></div>
@@ -106,7 +106,7 @@
     <div class="stage" aria-hidden="true"></div>
     <div class="rdock" id="rdock">
       <!-- phones: #chat-input-wrapper is moved here by tournament-match.js -->
-      <button class="rdock__btn" id="btn-sheet" type="button" aria-expanded="false" aria-controls="rsheet" data-i18n-title="room.sheet_open" data-i18n-aria="room.sheet_open" title="Chat, tỉ số và nước đi" aria-label="Chat, tỉ số và nước đi"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-chat-circle"></use></svg><span class="rdock__badge" id="sheet-badge" hidden></span></button>
+      <button class="rdock__btn" id="btn-sheet" type="button" aria-expanded="false" aria-controls="rsheet" data-i18n-title="room.sheet_open" data-i18n-aria="room.sheet_open" title="Chat, tỉ số và nước đi" aria-label="Chat, tỉ số và nước đi"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=078caf4b#ph-regular-chat-circle"></use></svg><span class="rdock__badge" id="sheet-badge" hidden></span></button>
     </div>
   </aside>
   <div class="rsheet-scrim" id="rsheet-scrim" hidden></div>
@@ -114,7 +114,7 @@
 
 <div class="match-result-overlay" id="match-result-overlay">
   <div class="match-result-card">
-    <svg class="icon match-result-card__icon" id="match-result-icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-bold-flag-checkered"></use></svg>
+    <svg class="icon match-result-card__icon" id="match-result-icon"><use href="assets/icons/phosphor-sprite.svg?v=078caf4b#ph-bold-flag-checkered"></use></svg>
     <div class="match-result-card__title" id="match-result-title"></div>
     <div class="match-result-card__sub" id="match-result-sub"></div>
     <a class="btn btn-confirm" id="match-result-back" href="#" data-i18n="tmatch.back_to_tournament">Quay lại giải đấu</a>
@@ -131,7 +131,7 @@
      unchanged, this only adds a second UI entry point into it. -->
 <div class="match-result-overlay" id="series-transition-overlay">
   <div class="match-result-card">
-    <svg class="icon match-result-card__icon" id="series-transition-icon"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-bold-flag-checkered"></use></svg>
+    <svg class="icon match-result-card__icon" id="series-transition-icon"><use href="assets/icons/phosphor-sprite.svg?v=078caf4b#ph-bold-flag-checkered"></use></svg>
     <div class="match-result-card__title" id="series-transition-title"></div>
     <div class="match-result-card__sub" id="series-transition-sub"></div>
     <button class="btn btn-confirm" id="series-transition-ready-btn" type="button" data-i18n="tmatch.series_ready_btn">Sẵn sàng</button>
@@ -147,6 +147,6 @@
 <script src="js/coords.js?v=f2d4e6d0"></script>
 <script src="js/renju.js?v=ee70c581"></script>
 <script src="js/renju-opening-ui.js?v=9a34bd6d"></script>
-<script type="module" src="js/tournament-match-entry.js?v=4ca248df"></script>
+<script type="module" src="js/tournament-match-entry.js?v=43667d75"></script>
 </body>
 </html>
