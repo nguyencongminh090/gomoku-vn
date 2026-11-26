@@ -415,3 +415,4 @@
 | 2026-11-27 00:59 | #494 casual games: repeated drops no longer refill the 60 s paused grace — one budget per player per game | [detail](docs/fix-log/2026-11-27-494-casual-grace-budget.md) |
 | 2026-11-27 01:01 | #493 follow-up: outage void needed only many socket drops — self-triggerable; now distinct users and both seats must drop inside the outage | [detail](docs/fix-log/2026-11-27-493-outage-void-hardening.md) |
 | 2026-11-27 01:33 | #493 follow-up 2: outage void counts members only, needs both seats to drop within 15 s, window capped at 5 min | [detail](docs/fix-log/2026-11-27-493-outage-void-hardening-2.md) |
+| 2026-11-27 01:53 | #497 browser pass: a player back mid-game read 'away' — the resume path never marked the new socket as the room page (#373) | [detail](docs/fix-log/2026-11-27-497-resume-marks-room-page.md) |

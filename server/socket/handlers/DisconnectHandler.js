@@ -676,6 +676,11 @@ function cancelDisconnectGrace(io, socket) {
   // don't let a non-member rejoin the room socket or resume the game.
   if (!room.users.has(user.userId)) return false;
 
+  // #497: this socket resumes the game, so it is the room page (#422 keeps non-room pages out of here). Mark it
+  // as such (#373 roomPageId), or its next presence report reads as "on another page" and shows the player away.
+  const auth = (socket.handshake && socket.handshake.auth) || {};
+  if (auth.roomPage === true || auth.roomId === entry.roomId) (socket.data || (socket.data = {})).roomPageId = entry.roomId;
+
   // #493: a rated game never paused — the returner just rejoins it (no waiting for the other player).
   if (entry.kind === 'absence') return returnFromAbsence(io, socket, entry, room);
 

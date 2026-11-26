@@ -259,3 +259,26 @@ describe('#488 wire: room members in grace carry graceUntil', () => {
     expect(member('v')).not.toHaveProperty('graceUntil');
   });
 });
+
+// #497 browser pass: after a mid-game return the next presence report marked the player 'away' — the resume path
+// never marked the new socket as the room page (#373 roomPageId), so onPresence read it as "another page".
+describe('#497 resume marks the returning socket as the room page', () => {
+  beforeEach(() => {
+    seatGame();
+    for (const id of ['a', 'b', 'v']) connect(makeSocket(id, { roomPageId: room.roomId }));
+  });
+
+  test.each([
+    ['room page handshake (roomPage true)', { roomPage: true }, 'active'],
+    ['handshake naming this room', { roomPage: true, roomId: null }, 'active'],
+  ])('%s → stays %s after the next report', (_c, auth, want) => {
+    disconnect(state.sessions.get('a'));
+    const back = makeSocket('a'); // fresh socket: no roomPageId yet
+    back.handshake = { auth: { ...auth, roomId: auth.roomId === null ? room.roomId : auth.roomId } };
+    connect(back);
+    expect(DisconnectHandler.cancelDisconnectGrace(io, back)).toBe(true);
+    back.handlers['room:presence']({ presence: 'active' });
+    expect(room.users.get('a').presence).toBe(want);
+    expect(back.data.roomPageId).toBe(room.roomId);
+  });
+});
