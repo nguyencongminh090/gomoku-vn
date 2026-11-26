@@ -32,5 +32,5 @@
 ## Done when
 - jsdom: toolbar per role, sheet items per role, edit-mode lifecycle, the `rev` cursor not advanced by PATCH, `edited` rows applied.
 - Full `npm test` passes and `node scripts/cache-bust.js` prints OK.
-- Real browser on an isolated DB at 390 px and desktop, in both themes: two members, where an edit and a delete by one appear for the other.
+- Real browser on an isolated DB at 390 px and desktop, in both themes: two members, where an edit and a delete by one appear for the other, and the /admin club report queue shows `prior`/`later` (B475).
 - Long-press on a real device stays unverified unless it is actually tried.

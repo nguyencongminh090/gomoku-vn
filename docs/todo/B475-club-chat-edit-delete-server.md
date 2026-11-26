@@ -1,5 +1,5 @@
 # B475 — Club chat: edit and delete own messages (server)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-26 — migration 026, `editMessage`/`editRefresh`, Q1 delete; `server/tests/club-chat-edit.test.js` (32), full `npm test` 5000/5000
 **Area:** migration 026, `ClubService` (postMessage/listMessages/deleteMessage/reportMessage/removeContent), `routes/clubs.js`, `ClubOversight` (report detail), tests
 **From:** [features/club-chat-refactor](../../features/club-chat-refactor/planning.md) §5–§7, decided 2026-11-26   **Depends:** —
 
@@ -23,7 +23,6 @@
    - Set `later = {deleted, at}` on the message's reports.
 5. `GET /messages` returns `rev = clubs.chat_rev`. With `&rev=n`, it also returns `edited: [{id, text, editedAt, mentioned}]` for visible ids where `edit_rev > n`.
 6. Reports snapshot the current body plus prior bodies into `prior`. The admin report detail shows `prior` and `later`.
-
 ## Don't
 - Add a `kind` such as `deleted`: it forces a third `club_messages` rebuild (see 020).
 - Use `max(edit_rev)` as the cursor: it is not monotonic after trim or delete.
@@ -36,3 +35,6 @@
 - Backend tests cover each refusal: another member's message, a system kind, muted, left, locked, empty text, a command-looking edit, and an officer deleting the owner's message.
 - Backend tests cover: rev monotonic after a trim, one ping per message, `later` and `prior` on reports, and the pin delete clearing the announcement.
 - Full `npm test` passes.
+## Result (deviations)
+- `meta.pinged` = user ids (rename-safe; seeded from `recipients`). `later={deleted}` is set in `removeContent`, so admin removal marks it too.
+- Admin queue `prior`/`later` lines: jsdom `client/tests/admin-clubs.test.js`; browser pass unverified (planned with #476, two members).

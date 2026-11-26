@@ -1,3 +1,5 @@
+- ✅ **#475.** Club chat: edit and delete own messages (server, migration, refresh path) `[Model: Opus]` — [detail](docs/todo/B475-club-chat-edit-delete-server.md)
+
 - ✅ **#474.** Club page: old buttons/widgets, all-caps labels, poll button on the chat bar `[Model: Sonnet]` — [detail](docs/todo/B474-club-controls-modern.md)
 
 - ✅ **#472.** Match page keeps the aborted game live after a server restart `[Model: Opus]` — [detail](docs/todo/B472-tmatch-stale-after-restart.md)

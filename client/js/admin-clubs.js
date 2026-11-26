@@ -65,6 +65,10 @@
     if (page * 30 < d.total) $('ac-pages').append(button('Trang sau', () => { page++; return list(); }));
     $('ac-reports').replaceChildren(...d.reports.map((r) => {
       const row = node('div', [r.name, r.reason, r.excerpt].join(' · '), 'prow');
+      // B475: earlier bodies (evidence an edit can't erase) and what the author did after the report.
+      for (const p of r.prior || []) row.append(node('p', 'Bản trước: ' + p.body, 'pnote'));
+      if (r.later?.action === 'edited') row.append(node('p', 'Sau báo cáo, đã sửa thành: ' + r.later.body, 'pnote'));
+      if (r.later?.action === 'deleted') row.append(node('p', 'Sau báo cáo, đã xoá lúc ' + new Date(r.later.at).toLocaleString(), 'pnote'));
       row.append(action(r.slug, 'dismiss', r.id), action(r.slug, 'uphold', r.id));
       return row;
     }));

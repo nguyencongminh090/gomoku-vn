@@ -367,9 +367,10 @@ describe('chat (#200 slice 3)', () => {
     expect((await get('chown')).body.messages.at(-1).text).toBe('trigger trim');
   });
 
-  it('delete: staff only, scoped to club; leaving keeps old messages; club delete cascades', async () => {
+  it('delete: others only by outranking staff (B475), scoped to club; leaving keeps old messages; club delete cascades', async () => {
     const last = (await get('chown')).body.messages.at(-1).id;
-    expect((await call('DELETE', `/api/clubs/${slug}/messages/${last}`, 'chmem')).body.code).toBe('CLUB_FORBIDDEN');
+    const { id: ownerMsg } = (await send('chown', 'owner note')).body;
+    expect((await call('DELETE', `/api/clubs/${slug}/messages/${ownerMsg}`, 'chmem')).body.code).toBe('CLUB_FORBIDDEN');
     await create('chout', 'Other Chat');
     expect((await call('DELETE', `/api/clubs/other-chat/messages/${last}`, 'chout')).body.code).toBe('CLUB_MESSAGE_NOT_FOUND');
     expect((await call('DELETE', `/api/clubs/${slug}/messages/${last}`, 'choff')).status).toBe(200);

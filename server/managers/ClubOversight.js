@@ -15,6 +15,11 @@ function audit(actor, club, action, detail = '') {
     .run(actor, club?.id || null, club?.slug || null, action, detail, new Date().toISOString());
 }
 
+// B475: prior = [{body, editedAt}] before the report; later = {action:'edited'|'deleted', body?, at} after it.
+function parse(json) {
+  try { return json ? JSON.parse(json) : null; } catch (_) { return null; }
+}
+
 function directory(actor, query) {
   authorize(actor);
   const q = String(query.q || '').trim().toLowerCase().slice(0, 60);
@@ -22,8 +27,8 @@ function directory(actor, query) {
   const where = 'WHERE instr(lower(name),?) OR instr(slug,?)';
   const clubs = db.prepare(`SELECT slug,name,hidden,locked FROM clubs ${where} ORDER BY slug LIMIT 30 OFFSET ?`).all(q, q, (page - 1) * 30);
   const total = db.prepare('SELECT count(*) AS n FROM clubs ' + where).get(q,q).n;
-  const reports = db.prepare(`SELECT r.id,r.reason,r.excerpt,c.slug,c.name FROM club_reports r JOIN clubs c ON c.id=r.club_id
-    WHERE r.resolved_at IS NULL ORDER BY r.id LIMIT 50`).all();
+  const reports = db.prepare(`SELECT r.id,r.reason,r.excerpt,r.prior,r.later,c.slug,c.name FROM club_reports r JOIN clubs c ON c.id=r.club_id
+    WHERE r.resolved_at IS NULL ORDER BY r.id LIMIT 50`).all().map((r) => ({ ...r, prior: parse(r.prior), later: parse(r.later) }));
   audit(actor, null, 'list');
   const history = db.prepare(`SELECT l.*,u.username FROM club_admin_log l LEFT JOIN users u ON u.id=l.actor_id
     WHERE action NOT IN ('list','view') ORDER BY l.id DESC LIMIT 100`).all();
