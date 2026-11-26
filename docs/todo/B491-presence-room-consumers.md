@@ -1,5 +1,5 @@
 # B491 — Presence consumer: room seats + spectators (PS-6)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-27 — `playerStatusInfo`/`renderStatusDot` delegate to `PresenceView.describe(member, {inRoom})` (inline fallback if the script is missing); dot keeps `ready-dot--*` + adds shared `pres-dot` tone/glyph; room.css colour modifiers replaced by `.ready-dot { --pd: 9px }`; waiting tone = `--c-border` (#114); presence-view loaded on room.html. Room words kept. Countdown NOT added to the dot label: a static title would go stale; the game:interrupted notice already counts down (deviation from Scope 2). Test helper now reads only `ready-dot--*` classes. Visual check pending #497.
 **Area:** client/js/room-ui.js, client/css/room.css
 **From:** features/presence-status (planning tone table, Q8 A), 2026-11-27   **Depends:** #488
 ## Scope

@@ -481,7 +481,7 @@ button:not(:disabled):active,
 .pres-dot { --pd: 10px; --pd-c: var(--c-ink-3); display: inline-block; flex: none; box-sizing: border-box;
   width: var(--pd); height: var(--pd); border-radius: 50%; background: var(--pd-c); vertical-align: middle; }
 .pres-dot--ok { --pd-c: var(--c-success); }
-.pres-dot--idle { --pd-c: var(--c-ink-3); }
+.pres-dot--idle { --pd-c: var(--c-border); }
 .pres-dot--warn { --pd-c: var(--c-warning); }
 .pres-dot--bad { --pd-c: var(--c-error); }
 .pres-dot--off { --pd-c: var(--c-ink-3); }

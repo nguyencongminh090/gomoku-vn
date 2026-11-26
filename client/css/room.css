@@ -258,28 +258,10 @@
   flex-wrap: wrap;
 }
 
-/* Sole status indicator (no text label) — sized up slightly from the old
-   7px accent dot since it now carries the full meaning on its own. */
+/* Sole status indicator (no text label), 9px. Colour and shape come from the shared .pres-dot (main.css,
+   #491): playing green filled, waiting grey, away amber half, disconnected red ring with a gap. */
 .ready-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--c-border);
-  flex-shrink: 0;
-}
-/* Game in progress for this player ("Đang chơi") */
-.ready-dot--active {
-  background: var(--c-success);
-}
-/* Tab open but not the visible/active one ("leaved site") — amber, milder
-   than Disconnect: the player is still reachable, just not looking. */
-.ready-dot--away {
-  background: var(--c-warning);
-}
-/* Socket actually dropped — reconnect grace period running. Red: most
-   severe of the 4 states, the connection is genuinely gone. */
-.ready-dot--disconnected {
-  background: var(--c-error);
+  --pd: 9px;
 }
 
 .slot-card__role {
