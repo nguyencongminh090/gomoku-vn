@@ -32,6 +32,7 @@ const WallGenerator   = require('../../generators/WallGenerator');
 const PortalGenerator = require('../../generators/PortalGenerator');
 const database        = require('../../db/database');
 const RatingService   = require('../../managers/RatingService');
+const FairPlayPresence = require('../../managers/FairPlayPresence');
 const ChallengeSeries = require('../../managers/ChallengeSeries');
 const config          = require('../../config');
 const moveLag         = require('../../utils/move-lag'); // TEMP — TODO.md #167 measurement harness
@@ -1128,6 +1129,7 @@ function handleGameEnd(io, room, opts = {}) {
     // and guest games are a no-op. Skipped if the game row didn't persist, so
     // rating_history never points at a game that doesn't exist.
     // A series game is rated once, with the rest of the series, in finishSeries().
+    if (rated && saved) FairPlayPresence.write(engine); // #496: one presence summary row per player
     if (inSeries) {
       ChallengeSeries.addGame(series, engine.gameId, engine.result.winner === 'draw' ? 'draw'
         : engine.players.some((p) => p.userId === engine.result.winner) ? engine.result.winner : null);

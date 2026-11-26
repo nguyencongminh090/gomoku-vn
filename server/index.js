@@ -340,6 +340,10 @@ setInterval(() => dmService.pruneExpired(Date.now(), true), 3600 * 1000).unref()
 const abandonmentService = require('./managers/AbandonmentService');
 abandonmentService.prune();
 setInterval(() => abandonmentService.prune(), 3600 * 1000).unref();
+// #496: rated-game presence summaries are kept 90 days.
+const fairPlayPresence = require('./managers/FairPlayPresence');
+fairPlayPresence.prune();
+setInterval(() => fairPlayPresence.prune(), 3600 * 1000).unref();
 // B450: club event reminders (30 min before, RSVPs only). Derived from club_events.starts_at/reminded_at, so a
 // restart or deploy loses nothing; once at boot, then every minute.
 const clubService = require('./managers/ClubService');

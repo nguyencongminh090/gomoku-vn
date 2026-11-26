@@ -28,6 +28,7 @@ const {
 } = require('../state');
 const { handleGameEnd } = require('./GameHandler');
 const abandonment = require('../../managers/AbandonmentService');
+const fairPlay = require('../../managers/FairPlayPresence');
 
 // ── Rated games: absence inside a running game (#493, features/presence-status §3) ──────────────────
 // Casual games keep the pause-and-wait grace below. A rated game keeps running: the absent player's clock
@@ -140,6 +141,7 @@ function startAbsence(io, room, user) {
   entry.countdown = setInterval(() => absenceTick(io, roomId, user), ABSENCE_POLL_MS);
   if (typeof entry.countdown.unref === 'function') entry.countdown.unref();
   disconnectTimers.set(uid, entry);
+  fairPlay.onDisconnect(engine, uid, now); // #496
   // No clock change (it keeps running), so no timerSync: one event, then the seat's room:updated.
   io.to(roomId).emit('game:absent', { playerId: uid, playerName: user.displayName, abortable });
   broadcastRoomUpdate(io, room);
@@ -251,6 +253,7 @@ function returnFromAbsence(io, socket, entry, room) {
     ab.left[uid] = Math.max(0, ab.left[uid] - Math.max(0, Date.now() - entry.last)); // Q2: not refilled
   }
   clearAbsence(uid);
+  fairPlay.onReturn(engine, uid); // #496
   if (engine.status !== 'ongoing') return false; // ended in between: the normal rejoin path takes over
   const roomUser = room.users.get(uid);
   if (roomUser) roomUser.presence = 'active';

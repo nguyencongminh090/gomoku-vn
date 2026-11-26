@@ -54,6 +54,32 @@
     $('ri-list').replaceChildren(section(t('admin.i_players'), players), section(t('admin.i_pairs'), pairs), section(t('admin.i_groups'), groups));
   }
 
+  /**
+   * #496: away / disconnect summary of rated games (GET /api/admin/presence-signals). Weak evidence only — tab
+   * focus is spoofable and lost for innocent reasons — so it is shown as context, never as a flag.
+   */
+  function presenceSection(d) {
+    const min = (ms) => Math.round((ms || 0) / 60000);
+    const items = (d.players || []).map((p) => card(p.displayName, [
+      t('admin.i_p_games', { n: p.games }),
+      t('admin.i_p_disc', { n: p.disconnects, min: min(p.disconnectMs) }),
+      t('admin.i_p_away', { n: p.awayCount }),
+      t('admin.i_p_longest', { s: Math.round((p.longestAwayMs || 0) / 1000) }),
+    ], t('admin.i_presence_row', { share: pct(p.ownTurnAwayShare) })));
+    const sec = section(t('admin.i_presence'), items);
+    sec.insertBefore(el('p', t('admin.i_presence_hint', { days: d.keepDays, games: d.minGames }), 'pnote'), sec.children[1]);
+    return sec;
+  }
+
+  async function loadPresence() {
+    try {
+      const res = await fetch('/api/admin/presence-signals', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const data = await res.json();
+      $('ri-list').append(presenceSection(data));
+    } catch (_) { /* the collusion report above still stands */ }
+  }
+
   async function load() {
     const msg = $('ri-msg');
     try {
@@ -62,6 +88,7 @@
       if (!res.ok) { msg.hidden = false; msg.textContent = data.code ? t('err.' + data.code.toLowerCase()) : t('admin.error'); return; }
       msg.hidden = true;
       render(data);
+      loadPresence();
     } catch (err) {
       msg.hidden = false;
       msg.textContent = t('admin.error');

@@ -1,3 +1,4 @@
+- ✅ **#496.** Fair-play: per-game presence summary for staff `[Model: Sonnet]` — [detail](docs/todo/B496-fairplay-presence-summary.md)
 - ✅ **#495.** Repeat abandonment: events table + limits `[Model: Sonnet]` — [detail](docs/todo/B495-abandonment-limits.md)
 - ✅ **#494.** Casual games: cumulative grace budget `[Model: Sonnet]` — [detail](docs/todo/B494-casual-grace-budget.md)
 - ✅ **#493.** Rated games: running clock, absence window, abandon/abort results `[Model: Opus]` — [detail](docs/todo/B493-rated-disconnect-policy.md)

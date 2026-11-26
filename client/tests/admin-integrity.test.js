@@ -245,3 +245,18 @@ describe('charts', () => {
     });
   });
 });
+
+// #496: the away / disconnect summary is appended as its own section (context only, no flags).
+it('appends the rated-game presence section from /api/admin/presence-signals', async () => {
+  const PRES = { keepDays: 90, minGames: 3, players: [{ userId: 'x', displayName: 'Tabber', games: 4, disconnects: 2, disconnectMs: 120000, awayCount: 9, awayOwnTurnMs: 1, longestAwayMs: 42000, gameMs: 1, ownTurnAwayShare: 0.35 }] };
+  await boot((url) => ok(url === '/api/admin/presence-signals' ? PRES : DATA));
+  await flush();
+  expect(global.fetch).toHaveBeenCalledWith('/api/admin/presence-signals', { credentials: 'same-origin' });
+  const text = $('ri-list').textContent;
+  expect(text).toContain('admin.i_presence');
+  expect(text).toContain('Tabber');
+  expect(text).toContain('admin.i_presence_row{"share":35}');
+  expect(text).toContain('admin.i_p_disc{"n":2,"min":2}');
+  expect(text).toContain('admin.i_p_longest{"s":42}');
+  expect(text).not.toContain(' · ');
+});
