@@ -292,12 +292,25 @@ it('shares alias permissions and returns help privately', async () => {
   expect(messages()).toHaveLength(1);
 });
 
+it.each(['tattieng', 'mute', 'duoi', 'kick'])('B477: /%s answers MOVED to staff and members and does nothing', async (word) => {
+  for (const who of ['off', 'mem']) {
+    const res = await say(who, '/' + word + ' @mem2 10');
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('CLUB_COMMAND_MOVED');
+  }
+  expect((await say('mem2', 'still here')).status).toBe(201);
+  const help = await say('off', '/trogiup');
+  expect(help.body.commands).toEqual(expect.arrayContaining(['pin', 'poll', 'calendar', 'challenge']));
+  expect(help.body.commands).not.toEqual(expect.arrayContaining(['mute']));
+  expect(help.body.commands).not.toContain('help');
+});
+
 it('rolls back mixed-rank bulk actions and enforces mutes and bans across entry points', async () => {
   const url = '/api/clubs/' + SLUG;
   const mod = (action, usernames) => call('POST', url + '/moderation', 'off', { action, usernames, minutes: 5 });
   expect((await mod('ban', ['mem', 'own'])).status).toBe(403);
   expect((await say('mem', 'hi')).status).toBe(201);
-  expect((await say('off', '/mute @mem 10')).status).toBe(201);
+  expect((await mod('mute', ['mem'])).status).toBe(200);
   expect((await say('mem', '/poll q | a | b')).body.code).toBe('CLUB_MUTED');
   expect((await mod('ban', ['mem'])).status).toBe(200);
   expect((await call('POST', url + '/join', 'mem')).body.code).toBe('CLUB_BANNED');

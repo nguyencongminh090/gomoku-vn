@@ -841,14 +841,10 @@ function postMessage(userId, slug, text) {
   if (cmd) {
     if (!cmd.kind) throw new ClubError('CLUB_COMMAND_UNKNOWN', 400, `Không có lệnh /${cmd.word}.`);
     const definition = policy.find(cmd.word);
+    // B477: before the staff check, so members get the pointer too and not "forbidden".
+    if (definition.retired === 'members') throw new ClubError('CLUB_COMMAND_MOVED', 400, 'Dùng kênh thành-viên để tắt tiếng hoặc mời ra.');
     if (definition.staff && !isStaff(role)) throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn không có quyền.');
     if (definition.toggle && !settings[definition.toggle]) throw new ClubError('CLUB_COMMAND_DISABLED', 403, `Lệnh /${cmd.word} đang tắt trong nhóm này.`);
-    if (cmd.kind === 'kick' || cmd.kind === 'mute') {
-      const [name, minutes, ...extra] = cmd.arg.split(/\s+/);
-      if (extra.length || (cmd.kind === 'kick' && minutes)) throw new ClubError('CLUB_MOD_INVALID', 400, 'Cú pháp không hợp lệ.');
-      moderate(userId, slug, { action: cmd.kind, usernames: [name.replace(/^@/, '')], minutes: Number(minutes) });
-      return { kind: 'moderated' };
-    }
     if (cmd.kind === 'help') return { kind: 'help', commands: policy.available(role, settings).map((c) => c.kind) };
     if (cmd.kind === 'pin') return pinCommand(club, role, userId, cmd.arg, settings);
     if (cmd.kind === 'poll') return storePoll(club, userId, role, chat.parsePollArg(cmd.arg), settings);

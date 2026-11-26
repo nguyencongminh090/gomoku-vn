@@ -7,18 +7,20 @@
   const isMember = (role) => rank(role) >= roles.member;
   const isStaff = (role) => rank(role) >= roles.officer;
   const canModerate = (role, target) => isStaff(role) && rank(role) > rank(target);
+  // `retired`: still found (so an old habit gets a pointer, never "unknown") but no longer offered. 'members' = the
+  // action lives in thành-viên now; 'popup' = typing "/" replaces it. B477: delete these one release after deploy.
   const commands = [
-    { kind: 'pin', words: ['ghim', 'pin', 'announce'], toggle: 'cmdPin', staff: true },
-    { kind: 'challenge', words: ['giaohuu', 'challenge'], toggle: 'cmdChallenge' },
     { kind: 'poll', words: ['binhchon', 'poll'], toggle: 'cmdPoll' },
     { kind: 'calendar', words: ['lich', 'calendar'], toggle: 'cmdCalendar' },
-    { kind: 'mute', words: ['tattieng', 'mute'], staff: true },
-    { kind: 'kick', words: ['duoi', 'kick'], staff: true },
-    { kind: 'help', words: ['trogiup', 'help'] },
+    { kind: 'challenge', words: ['giaohuu', 'challenge'], toggle: 'cmdChallenge' },
+    { kind: 'pin', words: ['ghim', 'pin', 'announce'], toggle: 'cmdPin', staff: true },
+    { kind: 'mute', words: ['tattieng', 'mute'], staff: true, retired: 'members' },
+    { kind: 'kick', words: ['duoi', 'kick'], staff: true, retired: 'members' },
+    { kind: 'help', words: ['trogiup', 'help'], retired: 'popup' },
   ];
   const find = (word) => commands.find((command) => command.words.includes(word.toLowerCase()));
   const available = (role, settings) => commands.filter((cmd) => isMember(role)
-    && (!cmd.staff || isStaff(role)) && (!cmd.toggle || settings[cmd.toggle]));
+    && !cmd.retired && (!cmd.staff || isStaff(role)) && (!cmd.toggle || settings[cmd.toggle]));
 /** Club times are Vietnam time (UTC+7, no DST) whatever the server's TZ (B450). */
 const VN_OFFSET_MS = 7 * 3600 * 1000;
 const EVENT_ARG_RE = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?\s+(\d{1,2})[:hH](\d{2})(?:\s+([\s\S]*))?$/;

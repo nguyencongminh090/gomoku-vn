@@ -1,3 +1,7 @@
+- ✅ **#478.** Club chat: mention popup gaps `[Model: Sonnet]` — [detail](docs/todo/B478-club-chat-mention-gaps.md)
+
+- ✅ **#477.** Club chat: slash command cleanup `[Model: Sonnet]` — [detail](docs/todo/B477-club-chat-command-cleanup.md)
+
 - ✅ **#476.** Club chat: message actions UI (toolbar, long-press sheet, edit mode) `[Model: Sonnet]` — [detail](docs/todo/B476-club-chat-message-actions-ui.md)
 
 - ✅ **#475.** Club chat: edit and delete own messages (server, migration, refresh path) `[Model: Opus]` — [detail](docs/todo/B475-club-chat-edit-delete-server.md)

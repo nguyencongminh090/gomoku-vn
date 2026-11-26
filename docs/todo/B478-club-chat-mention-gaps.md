@@ -1,5 +1,5 @@
 # B478 — Club chat: mention popup gaps (M1–M5)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-26 — M1–M5; full `npm test` + browser pass (Chromium touch emulation, simulated `visualViewport`). NOT tried on a real phone keyboard
 **Area:** `client/js/club.js` (renderHints/pickHint/hintKeys), `client/css/club.css`, `client/club.html`, i18n, `client/tests/`
 **From:** [features/club-chat-refactor](../../features/club-chat-refactor/planning.md) §3, mockup `edit`, 2026-11-26   **Depends:** —
 
@@ -19,6 +19,7 @@
 ## Traps
 - Keep the IME guard (`isComposing` / keyCode 229).
 - `.is-kbd` must clear when the keyboard closes (`visualViewport` resize).
+- Deviation from M3: `pointerdown` only does `preventDefault`; the pick is on `click`, so dragging the 4-row list scrolls it instead of choosing a row.
 ## Done when
 - jsdom covers: folding match (`@duc` → "Đức Anh", `@hoa` → "Hoa Mai"), active option scrolled into view, the mode label, the cap hint.
 - Full `npm test` passes, cache-bust prints OK, and a real-browser pass at 390 px with touch emulation and on desktop, in both themes.

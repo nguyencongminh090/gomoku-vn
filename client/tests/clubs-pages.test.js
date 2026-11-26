@@ -860,12 +860,12 @@ describe('chat commands + notifications (B447)', () => {
     it('"/" lists only enabled commands this member may use; /ghim is staff-only', async () => {
       await boot(clubAs('member'));
       type('/');
-      expect(hints()).toEqual(['/giaohuu', '/binhchon', '/lich', '/trogiup']);
+      expect(hints()).toEqual(['/binhchon', '/lich', '/giaohuu']);
       expect(document.getElementById('cb-chat-hints').hidden).toBe(false);
       expect(input().getAttribute('aria-expanded')).toBe('true');
       await boot(clubAs('officer'));
       type('/');
-      expect(hints()).toEqual(['/ghim', '/giaohuu', '/binhchon', '/lich', '/tattieng', '/duoi', '/trogiup']);
+      expect(hints()).toEqual(['/binhchon', '/lich', '/giaohuu', '/ghim']);
       type('/b');
       expect(hints()).toEqual(['/binhchon']);
       type('/gh');
@@ -875,7 +875,7 @@ describe('chat commands + notifications (B447)', () => {
     it('disabled commands are not offered; no hints once a space is typed or for plain text', async () => {
       await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdChallenge: false, cmdPoll: false, cmdCalendar: false } }));
       type('/');
-      expect(hints()).toEqual(['/ghim', '/tattieng', '/duoi', '/trogiup']);
+      expect(hints()).toEqual(['/ghim']);
       type('/ghim hello');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
       type('hello /');
@@ -883,18 +883,20 @@ describe('chat commands + notifications (B447)', () => {
       await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdPin: false, cmdChallenge: false, cmdPoll: false, cmdCalendar: false } }));
       type('/pin');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
-      type('/help');
-      expect(hints()).toEqual(['/help']);
+      for (const gone of ['/help', '/trogiup', '/mute', '/duoi']) { // B477: retired words are not offered
+        type(gone);
+        expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
+      }
     });
 
     it('arrows move the selection, Enter fills the command (no submit), Escape closes', async () => {
       await boot(clubAs('owner'));
       type('/');
       key('ArrowDown');
-      expect(document.querySelector('#cb-chat-hints [aria-selected="true"] b').textContent).toBe('/giaohuu');
+      expect(document.querySelector('#cb-chat-hints [aria-selected="true"] b').textContent).toBe('/lich');
       expect(input().getAttribute('aria-activedescendant')).toBe('cb-hint-1');
       key('Enter');
-      expect(input().value).toBe('/giaohuu ');
+      expect(input().value).toBe('/lich ');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
       expect(global.fetch.mock.calls.some(([, o]) => o && o.method === 'POST')).toBe(false);
       type('/');
@@ -910,6 +912,140 @@ describe('chat commands + notifications (B447)', () => {
       expect(ev.defaultPrevented).toBe(false);
       expect(input().value).toBe('/');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(false);
+    });
+  });
+
+  describe('retired and alias commands (B477)', () => {
+    const submit = async (text) => {
+      input().value = text;
+      document.getElementById('cb-chat-form').onsubmit(new Event('submit'));
+      await flush(); await flush();
+    };
+    const posted = () => global.fetch.mock.calls.some(([, o]) => o?.method === 'POST');
+
+    it.each(['/trogiup', '/help'])('%s opens the popup without a request', async (word) => {
+      await boot(clubAs('member'));
+      await submit(word);
+      expect(input().value).toBe('/');
+      expect(hints()).toEqual(['/binhchon', '/lich', '/giaohuu']);
+      expect(posted()).toBe(false);
+    });
+
+    it('a moved command keeps the text and links to thành-viên', async () => {
+      await boot(clubAs('officer'));
+      global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 400, json: () => Promise.resolve({ code: 'CLUB_COMMAND_MOVED' }) }));
+      await submit('/duoi @mem');
+      expect(input().value).toBe('/duoi @mem');
+      expect(document.querySelector('#cb-msg a').getAttribute('href')).toBe('/c/caro#ch=members'); // a bare hash would leave the club (<base href="/">)
+    });
+
+    it('/binhchon opens the poll sheet prefilled; the toggle hides the composer poll button', async () => {
+      await boot(clubAs('member'));
+      document.getElementById('cb-poll-editor').showModal = jest.fn();
+      await submit('/binhchon Q | A | B');
+      expect(document.getElementById('cb-question').value).toBe('Q');
+      expect(posted()).toBe(false);
+      await boot(clubAs('member', { chat: { ...DEFAULTS, cmdPoll: false } }));
+      expect(document.getElementById('cb-poll-new').hidden).toBe(true);
+    });
+
+    it('rows carry an icon tile, arguments, description and alias', async () => {
+      await boot(clubAs('member'));
+      type('/b');
+      const row = document.querySelector('#cb-chat-hints [role="option"]');
+      expect(row.querySelector('.cl-hint__tile .icon')).not.toBeNull();
+      expect(row.querySelector('.cl-hint__args').textContent).toBe('clubs.cmd_poll_args');
+      expect(row.querySelector('.cl-hint__desc').textContent).toBe('clubs.cmd_poll');
+      expect(row.querySelector('.cl-hint__alias').textContent).toBe('clubs.cmd_alias /poll');
+    });
+  });
+
+  describe('mention popup (B478)', () => {
+    const roster = [
+      { username: 'own', displayName: 'Own', role: 'owner' },
+      { username: 'mem', displayName: 'Mem', role: 'member' },
+      { username: 'anhld', displayName: 'Đức Anh', role: 'officer' },
+      { username: 'maihoa92', displayName: 'Hoa Mai', role: 'member' },
+      { username: 'nfd', displayName: 'Lê Hoà'.normalize('NFD'), role: 'member' },
+    ];
+    const open = async (extra = {}) => {
+      await bootClub({ ...CLUB, myRole: 'member', chat: DEFAULTS, lastMessageId: 0, leaderboard: roster.map((x) => ({ ...x, mine: x.username === 'mem' })), ...extra });
+      global.fetch = jest.fn(() => ok({ messages: [] }));
+    };
+    const box = () => document.getElementById('cb-chat-hints');
+    const names = () => [...box().querySelectorAll('[role="option"] b')].map((b) => b.textContent.normalize('NFC'));
+    const marks = () => [...box().querySelectorAll('mark')].map((m) => m.textContent.normalize('NFC'));
+
+    it.each([
+      ['@duc', ['Đức Anh'], ['Đức']],
+      ['@Đức', ['Đức Anh'], ['Đức']],
+      ['@anh', ['Đức Anh'], ['Anh']],
+      ['@maih', ['Hoa Mai'], []],
+      ['@hoa', ['Hoa Mai', 'Lê Hoà'], ['Hoa', 'Hoà']],
+      ['@ow', ['Own'], ['Ow']],
+    ])('%s matches display name or username, folded', async (q, expected, marked) => {
+      await open();
+      type(q);
+      expect(names()).toEqual(expected);
+      expect(marks()).toEqual(marked);
+    });
+
+    it('rows show @username and the staff role; picking inserts the username on click, not on press', async () => {
+      await open();
+      type('hi @duc');
+      const row = box().querySelector('[role="option"]');
+      expect(row.querySelector('.cl-hint__sub').textContent).toBe('@anhld');
+      expect(row.querySelector('.cl-role').textContent).toBe('clubs.role_officer');
+      expect(row.querySelector('.pav')).not.toBeNull();
+      const press = new Event('pointerdown', { cancelable: true });
+      row.dispatchEvent(press);
+      expect(press.defaultPrevented).toBe(true);
+      expect(input().value).toBe('hi @duc');
+      row.click();
+      expect(input().value).toBe('hi @anhld ');
+    });
+
+    it('labels the listbox by mode, announces the count and scrolls the active option into view', async () => {
+      await open();
+      const spy = jest.fn();
+      window.Element.prototype.scrollIntoView = spy;
+      type('@');
+      expect(box().getAttribute('aria-label')).toBe('clubs.mention_list');
+      expect(document.getElementById('cb-hint-count').textContent).toBe('clubs.hint_count{"n":5}'); // 4 people + officers
+      key('ArrowUp');
+      expect(spy.mock.contexts.at(-1).id).toBe('cb-hint-4');
+      expect(spy).toHaveBeenLastCalledWith({ block: 'nearest' });
+      type('/');
+      expect(box().getAttribute('aria-label')).toBe('clubs.cmd_list');
+      delete window.Element.prototype.scrollIntoView;
+    });
+
+    it('closes on blur at once', async () => {
+      await open();
+      type('@');
+      input().dispatchEvent(new Event('blur'));
+      expect(box().hidden).toBe(true);
+    });
+
+    it.each([
+      ['@aaa @bbb @ccc @ddd', true],
+      ['@aaa @bbb @ccc @ddd @eee', false],
+      ['@aaa @bbb @ccc @ddd @AAA @officers @all', true],
+    ])('cap hint for "%s": hidden=%s', async (text, hidden) => {
+      await open();
+      type(text);
+      expect(document.getElementById('cb-mention-cap').hidden).toBe(hidden);
+    });
+
+    it('folds the chrome while the keyboard is open, not on pinch-zoom', async () => {
+      const vv = Object.assign(new window.EventTarget(), { height: window.innerHeight, scale: 1 });
+      Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true });
+      await open();
+      const at = (height, scale) => { Object.assign(vv, { height, scale }); vv.dispatchEvent(new Event('resize')); return document.getElementById('cb-app').classList.contains('is-kbd'); };
+      expect(at(window.innerHeight * 0.5, 1)).toBe(true);
+      expect(at(window.innerHeight, 1)).toBe(false);
+      expect(at(window.innerHeight / 2, 2)).toBe(false);
+      delete window.visualViewport;
     });
   });
 
@@ -954,10 +1090,10 @@ describe('chat commands + notifications (B447)', () => {
       expect(input().value).toBe('/binhchon');
     });
 
-    it('B450: /lich reply opens sự-kiện with the returned list; nothing is added to chat', async () => {
-      await boot(clubAs('member'));
+    it('B477: a bare /lich opens sự-kiện with no server call', async () => {
       const evs = [{ id: 'z', title: 'Từ lệnh', startsAt: new Date(Date.now() + 3600e3).toISOString(), going: 2, mine: false }];
-      global.fetch = jest.fn((url, opts) => (opts && opts.method === 'POST' ? ok({ kind: 'calendar', events: evs }) : ok({ messages: [] })));
+      await boot(clubAs('member', { events: evs }));
+      global.fetch.mockClear();
       input().value = '/lich';
       document.getElementById('cb-chat-form').onsubmit(new Event('submit'));
       await flush(); await flush();
@@ -965,6 +1101,7 @@ describe('chat commands + notifications (B447)', () => {
       expect(document.getElementById('cb-panel-events').hidden).toBe(false);
       expect(document.querySelector('[data-event="z"] .prow__t').textContent).toBe('Từ lệnh');
       expect(input().value).toBe('');
+      expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it('B450: staff /lich create reloads the club and opens sự-kiện', async () => {
