@@ -158,3 +158,15 @@ Next: start Caddy → switch CloudFront origin → measure → re-add `direct` C
 - Guest → `/api/auth/guest` → document GET → `gvn_sock` nonce → direct WS connect OK; replay → AUTH_TICKET;
   pm2 log `route=direct ip=<real viewer IP> geo=VN` (secret + CloudFront-Viewer-Address path works via Caddy).
 - **ENABLED 01:35** (user "Turn on"): DNS-only CNAME `direct` → d3fkrz3mmqf6p0.cloudfront.net (TTL 60, id 15e5b64a…); verified cert + via Caddy + nonce connect/replay refused. C1 removed: tunnel GomokuVPS ingress `cfo-d2dc719b4571` (config v7) + its CNAME. play3cr.win / dpdns / CF socket still 200. Rollback: delete `direct` CNAME. Open: peak-hour check (~21:00, `route=direct` in pm2 logs), real browser pass.
+
+## Peak check 2026-11-26 21:00 (+07), same PC/ISP
+| path | WS hs p50 / p90 / max (fail/20) | emit RTT p50 / p90 / p99 / max | >1 s, lost (of 300) |
+|---|---|---|---|
+| direct | 482 / 1460 / 2151 ms (0) | 9 / 11 / 16 / 19 ms | 0, 0 |
+| cf | 1358 / 4613 / 7706 ms (6) | 100 / 672 / 2272 / 4506 ms | 15, 4 |
+- pm2 log, VN connections 20:00-22:00: direct share 93-100 % per day since 11-19 (11-18: 85 %); non-VN direct = 0.
+- curl split, direct polling ×20, p50 / p90 / max ms: DNS 2/2/751, TCP 29/432/835, TLS 38/127/1938, first byte 55/379/855.
+- Verdict: in-game RTT fixed at peak; "connect p90 < 100 ms" NOT met (new connections still stall 1-2 s; off-peak hs was 133 ms p90).
+- Open: real-browser game on direct; non-Viettel ISP unmeasured.
+- Trap for scripts: websocket upgrade to `direct.` without a User-Agent gets 403 (curl/browsers send one).
+- 2026-11-26: #415 CLOSED by user with the exceptions listed in the todo status line; the "Open" line above is not tracked further.
