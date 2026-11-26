@@ -1,3 +1,4 @@
+- ✅ **#479.** Club chat: poll setup sheet `[Model: Sonnet]` — [detail](docs/todo/B479-club-poll-sheet.md)
 - ✅ **#478.** Club chat: mention popup gaps `[Model: Sonnet]` — [detail](docs/todo/B478-club-chat-mention-gaps.md)
 
 - ✅ **#477.** Club chat: slash command cleanup `[Model: Sonnet]` — [detail](docs/todo/B477-club-chat-command-cleanup.md)

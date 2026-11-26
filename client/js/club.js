@@ -910,40 +910,191 @@
   }
 
   // --- sự-kiện channel (B450): grouped by the viewer's local day, RSVP "tham gia" for reminders ---
+  // --- poll sheet (B479). Limits and folding mirror server validatePoll (ClubChatCommands.js); a test pins parity. ---
+  const POLL = { MIN: 2, MAX: 6, QUESTION: 140, OPTION: 50 };
   const options = () => [...$('cb-options').querySelectorAll('input')];
-  function previewPoll() {
-    const fields = options();
-    fields.forEach((field, index) => {
-      field.placeholder = t('clubs.option') + ' ' + (index + 1);
-      field.setAttribute('aria-label', field.placeholder);
-      field.nextElementSibling.disabled = fields.length <= 2;
+  let pollTried = false; // after a failed submit every error shows, not only the ones typing cannot fix
+  let pollServerError = '';
+  let pollSummaryKey = ''; // role=alert: rebuild only on change, or screen readers repeat it per keystroke
+
+  /** Per-field error codes ('' = fine). `dupOf` = index of the earlier option a duplicate repeats. */
+  function pollErrors(question, values) {
+    const q = question.trim();
+    const seen = new Map();
+    const opts = values.map((raw, i) => {
+      const v = raw.trim();
+      const key = v.toLocaleLowerCase('vi'); // no diacritic stripping: the server does not either
+      const dupOf = v && seen.has(key) ? seen.get(key) : -1;
+      if (v && dupOf < 0) seen.set(key, i);
+      const code = i >= POLL.MAX ? 'too_many' : !v ? 'usage' : v.length > POLL.OPTION ? 'too_long' : dupOf >= 0 ? 'duplicate' : '';
+      return { code, dupOf: code === 'duplicate' ? dupOf : -1 };
     });
-    $('cb-add-option').disabled = fields.length >= 6;
-    $('cb-poll-preview').replaceChildren(window.PlatformShell.meta([t('clubs.preview'), $('cb-question').value, ...fields.map((f) => f.value)])); // ticket-rows.md: one span per fact
+    return { question: !q ? 'usage' : q.length > POLL.QUESTION ? 'too_long' : '', options: opts };
+  }
+
+  const pollErrText = (code, vars) => t('clubs.poll_err_' + code, vars);
+
+  function setFieldError(field, errNode, text, invalid) {
+    errNode.hidden = !text;
+    errNode.replaceChildren(...(text ? [icon('warning'), el('span', text)] : []));
+    field.setAttribute('aria-invalid', String(invalid));
+    if (text) field.setAttribute('aria-describedby', errNode.id); else field.removeAttribute('aria-describedby');
+  }
+
+  /** Returns the fields that carry a message, in document order. */
+  function paintPollErrors() {
+    const q = $('cb-question');
+    const fields = options();
+    const errs = pollErrors(q.value, fields.map((f) => f.value));
+    const shown = (code) => code && (pollTried || code !== 'usage');
+    const bad = [];
+    const qCode = shown(errs.question) ? errs.question : '';
+    setFieldError(q, $('cb-question-err'), qCode && pollErrText(qCode === 'usage' ? 'usage_question' : 'long_question', { max: POLL.QUESTION }), !!qCode);
+    if (qCode) bad.push({ field: q, label: t('clubs.poll_err_ref_question') });
+    const twins = new Set(errs.options.map((e) => e.dupOf).filter((i) => i >= 0));
+    fields.forEach((field, i) => {
+      const { code, dupOf } = errs.options[i];
+      const text = shown(code) ? pollErrText(code === 'usage' ? 'usage_option' : code === 'too_long' ? 'long_option' : code, { n: dupOf + 1, max: code === 'too_many' ? POLL.MAX : POLL.OPTION }) : '';
+      setFieldError(field, field.parentNode.parentNode.querySelector('.cb-opt__err'), text, !!text || twins.has(i));
+      if (text) bad.push({ field, label: t('clubs.poll_err_ref_option', { n: i + 1 }) });
+    });
+    return bad;
+  }
+
+  /** The summary exists only after a failed submit: client errors as links, or the server's message. */
+  function paintPollSummary(bad) {
+    const box = $('cb-poll-summary');
+    const show = pollTried && (bad.length || pollServerError);
+    box.hidden = !show;
+    const key = show ? JSON.stringify([bad.map((x) => x.field.id), pollServerError]) : '';
+    if (key === pollSummaryKey) return;
+    pollSummaryKey = key;
+    if (!show) { box.replaceChildren(); return; }
+    const body = el('div');
+    if (bad.length) {
+      body.append(el('span', t('clubs.poll_err_summary', { n: bad.length })));
+      const list = el('ul');
+      for (const { field, label } of bad) {
+        const link = el('a', label);
+        link.href = '#' + field.id;
+        link.onclick = (ev) => { ev.preventDefault(); field.focus(); };
+        const item = el('li');
+        item.append(link);
+        list.append(item);
+      }
+      body.append(list);
+    } else body.textContent = pollServerError;
+    box.replaceChildren(icon('warning'), body);
+  }
+
+  /** The real poll card with zero votes, every control disabled. */
+  function pollPreviewCard() {
+    const me = state.club && state.club.leaderboard.find((x) => x.mine);
+    const values = options().map((f, i) => f.value.trim() || t('clubs.option') + ' ' + (i + 1));
+    const card = el('div', undefined, 'cb-poll');
+    card.dataset.id = '0';
+    renderPoll(card, { options: values, counts: values.map(() => 0), total: 0, myOption: null, closed: false, canClose: false, closesAt: new Date(Date.now() + 864e5).toISOString() });
+    card.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+    const body = el('div', undefined, 'cb-chat__body');
+    body.append(el('div', t('clubs.sys_poll', { name: me ? me.displayName : '' }), 'cb-chat__sys-t'),
+      el('div', $('cb-question').value.trim() || t('clubs.poll_question_ph'), 'cb-chat__text cb-poll__q'), card);
+    const tile = el('span', undefined, 'cb-chat__tile');
+    tile.append(icon('check-square'));
+    const row = el('div', undefined, 'cb-pollprev');
+    row.append(tile, body);
+    return row;
+  }
+
+  function previewPoll() {
+    const rows = [...$('cb-options').children];
+    rows.forEach((row, i) => {
+      const field = row.querySelector('input');
+      field.id = 'cb-opt-' + i;
+      field.placeholder = t('clubs.option') + ' ' + (i + 1);
+      field.setAttribute('aria-label', field.placeholder);
+      row.querySelector('.cb-opt__n').textContent = String(i + 1);
+      row.querySelector('.cb-opt__count').textContent = field.value.length + '/' + POLL.OPTION;
+      row.querySelector('.cb-opt__err').id = 'cb-opt-err-' + i;
+      row.querySelector('[data-move="up"]').disabled = i === 0;
+      row.querySelector('[data-move="down"]').disabled = i === rows.length - 1;
+      row.querySelector('[data-move="remove"]').disabled = rows.length <= POLL.MIN;
+    });
+    $('cb-question-n').textContent = $('cb-question').value.length + '/' + POLL.QUESTION;
+    $('cb-options-n').textContent = rows.length + '/' + POLL.MAX;
+    $('cb-add-option').disabled = rows.length >= POLL.MAX;
+    paintPollSummary(paintPollErrors());
+    $('cb-poll-preview').replaceChildren(pollPreviewCard());
   }
 
   function addOption(value) {
-    const row = el('div', undefined, 'pform__row');
-    const field = el('input');
-    field.required = true;
-    field.maxLength = 50;
+    const row = el('li', undefined, 'cb-opt');
+    const num = el('span', undefined, 'cb-opt__n');
+    num.setAttribute('aria-hidden', 'true');
+    const wrap = el('span', undefined, 'cb-opt__field');
+    const field = el('input', undefined, 'cb-in');
+    field.maxLength = POLL.OPTION;
+    field.autocomplete = 'off';
     field.value = value;
-    const remove = iconBtn('x', t('clubs.remove_option'), () => { row.remove(); previewPoll(); });
-    row.append(field, remove);
+    const count = el('small', undefined, 'cb-opt__count');
+    count.setAttribute('aria-hidden', 'true');
+    wrap.append(field, count);
+    const buttons = el('span', undefined, 'cb-opt__btns');
+    const button = (move, iconName, label, fn) => {
+      const b = iconBtn(iconName, label, () => false);
+      b.dataset.move = move;
+      b.onclick = () => { const next = fn(); previewPoll(); (next || (b.disabled ? field : b)).focus(); };
+      buttons.append(b);
+    };
+    button('up', 'arrow-up', t('clubs.move_up'), () => { if (row.previousElementSibling) row.previousElementSibling.before(row); });
+    button('down', 'arrow-down', t('clubs.move_down'), () => { if (row.nextElementSibling) row.nextElementSibling.after(row); });
+    button('remove', 'x', t('clubs.remove_option'), () => {
+      const near = row.nextElementSibling || row.previousElementSibling;
+      row.remove();
+      return near && near.querySelector('input');
+    });
+    const err = el('p', undefined, 'cb-opt__err');
+    err.hidden = true;
+    field.onkeydown = (ev) => {
+      if (ev.key !== 'Enter' || ev.isComposing) return;
+      ev.preventDefault(); // Enter in an option never publishes
+      if (row.nextElementSibling) row.nextElementSibling.querySelector('input').focus();
+      else if ($('cb-options').children.length < POLL.MAX) addOption('').focus();
+    };
+    row.append(num, wrap, buttons, err);
     $('cb-options').append(row);
     previewPoll();
     return field;
   }
 
+  /** `arg` is the slash form "q | a | b", read like the server's parsePollArg (extra options stay, marked too_many). */
   function openPoll(arg) {
-    const [question, ...values] = arg.split('|').map((v) => v.trim());
+    const [question = '', ...rest] = String(arg).split('|').map((v) => v.replace(/\s+/g, ' ').trim());
+    const values = rest.filter(Boolean);
+    while (values.length < POLL.MIN) values.push('');
+    pollTried = false;
+    pollServerError = '';
     $('cb-question').value = question;
     $('cb-options').replaceChildren();
-    while (values.length < 2) values.push('');
-    values.slice(0, 6).forEach(addOption);
-    $('cb-poll-error').textContent = '';
+    values.forEach(addOption);
     $('cb-poll-editor').showModal();
     $('cb-question').focus();
+  }
+
+  /** false = stop: the errors are on screen and the first bad field has focus. */
+  function checkPoll() {
+    pollTried = true;
+    pollServerError = '';
+    const bad = paintPollErrors();
+    paintPollSummary(bad);
+    if (bad.length) bad[0].field.focus();
+    return !bad.length;
+  }
+
+  function showPollServerError(text) {
+    pollTried = true;
+    pollServerError = text;
+    paintPollSummary(paintPollErrors());
+    $('cb-poll-summary').scrollIntoView?.({ block: 'nearest' });
   }
 
   function previewEvent() {
@@ -1592,16 +1743,17 @@
     };
     $('cb-poll-new').onclick = () => openPoll('');
     $('cb-poll-cancel').onclick = () => $('cb-poll-editor').close();
+    $('cb-poll-x').onclick = () => $('cb-poll-editor').close();
     $('cb-add-option').onclick = () => addOption('').focus();
-    $('cb-poll-form').oninput = previewPoll;
+    $('cb-poll-form').oninput = () => { pollServerError = ''; previewPoll(); };
     $('cb-poll-form').onsubmit = async (ev) => {
       ev.preventDefault();
       const submit = $('cb-poll-form').querySelector('[type="submit"]');
-      if (submit.disabled) return;
+      if (submit.disabled || !checkPoll()) return;
       submit.disabled = true;
       try {
         const result = await act('POST', '/polls', { question: $('cb-question').value, options: options().map((f) => f.value) });
-        if (!result) { $('cb-poll-error').textContent = $('cb-msg').textContent; return; }
+        if (!result) { showPollServerError($('cb-msg').textContent); return; }
         $('cb-poll-editor').close();
         $('cb-chat-input').value = '';
         syncMentionCap();

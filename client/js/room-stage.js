@@ -343,7 +343,7 @@
     btn.title = label;
     const st = S();
     const canKick = st && st.myRole === 'host' && st.roomData && st.roomData.state !== 'playing';
-    pop.innerHTML = `<div class="aud-pop__title"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=078caf4b#ph-regular-eye"></use></svg>${esc(label)}</div><ul class="aud-pop__list">${list.map((g) => {
+    pop.innerHTML = `<div class="aud-pop__title"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=43d9c2ec#ph-regular-eye"></use></svg>${esc(label)}</div><ul class="aud-pop__list">${list.map((g) => {
       const kick = canKick && st.myUser && g.userId !== st.myUser.userId
         ? `<button class="btn-kick" type="button" data-action="kickUser" data-arg="${esc(g.userId)}">${esc(t('room.kick'))}</button>` : '';
       return `<li><span class="aud__av">${avatar(g)}</span><span class="aud-pop__name">${esc(g.displayName)}</span>${kick}</li>`;
