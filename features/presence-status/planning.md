@@ -329,6 +329,10 @@ New fields (`st`, `graceUntil`) ride on existing payloads; no new broadcast.
 ### Answers (2026-11-27)
 User: "Approve at all. (I have review your recommend, it all okay)" → every recommendation stands:
 Q1 A (automatic loss) · Q2 A · Q3 A · Q4 A · Q5 A · Q6 A (90 days) · Q7 A · Q8 A · Q9 A · Q10 A · Q11 A · Q12 A · Q13 A.
+Q13 as built (narrowed after two automated security reviews, #493 follow-ups): the outage counts distinct MEMBERS
+(min 6, ≥ 30 % of live sessions in 5 s; guest tabs ignored), a void also needs BOTH seats of the game to drop within
+15 s of each other inside it, the window is capped at 5 min, and it also voids an absent player's clock timeout.
+Reason: the approved rule let one player open the window with throwaway tabs and void their own abandonment.
 Items: #486-#498 (PS-1…PS-13), branch `feature/486-presence-status` off `dev`.
 
 ## 7. Planned items (phase 2, after approval; one commit each, app works after each)

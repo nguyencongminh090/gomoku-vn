@@ -270,6 +270,7 @@
       renderRequests();
       renderConvs();
       renderHead();
+      refreshWhoBadge();
       renderSuggest();
     } catch (_) {
       if (!quiet) setStatus('social.error'); // a failed presence poll stays silent: the next one fixes it
@@ -568,6 +569,16 @@
       acts.append(un);
     }
     box.replaceChildren(av(p, 72, presenceOf(p.username)), name, user, stat, last, acts);
+  }
+
+  /** #489/#497: the profile pane's avatar badge follows the friends poll like the header and the story strip
+   *  (only the badge — re-rendering the pane would reset a half-armed "unfriend" button). */
+  function refreshWhoBadge() {
+    const box = $('sc-who');
+    const s = dm.summary;
+    if (!dm.with || !s || box.hidden) return;
+    const old = box.querySelector(':scope > .sc-av');
+    if (old) old.replaceWith(av(s.with, 72, presenceOf(s.with.username)));
   }
 
   async function loadSummary(username, seq) {

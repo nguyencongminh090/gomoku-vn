@@ -553,6 +553,20 @@ describe('social page (#370 chat-first)', () => {
   describe('thread header + profile pane', () => {
     const THREAD = { with: P('bob'), hasMore: false, messages: [] };
 
+    // #497 browser pass: the profile pane's badge stayed on the state it opened with while the header moved on.
+    it('profile pane badge follows the 10 s friends poll', async () => {
+      let st = { c: 'on', k: 'play', r: 'r1' };
+      await bootPage({ 'GET /api/friends': () => json({ ...EMPTY, friends: [P('bob', { online: true, activity: 'playing', st })] }),
+        'GET /api/dm/bob': () => json(THREAD) });
+      await fire('#dm=bob');
+      expect(document.querySelector('#sc-who > .sc-av').dataset.st).toBe('play');
+      st = { c: 'on', a: 1, k: 'play', r: 'r1' };
+      jest.advanceTimersByTime(10_000);
+      await tick();
+      expect(document.querySelector('#sc-who > .sc-av').dataset.st).toBe('away');
+      expect(document.querySelector('#dm-av').dataset.st).toBe('away');
+    });
+
     // #489: the server's `st` (one derivation) wins over the legacy fields, which said 'free' / offline here.
     it.each([
       ['problem 3: waiting opponent of an interrupted game', { online: true, activity: 'free', st: { c: 'on', k: 'play', r: 'r1', t: Date.now() - 5000 } },

@@ -1,5 +1,5 @@
 # B493 — Rated games: running clock, absence window, abandon/abort results (PS-8)
-**Status:** ✅ DONE 2026-11-27 — see fix-log 2026-11-27 (#493). Deviation: new `game:absent` event instead of a running sync on `game:interrupted` (old handler freezes the board; #398 argument). Q13 also voids an absent player's clock timeout during an outage.
+**Status:** ✅ DONE 2026-11-27 — see fix-log 2026-11-27 (#493). Deviation: new `game:absent` event instead of a running sync on `game:interrupted` (old handler freezes the board; #398 argument). Q13 also voids an absent player's clock timeout during an outage; narrowed by the security follow-ups (members only, min 6, both seats within 15 s, 5 min cap) — see planning Answers.
 **Area:** server/socket/handlers/{DisconnectHandler,GameHandler}.js, TimerManager, client room-socket/game-ui, i18n, replay.js
 **From:** features/presence-status (planning §3, Q1/Q2/Q11/Q12/Q13 A), 2026-11-27   **Depends:** #487
 ## Scope

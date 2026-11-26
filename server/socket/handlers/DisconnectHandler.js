@@ -160,7 +160,7 @@ function clearAbsence(uid) {
 /** Vietnamese fallback text for the system chat line (clients translate by code: sys.<code>). */
 const ABSENCE_TEXT = {
   PLAYER_ABANDONED: (n) => `${n} không quay lại. Xử thua vì bỏ ván.`,
-  GAME_ABORTED_ABSENT: (n) => `${n} không quay lại trước khi ván bắt đầu. Ván đấu huỷ, không ghi điểm.`,
+  GAME_ABORTED_ABSENT: (n) => `${n} không quay lại khi một bên chưa kịp đi nước nào. Ván đấu huỷ, không ghi điểm.`,
   GAME_BOTH_ABSENT: () => 'Cả hai người chơi đều mất kết nối. Ván đấu huỷ, không ghi điểm.',
   GAME_OUTAGE_VOID: () => 'Kết nối tới máy chủ gián đoạn. Ván đấu huỷ, không ghi điểm.',
 };

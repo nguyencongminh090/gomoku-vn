@@ -49,6 +49,17 @@ const countFriends = (id) => db().prepare(
 ).get(id, id).n;
 
 /** 'self' | 'none' | 'friends' | 'outgoing' (I asked) | 'incoming' (they asked) */
+/** #497: which of `ids` are accepted friends of `me` — one query for a whole DM-window status check. */
+function friendIdsAmong(me, ids) {
+  const list = (Array.isArray(ids) ? ids : []).filter((id) => typeof id === 'string' && id !== me).slice(0, 50);
+  if (!me || !list.length) return new Set();
+  const rows = db().prepare(`
+    SELECT CASE WHEN user_a = ? THEN user_b ELSE user_a END AS id FROM friendships
+    WHERE status = 'accepted' AND (user_a = ? OR user_b = ?)
+      AND (CASE WHEN user_a = ? THEN user_b ELSE user_a END) IN (SELECT value FROM json_each(?))`).all(me, me, me, me, JSON.stringify(list));
+  return new Set(rows.map((r) => r.id));
+}
+
 function statusBetween(me, other) {
   if (!me || !other) return 'none';
   if (me === other) return 'self';
@@ -286,5 +297,5 @@ function summary(me, username) {
 module.exports = {
   FriendError, MAX_FRIENDS, MAX_OUTGOING,
   statusBetween, request, acceptRequest, remove, friendIds, list, search, myCode, setHooks,
-  activityFromRoom, summary,
+  activityFromRoom, summary, friendIdsAmong,
 };

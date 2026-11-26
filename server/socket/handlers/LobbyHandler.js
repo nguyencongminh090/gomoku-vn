@@ -66,7 +66,20 @@ function register(io, socket) {
       if (now - lastOnlineSearchAt < ONLINE_SEARCH_MIN_INTERVAL_MS) { ack({ error: 'RATE_LIMITED' }); return; }
       lastOnlineSearchAt = now;
     }
-    ack(queryOnlineUsers(query));
+    const out = queryOnlineUsers(query);
+    // #497: a DM window with a FRIEND speaks the friend audience (planning §2d) — e.g. "Đang chơi, tạm rời trang"
+    // instead of offline. Pull-only (the window asks), one friendship query per call; guests have no friends.
+    if (Array.isArray(query.ids) && user && !user.isGuest) {
+      try {
+        const friends = require('../../managers/FriendService').friendIdsAmong(user.userId, query.ids);
+        if (friends.size) {
+          const presence = require('../../presence');
+          out.st = {};
+          for (const id of friends) out.st[id] = presence.statusOf(id, 'friend');
+        }
+      } catch (err) { logger.warn('[Lobby] friend status lookup failed', { err: err.message }); }
+    }
+    ack(out);
   });
 
   // #382: the lobby mirrors one page of rooms; "show more" fetches the next page of the ranking.

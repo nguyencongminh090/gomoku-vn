@@ -375,3 +375,17 @@ describe('#370 GET /api/friends/:username/summary', () => {
     expect((await call('GET', '/api/friends/cat/summary', 'guest')).status).toBe(403);
   });
 });
+
+// #497: one query tells which DM partners are accepted friends (pending requests and strangers are not).
+describe('friendIdsAmong (#497)', () => {
+  beforeEach(reset);
+  it('returns accepted friends among the ids only', async () => {
+    await call('POST', '/api/friends/bob', 'ann');
+    await call('POST', '/api/friends/ann/accept', 'bob');
+    await call('POST', '/api/friends/cat', 'ann'); // pending
+    const got = svc.friendIdsAmong(U.ann, [U.bob, U.cat, U.dan, U.ann, 42]);
+    expect([...got]).toEqual([U.bob]);
+    expect([...svc.friendIdsAmong(U.ann, [])]).toEqual([]);
+    expect([...svc.friendIdsAmong(null, [U.bob])]).toEqual([]);
+  });
+});
