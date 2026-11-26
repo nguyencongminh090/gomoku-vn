@@ -221,22 +221,44 @@ describe('abort, both gone, outage (void, never rated)', () => {
     expect(events('game:ended')).toHaveLength(1);
   });
 
-  test('Q13: during an outage (many sockets dropping at once) an expired absence is void, not a loss', () => {
+  const flood = (n, prefix = 'lobby') => { for (let i = 0; i < n; i++) DisconnectHandler.handleDisconnect(io, makeSocket(prefix + i)); };
+
+  test('Q13: a real outage (both seats dropped with many others) → the expired absence is void, not a loss', () => {
     setup({ moves: 2 });
-    for (let i = 0; i < 12; i++) DisconnectHandler.handleDisconnect(io, makeSocket('lobby' + i)); // not in rooms
-    expect(DisconnectHandler.inOutage()).toBe(true);
+    flood(12);
     drop('a');
+    drop('b');
+    expect(DisconnectHandler.inOutage()).toBe(true);
+    const back = makeSocket('b', room.roomId); // b comes back first, a does not
+    state.sessions.set('b', back);
+    DisconnectHandler.cancelDisconnectGrace(io, back);
     jest.advanceTimersByTime(61_500);
     expect(engine.result).toEqual({ winner: null, reason: 'disconnect' });
     expect(database.saveGame).not.toHaveBeenCalled();
   });
 
-  test('Q13: an absent player\'s clock timeout during an outage is void too', () => {
+  test('security: a player cannot void their own abandonment by dropping many sockets while the opponent stays', () => {
     setup({ moves: 2 });
-    for (let i = 0; i < 12; i++) DisconnectHandler.handleDisconnect(io, makeSocket('lobby' + i));
+    flood(12, 'guest_tab'); // throwaway guest tabs closed together
+    expect(DisconnectHandler.inOutage()).toBe(true);
+    drop('a'); // b never dropped
+    jest.advanceTimersByTime(61_500);
+    expect(engine.result).toEqual({ winner: 'b', reason: 'abandon' });
+    expect(DisconnectHandler.voidsClockTimeout(room.roomId, 'a')).toBe(false);
+  });
+
+  test('security: one account flapping its socket counts once (no outage)', () => {
+    setup({ moves: 2 });
+    for (let i = 0; i < 20; i++) DisconnectHandler.handleDisconnect(io, makeSocket('flapper'));
+    expect(DisconnectHandler.inOutage()).toBe(false);
+  });
+
+  test('Q13: an absent player\'s clock timeout during a real outage is void too', () => {
+    setup({ moves: 2 });
+    flood(12);
     drop('a');
+    drop('b');
     expect(DisconnectHandler.voidsClockTimeout(room.roomId, 'a')).toBe(true);
-    expect(DisconnectHandler.voidsClockTimeout(room.roomId, 'b')).toBe(false); // b is present
   });
 
   test('a few unrelated drops do not open the outage window', () => {

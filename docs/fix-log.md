@@ -413,3 +413,4 @@
 | 2026-11-27 00:47 | #492 room page sent every presence edge twice and flashed a returning member 'away' before room:join: URL room id in first handshake, one reporter | [detail](docs/fix-log/2026-11-27-492-room-page-single-presence-report.md) |
 | 2026-11-27 00:57 | #493 rated games no longer pause on a drop: clock runs, absence budget W per game, W out = loss 'abandon' (rated); abort/both-gone/outage void | [detail](docs/fix-log/2026-11-27-493-rated-absence-policy.md) |
 | 2026-11-27 00:59 | #494 casual games: repeated drops no longer refill the 60 s paused grace — one budget per player per game | [detail](docs/fix-log/2026-11-27-494-casual-grace-budget.md) |
+| 2026-11-27 01:01 | #493 follow-up: outage void needed only many socket drops — self-triggerable; now distinct users and both seats must drop inside the outage | [detail](docs/fix-log/2026-11-27-493-outage-void-hardening.md) |
