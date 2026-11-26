@@ -160,14 +160,47 @@ const chatInput = document.getElementById('chat-input');
 // #218: on phones the document never scrolls (.room is the scroller), so when the keyboard shrinks the viewport
 // nothing brings the chat field back into view on its own in browsers that resize the layout. Do it on every
 // viewport resize while the field is focused (also pans the visual viewport in browsers that only resize that).
+// #485: iOS only shrinks the visual viewport (the layout, so .room and the dock, stay under the keyboard), and
+// iOS 26 floats the ^ v ✓ bar + URL pill over what is left. --kb lifts the dock above both (room-arena.css).
+const IOS_FLOATING_BAR = 96; // px, read off an iPhone screenshot; not exposed by any API
 if (chatInput && !document.body.dataset.roomKeyboardBound) {
   document.body.dataset.roomKeyboardBound = '1';
+  const root = document.documentElement;
+  let kb = 0;
+  /** Returns true while the dock is lifted by hand. */
+  const syncKeyboard = () => {
+    const vv = window.visualViewport;
+    const dock = document.getElementById('rdock');
+    const ua = navigator.userAgent;
+    // iOS only: Android keeps the #218 path below. scale: pinch-zoom is not a keyboard.
+    // clientHeight too: iOS may shrink innerHeight along with the keyboard.
+    const up = !!(/iP(hone|ad|od)/.test(ua) && vv && dock && document.activeElement === chatInput && vv.scale <= 1.01
+      && window.matchMedia('(max-width: 768px)').matches
+      && Math.max(root.clientHeight, window.innerHeight) - vv.height > 150);
+    document.body.classList.toggle('kb-up', up);
+    if (!up) {
+      kb = 0;
+      root.style.removeProperty('--kb');
+      root.style.removeProperty('--kb-vis');
+      return false;
+    }
+    const floating = !/Version\/(1\d|[1-9])\./.test(ua); // iOS <= 18: opaque bar
+    const visible = vv.height - (floating ? IOS_FLOATING_BAR : 0);
+    // Measured from where the dock really is, so it holds however far iOS panned and never stacks.
+    kb = Math.max(0, Math.round(kb + dock.getBoundingClientRect().bottom - (vv.offsetTop + visible)));
+    root.style.setProperty('--kb', kb + 'px');
+    root.style.setProperty('--kb-vis', Math.round(visible) + 'px');
+    return true;
+  };
   const keepChatInView = () => {
-    if (document.activeElement !== chatInput) return;
+    if (syncKeyboard() || document.activeElement !== chatInput) return;
     const bar = chatInput.closest('.chat-input') || chatInput;
     if (typeof bar.scrollIntoView === 'function') bar.scrollIntoView({ block: 'end', inline: 'nearest' });
   };
   (window.visualViewport || window).addEventListener('resize', keepChatInView);
+  if (window.visualViewport) window.visualViewport.addEventListener('scroll', syncKeyboard);
+  chatInput.addEventListener('focus', syncKeyboard);
+  chatInput.addEventListener('blur', syncKeyboard);
 }
 
 // ---------------------------------------------------------------------------
