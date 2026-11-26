@@ -100,9 +100,9 @@ describe('projection per audience (planning §2d)', () => {
     ['self', { c: 'on', a: 1, k: 'play', r: 'R', t: 42 }],
     ['room', { c: 'on', a: 1, k: 'play', r: 'R', t: 42 }],
     ['friend', { c: 'on', a: 1, k: 'play', r: 'R', t: 42 }],
-    ['public', { c: 'on', a: 1 }], // strangers never learn what or where
+    ['public', { c: 'off' }], // strangers: away reads as offline (#372), never what or where
     ['staff', { c: 'on', a: 1, k: 'play', r: 'R', t: 42 }],
-    ['bogus', { c: 'on', a: 1 }], // unknown audience = public
+    ['bogus', { c: 'off' }], // unknown audience = public
   ])('%s', (aud, want) => expect(core.project(playing, aud)).toEqual(want));
 
   test('hidden-online: offline to friends and the public, truth to self / room / staff (Q7 A)', () => {

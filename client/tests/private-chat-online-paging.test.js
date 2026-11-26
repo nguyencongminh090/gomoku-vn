@@ -156,3 +156,20 @@ describe('truncated list (total > page)', () => {
     expect(offline('far')).toBe(true);
   });
 });
+
+// #490: the DM window speaks the shared status vocabulary (presence-view) with its dot.
+describe('DM window status (#490)', () => {
+  it('online partner → presence.online + ok dot; not online → presence.offline + hollow dot', () => {
+    boot();
+    window.PresenceView = require('../js/presence-view.js');
+    window.PrivateChat.updateOnlineUsers(page(2), 2);
+    window.PrivateChat.openChat('p1');
+    const status = () => document.querySelector('.pm-window__status');
+    expect(status().textContent.trim()).toBe('presence.online');
+    expect(status().querySelector('.pres-dot').className).toBe('pres-dot pres-dot--ok pres-dot--fill');
+    window.PrivateChat.updateOnlineUsers(page(1), 1);
+    expect(status().textContent.trim()).toBe('presence.offline');
+    expect(status().querySelector('.pres-dot').className).toBe('pres-dot pres-dot--off pres-dot--hollow');
+    delete window.PresenceView;
+  });
+});

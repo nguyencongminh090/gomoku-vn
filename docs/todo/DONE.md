@@ -1,3 +1,4 @@
+- ✅ **#490.** Presence consumer: lobby list, rooms roster, home counts, DM window `[Model: Sonnet]` — [detail](docs/todo/B490-presence-lobby-dm-consumers.md)
 - ✅ **#489.** Presence consumer: friends + challenge pickers `[Model: Sonnet]` — [detail](docs/todo/B489-presence-friends-consumers.md)
 - ✅ **#488.** Presence: wire field `st` + client presence-view `[Model: Sonnet]` — [detail](docs/todo/B488-presence-wire-and-view.md)
 - ✅ **#487.** Presence: one server derivation module `[Model: Opus]` — [detail](docs/todo/B487-presence-core-module.md)

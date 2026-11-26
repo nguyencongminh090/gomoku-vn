@@ -190,7 +190,15 @@ function updateWindowStatus(userId) {
   const w = windows.get(userId);
   if (!w) return;
   const online = isOnline(userId);
-  w.statusEl.textContent = online ? t('private_chat.user_online') : t('private_chat.user_offline');
+  // #490 the shared status vocabulary and dot (presence-view.js). The window knows only "listed online" (the
+  // public projection: away reads as offline, #372), so the label is online / offline.
+  const PV = globalThis.PresenceView;
+  const desc = PV ? PV.describe({ c: online ? 'on' : 'off' })
+    : { key: online ? 'presence.online' : 'presence.offline', tone: online ? 'ok' : 'off', glyph: online ? 'fill' : 'hollow' };
+  const dot = document.createElement('span');
+  dot.className = `pres-dot pres-dot--${desc.tone} pres-dot--${desc.glyph}`;
+  dot.setAttribute('aria-hidden', 'true');
+  w.statusEl.replaceChildren(dot, document.createTextNode(' ' + t(desc.key)));
   w.statusEl.classList.toggle('is-offline', !online);
 
   const disabled = !online || !socketConnected;

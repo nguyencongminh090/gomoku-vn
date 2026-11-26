@@ -119,9 +119,11 @@ function project(s, audience) {
   if (s.hidden && (aud === 'friend' || aud === 'public')) return { c: 'off' };
   const c = s.conn === 'online' ? 'on' : s.conn === 'reconnecting' ? 're' : 'off';
   if (c === 'off') return { c };
+  // Strangers: online or offline only, never what or where. Away reads as offline to them, as in the lobby
+  // list and counts (#372; Q4 A gives the 'away' nuance to friends only).
+  if (aud === 'public') return { c: c === 'on' && s.attn === 'away' ? 'off' : c };
   const st = { c };
   if (c === 'on' && s.attn === 'away') st.a = 1;
-  if (aud === 'public') return st; // strangers: online/away only, never what or where
   const act = s.activity || { kind: 'idle' };
   st.k = KIND[act.kind] || 'idle';
   if (act.roomId) st.r = act.roomId;

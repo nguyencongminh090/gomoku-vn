@@ -159,7 +159,7 @@ Inside the subject's room (room audience): member `at` + `graceUntil` > `activit
 | self | everything | n/a |
 | room (opponent, spectators) | member state, grace countdown, playing/waiting | not applied (Q7) |
 | friend | conn, attn (Q4), activity, roomId (watch link) | → offline |
-| public (lobby list, counts, strangers, DM window of a non-friend) | online/offline only; away per Q4 | → offline |
+| public (lobby list, counts, strangers, DM window of a non-friend) | online/offline only (away = offline, #372) | → offline |
 | staff | everything + fair-play summary | not applied |
 
 Tone table — one row per displayed state, the same on every page. Colours anchor on the #114 semaphore

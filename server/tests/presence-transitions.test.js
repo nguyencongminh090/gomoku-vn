@@ -81,7 +81,8 @@ describe('user scope through the live stores', () => {
   test('U2/U3 away and back through the socket report', () => {
     const s = connect(makeSocket('a'));
     s.handlers['presence:set']({ presence: 'away' });
-    expect(presence.statusOf('a', 'public')).toEqual({ c: 'on', a: 1 });
+    expect(presence.statusOf('a', 'public')).toEqual({ c: 'off' }); // strangers: away = offline (#372)
+    expect(presence.statusOf('a', 'friend')).toEqual({ c: 'on', a: 1, k: 'idle' });
     s.handlers['presence:set']({ presence: 'active' });
     expect(presence.statusOf('a', 'public')).toEqual({ c: 'on' });
   });
