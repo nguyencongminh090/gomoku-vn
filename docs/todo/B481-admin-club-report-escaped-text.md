@@ -1,5 +1,5 @@
 # B481 — Admin club report queue shows escaped text (`&lt;`)
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-26 — escape-utils loaded on /admin, report bodies decoded; [fix-log](../fix-log/2026-11-26-481-admin-club-report-escaped.md)
 **Area:** `client/js/admin-clubs.js` (report rows), `client/tests/admin-clubs.test.js`
 **From:** #476 real-browser pass, 2026-11-26   **Depends:** —
 

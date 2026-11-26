@@ -13,6 +13,7 @@ const path = require('path');
 const HTML = fs.readFileSync(path.join(__dirname, '..', 'admin.html'), 'utf8')
   .match(/<body[^>]*>([\s\S]*)<\/body>/i)[1].replace(/<script[\s\S]*?<\/script>/g, '');
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'js', 'admin-clubs.js'), 'utf8');
+const ESC = fs.readFileSync(path.join(__dirname, '..', 'js', 'escape-utils.js'), 'utf8');
 const settle = async () => { for (let i = 0; i < 6; i++) await new Promise((r) => setTimeout(r, 0)); };
 
 const DIRECTORY = {
@@ -37,4 +38,31 @@ test('report rows list prior bodies and the later edit/delete; untouched reports
   expect(notes[1]).toHaveLength(1);
   expect(notes[1][0]).toMatch(/^Sau báo cáo, đã xoá lúc /);
   expect(notes[2]).toEqual([]);
+});
+
+// B481: club bodies are stored escaped (DmText.clean, `<` → `&lt;`); the queue must decode them for
+// display, as text — never as markup.
+test('report excerpt, prior and later bodies decode &lt;/&gt; and render as text, not elements', async () => {
+  document.body.innerHTML = HTML;
+  const enc = '15 phút &lt;b&gt;sửa&lt;/b&gt;';
+  const dir = { ...DIRECTORY, reports: [{ id: 9, slug: 'c', name: 'Club', reason: 'spam', excerpt: enc,
+    prior: [{ body: enc, editedAt: '2026-11-26T01:00:00Z' }], later: { action: 'edited', body: enc, at: '2026-11-26T02:00:00Z' } }] };
+  global.fetch = jest.fn(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(dir) }));
+  window.eval(ESC);
+  window.eval(SRC);
+  window.AdminClubs.init();
+  await settle();
+  const row = document.getElementById('ac-reports').children[0];
+  expect(row.firstChild.textContent).toBe('Club · spam · 15 phút <b>sửa</b>');
+  expect([...row.querySelectorAll('.pnote')].map((p) => p.textContent))
+    .toEqual(['Bản trước: 15 phút <b>sửa</b>', 'Sau báo cáo, đã sửa thành: 15 phút <b>sửa</b>']);
+  expect(row.querySelector('b')).toBeNull();
+  expect(row.textContent).not.toMatch(/&lt;|&gt;/);
+});
+
+test('admin.html loads escape-utils.js before admin-clubs.js', () => {
+  const page = fs.readFileSync(path.join(__dirname, '..', 'admin.html'), 'utf8');
+  const esc = page.indexOf('js/escape-utils.js');
+  expect(esc).toBeGreaterThan(-1);
+  expect(esc).toBeLessThan(page.indexOf('js/admin-clubs.js'));
 });
