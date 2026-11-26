@@ -85,6 +85,12 @@ class SocketClient {
     // mid-game lands on another page; the server then keeps the game paused and sends that page
     // room:joined (lobby.js navigates back into the room) instead of resuming it there.
     auth.roomPage = SocketClient.isRoomPage(window.location.pathname);
+    // #492 (F3): a room page names its room from the first handshake (the URL), so the server treats a
+    // returning member as watching at once instead of marking them away until room:join arrives.
+    if (auth.roomPage) {
+      const id = new URLSearchParams(window.location.search).get('id');
+      if (id) auth.roomId = id;
+    }
     // #415: socket-direct route (VN on a lossy ISP→Cloudflare leg). Present only when the server
     // set the `gvn_sock` cookie on this page's HTML; otherwise everything below is unchanged.
     const direct = SocketClient.directRoute();
@@ -592,6 +598,10 @@ class SocketClient {
 
   _reportPresence(force) {
     if (!this.socket || !this.socket.connected) return;
+    // #492: on the room page room-socket.js is the one reporter (room:presence, sent once room:joined says
+    // which room this page shows). Reporting here too sent every edge twice, and the forced report on
+    // connect arrived before room:join and marked the member away for one room:updated (F3).
+    if (SocketClient.isRoomPage(window.location.pathname)) return;
     const away = document.hidden || !document.hasFocus();
     if (!force && away === this._sentAway) return;
     this._sentAway = away;

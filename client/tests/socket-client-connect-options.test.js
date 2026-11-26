@@ -155,3 +155,42 @@ describe('SocketClient connect options (TODO #131)', () => {
     expect(replace).toHaveBeenCalledWith('login.html');
   });
 });
+
+// #492 (F3): the room page names its room from the URL in the very first handshake.
+describe('room page handshake carries the URL room id (#492)', () => {
+  // An earlier test swaps window.location for a stub, so set path + query the same way.
+  const at = (url) => { const u = new URL(url, 'http://localhost'); delete window.location; window.location = { pathname: u.pathname, search: u.search, replace: jest.fn() }; };
+
+  test('room.html?id=… → auth.roomId from the URL (room ids contain "#")', () => {
+    at('/room.html?id=' + encodeURIComponent('#A3F'));
+    const { options } = constructAndCaptureOptions();
+    expect(options.auth).toEqual({ roomPage: true, roomId: '#A3F' });
+  });
+
+  test('room.html without an id, and any other page → no roomId', () => {
+    at('/room.html');
+    expect(constructAndCaptureOptions().options.auth).toEqual({ roomPage: true });
+    at('/index.html?id=x');
+    expect(constructAndCaptureOptions().options.auth).toEqual({ roomPage: false });
+  });
+});
+
+// #492 (F1): on the room page socket-client does not report presence — room-socket.js is the one reporter.
+describe('presence reporter (#492)', () => {
+  // An earlier test swaps window.location for a stub, so set path + query the same way.
+  const at = (url) => { const u = new URL(url, 'http://localhost'); delete window.location; window.location = { pathname: u.pathname, search: u.search, replace: jest.fn() }; };
+  function clientOn(pathname) {
+    at(pathname);
+    const sock = makeSocketStub();
+    sock.connected = true;
+    window.io = () => sock;
+    window.eval(SOCKET_CLIENT_JS_SOURCE);
+    const c = new window.SocketClient();
+    c._reportPresence(true);
+    return sock.emit.mock.calls.filter(([ev]) => ev === 'presence:set').length;
+  }
+  test('lobby page reports; room page does not', () => {
+    expect(clientOn('/index.html')).toBe(1);
+    expect(clientOn('/room.html?id=r1')).toBe(0);
+  });
+});

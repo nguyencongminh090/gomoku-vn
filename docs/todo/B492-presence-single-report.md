@@ -1,5 +1,5 @@
 # B492 — Presence: one report per edge on the room page (PS-7)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-27 — socket-client.js: URL `?id` → `auth.roomId` on the first room-page handshake; no `presence:set` on the room page. Server untouched (existing roomId check covers fresh loads). Done-when 1 shown by two jsdom suites (socket-client: no report on room page; room-socket-strict-presence: one per edge) rather than one combined suite. Fix-log 2026-11-27.
 **Area:** client/js/room-socket.js, client/js/socket-client.js
 **From:** features/presence-status (planning F1), 2026-11-27   **Depends:** #486
 ## Scope

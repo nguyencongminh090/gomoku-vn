@@ -508,6 +508,10 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
     ['room page of a different room', { reconnect: true, roomId: 'r2' }, 'active', 'away'],
     ['room page reconnect, was disconnected', { reconnect: true, roomId: 'r1' }, 'disconnected', 'active'],
     ['room page reconnect, was away', { reconnect: true, roomId: 'r1' }, 'away', 'away'],
+    // #492 (F3): a fresh room-page load names its room from the URL in the first handshake.
+    ['fresh room-page load of this room, was disconnected', { roomPage: true, roomId: 'r1' }, 'disconnected', 'active'],
+    ['fresh room-page load of this room, was active', { roomPage: true, roomId: 'r1' }, 'active', 'active'],
+    ['fresh room-page load of another room', { roomPage: true, roomId: 'r2' }, 'active', 'away'],
   ])('room member connect: %s → %s', (_c, auth, before, after) => {
     const io = makeIo();
     init(io);

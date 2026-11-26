@@ -113,10 +113,10 @@ afterEach(() => {
 });
 
 describe('#486 presence emit baseline (today, before the refactor)', () => {
-  test('room-page tab switch: 2 inbound reports → 1 room:updated + 1 lobby patch', () => {
-    // room-socket.js sends room:presence and socket-client.js sends presence:set on the same edge (F1).
+  test('room-page tab switch: 1 inbound report → 1 room:updated + 1 lobby patch', () => {
+    // #492: room-socket.js is the room page's one reporter (before: socket-client.js sent presence:set too, F1;
+    // the duplicate was a server no-op, so the outbound counts below did not change).
     sockets.a.handlers['room:presence']({ presence: 'away' });
-    sockets.a.handlers['presence:set']({ presence: 'away' });
     settle();
     expect(count(io, room.roomId, 'room:updated')).toBe(1);
     expect(count(io, 'lobby', 'lobby:online_patch')).toBe(1);
@@ -168,9 +168,18 @@ describe('#486 presence emit baseline (today, before the refactor)', () => {
     expect(io.log).toEqual(['lobby lobby:online_patch']);
   });
 
-  test('F3: a fresh room-page socket reports before room:join → the member reads away for one room:updated', () => {
-    // socket-client.js forces presence:set on connect; room:join (which sets roomPageId) comes after.
-    const fresh = makeSocket('c'); // no roomPageId yet
+  test('F3 fixed (#492): a fresh room-page load names its room at connect → stays watching, no room:updated', () => {
+    // The handshake carries auth.roomId from the URL, so SocketHandler marks the socket as the room page at once
+    // (modelled here by roomPageId), and socket-client.js no longer reports presence on the room page.
+    const fresh = makeSocket('c', { roomPageId: room.roomId });
+    connect(io, fresh);
+    expect(room.users.get('c').presence).toBe('active');
+    settle();
+    expect(count(io, room.roomId, 'room:updated')).toBe(0);
+  });
+
+  test('old cached client (pre-#492) still works: its early presence:set reads away for one room:updated', () => {
+    const fresh = makeSocket('c'); // no roomPageId: an old page whose handshake had no roomId
     connect(io, fresh);
     fresh.handlers['presence:set']({ presence: 'active' });
     expect(room.users.get('c').presence).toBe('away');
