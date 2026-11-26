@@ -32,7 +32,10 @@ for (const target of [document, window]) {
   target.addEventListener = (type, fn, opts) => { bound.push([target, type, fn]); return add(type, fn, opts); };
 }
 
+// ...and its 8 s chat tick: an old boot's interval firing mid-test appended rows to the fresh DOM (flaky under load).
+const ticks = [];
 async function bootClub(club) {
+  for (const [clear, id] of ticks.splice(0)) clear(id);
   for (const [target, type, fn] of bound.splice(0)) {
     if (type === 'DOMContentLoaded' || type === 'hashchange') target.removeEventListener(type, fn);
   }
@@ -44,7 +47,10 @@ async function bootClub(club) {
   require('../js/platform-shell.js');
   require('../js/club-policy.js'); require('../js/club-kit.js');
   require('../js/club.js');
-  document.dispatchEvent(new Event('DOMContentLoaded'));
+  const setI = window.setInterval;
+  const clearI = window.clearInterval;
+  window.setInterval = (...args) => { const id = setI(...args); ticks.push([clearI, id]); return id; };
+  try { document.dispatchEvent(new Event('DOMContentLoaded')); } finally { window.setInterval = setI; }
   await flush(); await flush();
 }
 
@@ -435,8 +441,9 @@ describe('club page', () => {
       expect(global.fetch.mock.calls.filter(([u]) => String(u).includes('/messages'))).toHaveLength(1);
       expect([...document.querySelectorAll('.cb-chat__text')].map((n) => n.textContent)).toEqual(['hi <b>x</b>', 'second']);
       expect(log().querySelector('b')).toBeNull();
-      expect(document.querySelectorAll('.cb-chat__msg .cb-chat__del')).toHaveLength(0);
-      expect(document.querySelectorAll('.cb-chat__flag')).toHaveLength(1);
+      // B476: report on the other's row; delete only on my own (a member outranks nobody)
+      expect(document.querySelectorAll('.cb-tools [data-act="report"]')).toHaveLength(1);
+      expect([...document.querySelectorAll('.cb-tools [data-act="delete"]')].map((b) => b.closest('.cb-chat__msg').dataset.id)).toEqual(['8']);
       document.getElementById('cb-ch-members').click();
       tab().click();
       await flush();
@@ -460,38 +467,56 @@ describe('club page', () => {
       expect(rows[0].querySelector('a.cb-chat__name').getAttribute('href')).toBe('/u/own');
     });
 
-    it('staff see a delete button per message; delete sends DELETE then reloads', async () => {
-      await bootChat('officer');
+    it('B476: staff delete only rows they outrank; the dialog names the author, then DELETE removes the row in place', async () => {
+      const msgs = [MSGS[0], { ...MSGS[1], mine: false }]; // 7 by mem (member), 8 by own (owner)
+      await bootChat('officer', msgs);
       document.getElementById('cb-ch-events').click();
       tab().click();
       await flush(); await flush();
-      expect(document.querySelectorAll('.cb-chat__msg .cb-chat__del')).toHaveLength(2);
+      expect([...document.querySelectorAll('.cb-tools [data-act="delete"]')].map((b) => b.closest('.cb-chat__msg').dataset.id)).toEqual(['7']);
+      const dlg = document.getElementById('cb-dlg-delete');
+      dlg.showModal = jest.fn(() => dlg.setAttribute('open', ''));
+      dlg.close = jest.fn(() => { dlg.removeAttribute('open'); dlg.dispatchEvent(new Event('close')); });
       window.confirm = jest.fn(() => true);
       global.fetch.mockClear();
-      document.querySelector('.cb-chat__msg .cb-chat__del').click();
+      document.querySelector('.cb-tools [data-act="delete"]').click();
+      expect(dlg.showModal).toHaveBeenCalled();
+      expect(document.getElementById('cb-dlg-delete-h').textContent).toBe('clubs.delete_title_other{"name":"Mem"}');
+      expect(document.getElementById('cb-dlg-delete-warn').textContent).toBe('clubs.delete_warn_staff');
+      expect(document.activeElement.id).toBe('cb-dlg-delete-cancel');
+      expect(global.fetch).not.toHaveBeenCalled();
+      document.getElementById('cb-dlg-delete-ok').click();
       await flush(); await flush();
+      expect(window.confirm).not.toHaveBeenCalled();
       expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/messages/7');
       expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
+      expect(global.fetch.mock.calls).toHaveLength(1); // no full reload of the stream
+      expect([...document.querySelectorAll('.cb-chat__msg')].map((r) => r.dataset.id)).toEqual(['8']);
+      expect(document.activeElement.id).toBe('cb-chat-input');
     });
 
-    it('row actions share one grid cell (flag + delete never spill into an implicit 2nd grid row)', async () => {
+    it('row actions float out of the grid: avatar | body | one toolbar with one tab stop (no implicit 2nd grid row)', async () => {
       await bootChat('officer');
       document.getElementById('cb-ch-events').click();
       tab().click();
       await flush(); await flush();
       const rows = [...document.querySelectorAll('.cb-chat__msg')];
-      // grid is 3 columns (avatar | body | actions): 4 children made the blank gap under each message
-      for (const r of rows) expect(r.children.length).toBeLessThanOrEqual(3);
-      const other = rows.find((r) => r.querySelector('.cb-chat__flag'));
-      expect([...other.lastElementChild.children].map((b) => b.className)).toEqual(['cl-ib cb-chat__flag', 'cl-ib cb-chat__del']);
-      expect(other.lastElementChild.classList.contains('cb-chat__acts')).toBe(true);
+      for (const r of rows) {
+        expect(r.children.length).toBe(3);
+        expect(r.lastElementChild.getAttribute('role')).toBe('toolbar');
+        expect([...r.lastElementChild.querySelectorAll('button')].filter((b) => b.tabIndex === 0)).toHaveLength(1);
+      }
+      const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'club.css'), 'utf8');
+      expect(css).toMatch(/\.cb-chat__msg \{ position: relative; display: grid; grid-template-columns: 40px minmax\(0, 1fr\);/);
+      expect(css).toMatch(/\.cb-tools \{ position: absolute;/);
+      expect(css).not.toMatch(/cb-chat__acts|cb-chat__flag|cb-chat__del/); // the always-visible touch flag/trash is gone
     });
 
     it('poll button is an icon tool after the input, labelled for AT, not a text pill before it', async () => {
       await bootChat('member');
       const btn = document.getElementById('cb-poll-new');
       const box = btn.parentElement;
-      expect([...box.children].map((n) => n.id || n.type)).toEqual(['cb-chat-input', 'cb-poll-new', 'submit']);
+      expect([...box.children].map((n) => n.id || n.type)).toEqual(['cb-chat-input', 'cb-poll-new', 'cb-chat-send']);
       expect(btn.classList.contains('cl-ib')).toBe(true);
       expect(btn.getAttribute('data-i18n')).toBeNull();
       expect(btn.getAttribute('data-i18n-aria')).toBe('clubs.new_poll');
@@ -1007,6 +1032,343 @@ describe('chat commands + notifications (B447)', () => {
         await open();
         expect(document.querySelector('.cb-chat__at')).toBeNull();
         expect(document.querySelector('.cb-chat__msg').classList.contains('is-mentioned')).toBe(false);
+      }
+    });
+  });
+
+  describe('message actions (B476)', () => {
+    const AT = '2026-10-10T10:00:00.000Z';
+    const msg = (id, extra = {}) => ({ id, kind: 'text', text: 'tin ' + id, createdAt: AT, mine: false, username: 'mem', displayName: 'Mem', avatarUrl: null, ...extra });
+    const rowEl = (id) => document.querySelector('.cb-chat__msg[data-id="' + id + '"]');
+    const acts = (root) => [...root.querySelectorAll('[data-act]')].map((b) => b.dataset.act);
+    const openChat = async () => { document.getElementById('cb-ch-events').click(); document.getElementById('cb-ch-chat').click(); await flush(); await flush(); };
+    let coarse = false;
+
+    beforeEach(() => {
+      coarse = false;
+      window.matchMedia = jest.fn((q) => ({ matches: q.includes('coarse') ? coarse : false, addEventListener() {}, removeEventListener() {} }));
+      for (const proto of [window.HTMLDialogElement.prototype]) {
+        proto.showModal = function () { this.setAttribute('open', ''); };
+        proto.close = function () { if (!this.hasAttribute('open')) return; this.removeAttribute('open'); this.dispatchEvent(new Event('close')); };
+      }
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText: jest.fn(() => Promise.resolve()) }, configurable: true });
+    });
+
+    /** GET → { messages, rev, edited } from `reply(url)`; PATCH → `patch(body)`; other writes → {ok}. */
+    function stub(club, reply, patch = (b) => ({ id: 0, text: b.text, editedAt: AT })) {
+      global.fetch = jest.fn((url, o = {}) => {
+        const u = String(url);
+        if (o.method === 'PATCH') { const r = patch(JSON.parse(o.body), u); return r.ok === false ? Promise.resolve({ ok: false, status: 403, json: () => Promise.resolve(r) }) : ok(r); }
+        if (o.method) return ok({ ok: true });
+        if (u.includes('/messages')) return ok(reply(u));
+        return ok(club);
+      });
+    }
+    const gets = () => global.fetch.mock.calls.filter(([u, o]) => String(u).includes('/messages') && !(o && o.method)).map(([u]) => String(u));
+
+    it('toolbar per role: own text = edit, delete, ⋯; others = report, ⋯; staff add delete only on rows they outrank; own poll has no edit', async () => {
+      const list = [msg(1, { mine: true, username: 'mem' }), msg(2, { username: 'own', displayName: 'Own' }), msg(3, { mine: true, username: 'mem', kind: 'poll', poll: null })];
+      await boot(clubAs('member'), list);
+      await openChat();
+      expect(acts(rowEl(1).querySelector('.cb-tools'))).toEqual(['edit', 'delete', 'more']);
+      expect(acts(rowEl(2).querySelector('.cb-tools'))).toEqual(['report', 'more']);
+      expect(acts(rowEl(3).querySelector('.cb-tools'))).toEqual(['delete', 'more']);
+      expect(rowEl(1).querySelector('.cb-tools').getAttribute('aria-label')).toBe('clubs.msg_actions_of{"name":"Mem"}');
+      const more = rowEl(2).querySelector('.cb-tools__more');
+      expect(more.getAttribute('aria-haspopup')).toBe('menu');
+      expect(more.querySelector('use').getAttribute('href')).toMatch(/#ph-regular-dots-three$/);
+
+      await boot(clubAs('owner'), [msg(4)]);
+      await openChat();
+      expect(acts(rowEl(4).querySelector('.cb-tools'))).toEqual(['report', 'delete', 'more']);
+    });
+
+    it('toolbar is one tab stop with roving focus (Left/Right/Home/End)', async () => {
+      await boot(clubAs('member'), [msg(1, { mine: true })]);
+      await openChat();
+      const btns = [...rowEl(1).querySelectorAll('.cb-tools button')];
+      expect(btns.map((b) => b.tabIndex)).toEqual([0, -1, -1]);
+      btns[0].focus();
+      btns[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+      expect(document.activeElement).toBe(btns[1]);
+      expect(btns.map((b) => b.tabIndex)).toEqual([-1, 0, -1]);
+      btns[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true }));
+      expect(document.activeElement).toBe(btns[2]);
+      btns[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+      expect(document.activeElement).toBe(btns[0]);
+    });
+
+    it('desktop ⋯ opens a menu (no "select text"), Escape closes it and returns focus to ⋯', async () => {
+      await boot(clubAs('member'), [msg(1, { mine: true }), msg(2)]);
+      await openChat();
+      const more = rowEl(1).querySelector('.cb-tools__more');
+      more.click();
+      const menu = rowEl(1).querySelector('.cb-menu');
+      expect(menu.getAttribute('role')).toBe('menu');
+      expect(acts(menu)).toEqual(['edit', 'copy', 'delete']);
+      expect(more.getAttribute('aria-expanded')).toBe('true');
+      expect(document.activeElement).toBe(menu.firstChild);
+      menu.firstChild.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+      expect(document.activeElement.dataset.act).toBe('copy');
+      document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      expect(document.querySelector('.cb-menu')).toBeNull();
+      expect(more.getAttribute('aria-expanded')).toBe('false');
+      expect(document.activeElement).toBe(more);
+      rowEl(2).querySelector('.cb-tools__more').click();
+      expect(acts(rowEl(2).querySelector('.cb-menu'))).toEqual(['copy', 'report']);
+      document.body.click();
+      expect(document.querySelector('.cb-menu')).toBeNull();
+    });
+
+    it('phone: long-press (450 ms) opens the sheet with preview + Sửa/Sao chép/Chọn văn bản/Xoá; moving > 8 px cancels; close returns focus to ⋯', async () => {
+      jest.useFakeTimers({ doNotFake: ['setTimeout', 'clearTimeout', 'setImmediate', 'nextTick'] });
+      await boot(clubAs('member'), [msg(1, { mine: true, text: 'xin &lt;chào&gt;' }), msg(2)]);
+      coarse = true;
+      await openChat();
+      const sheet = document.getElementById('cb-sheet-actions');
+      const ptr = (type, target, x = 10, y = 10) => { const e = new Event(type, { bubbles: true }); Object.assign(e, { pointerType: 'touch', clientX: x, clientY: y }); target.dispatchEvent(e); };
+      jest.useFakeTimers();
+      try {
+        const text = rowEl(1).querySelector('.cb-chat__text');
+        ptr('pointerdown', text);
+        ptr('pointermove', text, 30, 10); // a scroll-ish drag
+        jest.advanceTimersByTime(500);
+        expect(sheet.hasAttribute('open')).toBe(false);
+        ptr('pointerdown', text);
+        jest.advanceTimersByTime(449);
+        expect(sheet.hasAttribute('open')).toBe(false);
+        jest.advanceTimersByTime(1);
+        expect(sheet.hasAttribute('open')).toBe(true);
+      } finally { jest.useRealTimers(); }
+      expect(rowEl(1).classList.contains('is-selected')).toBe(true);
+      expect(document.querySelector('#cb-sheet-quote > div').textContent).toBe('Memxin <chào>');
+      expect(acts(document.getElementById('cb-sheet-list'))).toEqual(['edit', 'copy', 'select', 'delete']);
+      expect(document.activeElement).toBe(sheet); // touch: no ring on an item
+      // lifting the finger after the hold clicks the backdrop: the sheet stays; a tap that starts on the backdrop closes it
+      sheet.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(sheet.hasAttribute('open')).toBe(true);
+      sheet.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+      sheet.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(sheet.hasAttribute('open')).toBe(false);
+      sheet.showModal();
+      sheet.close();
+      expect(rowEl(1).classList.contains('is-selected')).toBe(false);
+      expect(document.activeElement).toBe(rowEl(1).querySelector('.cb-tools__more'));
+      // contextmenu (Android long-press, right-click) opens the same sheet; the other's row offers report, no edit
+      const ev = new Event('contextmenu', { bubbles: true, cancelable: true });
+      rowEl(2).querySelector('.cb-chat__text').dispatchEvent(ev);
+      expect(ev.defaultPrevented).toBe(true);
+      expect(acts(document.getElementById('cb-sheet-list'))).toEqual(['copy', 'select', 'report']);
+      // "Chọn văn bản" gives the row native selection back, and then its contextmenu is the browser's
+      document.querySelector('#cb-sheet-list [data-act="select"]').click();
+      expect(sheet.hasAttribute('open')).toBe(false);
+      expect(rowEl(2).classList.contains('is-selecting')).toBe(true);
+      const native = new Event('contextmenu', { bubbles: true, cancelable: true });
+      rowEl(2).querySelector('.cb-chat__text').dispatchEvent(native);
+      expect(native.defaultPrevented).toBe(false);
+      document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+      expect(rowEl(2).classList.contains('is-selecting')).toBe(false);
+    });
+
+    it('phone: ⋯ (keyboard / screen reader) opens the sheet focused on the first item; copy writes the decoded text', async () => {
+      await boot(clubAs('member'), [msg(2, { text: 'a &lt;b&gt;' })]);
+      coarse = true;
+      await openChat();
+      const more = rowEl(2).querySelector('.cb-tools__more');
+      expect(more.tabIndex).toBe(0);
+      more.click();
+      expect(document.activeElement.dataset.act).toBe('copy');
+      document.activeElement.click();
+      await flush();
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('a <b>');
+      expect(document.getElementById('cb-msg').textContent).toBe('clubs.copied');
+    });
+
+    it('edit lifecycle: bar + ✓, PATCH, row patched in place with "đã sửa"; Esc cancels; unchanged sends nothing; ↑ edits my last text', async () => {
+      const list = [msg(1, { mine: true, text: 'cũ &lt;xưa&gt;' }), msg(2)];
+      await boot(clubAs('member'), list);
+      stub(clubAs('member'), (u) => ({ messages: u.includes('after=') ? [] : list }), (b) => ({ id: 1, text: b.text.replace('<', '&lt;'), editedAt: '2026-10-10T11:00:00.000Z' }));
+      await openChat();
+      const before = rowEl(1);
+      rowEl(1).querySelector('[data-act="edit"]').click();
+      expect(document.getElementById('cb-editbar').hidden).toBe(false);
+      expect(document.getElementById('cb-edit-orig').textContent).toBe('cũ <xưa>');
+      expect(input().value).toBe('cũ <xưa>');
+      expect(document.activeElement).toBe(input());
+      expect(document.getElementById('cb-chat-send').getAttribute('aria-label')).toBe('clubs.edit_save');
+      expect(document.querySelector('#cb-chat-send use').getAttribute('href')).toMatch(/#ph-regular-check$/);
+      expect(rowEl(1).classList.contains('is-editing')).toBe(true);
+      // unchanged: no request, edit mode ends
+      document.getElementById('cb-chat-form').onsubmit(new Event('submit'));
+      await flush();
+      expect(global.fetch.mock.calls.some(([, o]) => o && o.method === 'PATCH')).toBe(false);
+      expect(document.getElementById('cb-editbar').hidden).toBe(true);
+      // ↑ in the empty composer picks my last text message; Esc cancels
+      key('ArrowUp');
+      expect(document.getElementById('cb-editbar').hidden).toBe(false);
+      key('Escape');
+      expect(document.getElementById('cb-editbar').hidden).toBe(true);
+      expect(input().value).toBe('');
+      expect(document.getElementById('cb-chat-send').getAttribute('aria-label')).toBe('clubs.chat_send');
+      // a slash-looking edit is text: no command popup, straight PATCH
+      key('ArrowUp');
+      type('/ghim <mới> hay');
+      expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
+      document.getElementById('cb-chat-form').onsubmit(new Event('submit'));
+      await flush(); await flush();
+      const patch = global.fetch.mock.calls.find(([, o]) => o && o.method === 'PATCH');
+      expect(patch[0]).toBe('/api/clubs/caro/messages/1');
+      expect(JSON.parse(patch[1].body)).toEqual({ text: '/ghim <mới> hay' });
+      expect(global.fetch.mock.calls.some(([u, o]) => String(u).endsWith('/messages') && o && o.method === 'POST')).toBe(false);
+      expect(rowEl(1)).toBe(before);
+      expect(rowEl(1).querySelector('.cb-chat__text').textContent).toBe('/ghim <mới> hay');
+      expect(rowEl(1).querySelector('.cb-chat__edited').textContent).toBe('clubs.edited');
+      expect(document.getElementById('cb-editbar').hidden).toBe(true);
+      expect(rowEl(1).classList.contains('is-editing')).toBe(false);
+    });
+
+    it('a refused PATCH keeps edit mode and the text; deleting the row being edited ends edit mode', async () => {
+      jest.useFakeTimers({ doNotFake: ['setTimeout', 'clearTimeout', 'setImmediate', 'nextTick'] });
+      let removed = [];
+      await boot(clubAs('member'), [msg(1, { mine: true })]);
+      stub(clubAs('member'), (u) => (u.includes('after=') ? { messages: [], removed } : { messages: [msg(1, { mine: true })] }),
+        () => ({ ok: false, code: 'CLUB_MUTED', error: 'muted' }));
+      await openChat();
+      key('ArrowUp');
+      type('sửa');
+      document.getElementById('cb-chat-form').onsubmit(new Event('submit'));
+      await flush(); await flush();
+      expect(document.getElementById('cb-editbar').hidden).toBe(false);
+      expect(input().value).toBe('sửa');
+      expect(document.getElementById('cb-msg').textContent).not.toBe('');
+      try {
+        removed = [1];
+        jest.advanceTimersByTime(8000);
+        await flush(); await flush();
+      } finally { jest.useRealTimers(); }
+      expect(rowEl(1)).toBeNull();
+      expect(document.getElementById('cb-editbar').hidden).toBe(true);
+    });
+
+    it('rev cursor: sent from the GET reply only; edits from a tick patch rows in place; PATCH and older pages never move it', async () => {
+      jest.useFakeTimers({ doNotFake: ['setTimeout', 'clearTimeout', 'setImmediate', 'nextTick'] });
+      try {
+        let tick = { messages: [], rev: 5 };
+        await boot(clubAs('member'), [msg(60, { mine: true })]);
+        stub(clubAs('member'), (u) => {
+          if (u.includes('before=')) return { messages: [msg(10)], rev: 99 };
+          if (u.includes('after=')) return tick;
+          return { messages: Array.from({ length: 50 }, (_, i) => msg(11 + i, { mine: i === 49 })), rev: 5 };
+        }, (b) => ({ id: 60, text: b.text, editedAt: AT }));
+        localStorage.setItem('gvn_club_seen_caro', '60');
+        await openChat();
+        const other = rowEl(11);
+        // my PATCH carries no rev: the next tick still asks from 5
+        key('ArrowUp');
+        type('mới');
+        document.getElementById('cb-chat-form').onsubmit(new Event('submit'));
+        await flush(); await flush();
+        jest.advanceTimersByTime(8000);
+        await flush(); await flush();
+        expect(gets().at(-1)).toMatch(/&visible=[\d,]+&rev=5$/);
+        // older page with a bigger rev: ignored
+        document.getElementById('cb-chat-older').click();
+        await flush(); await flush();
+        tick = { messages: [], rev: 6, edited: [{ id: 11, text: 'đã đổi &lt;x&gt;', editedAt: AT, mentioned: [] }] };
+        jest.advanceTimersByTime(8000);
+        await flush(); await flush();
+        expect(gets().at(-1)).toMatch(/&rev=5$/);
+        expect(rowEl(11)).toBe(other);
+        expect(rowEl(11).querySelector('.cb-chat__text').textContent).toBe('đã đổi <x>');
+        expect(rowEl(11).querySelector('.cb-chat__edited')).not.toBeNull();
+        tick = { messages: [], rev: 6, edited: [] };
+        jest.advanceTimersByTime(8000);
+        await flush(); await flush();
+        expect(gets().at(-1)).toMatch(/&rev=6$/);
+        expect(localStorage.getItem('gvn_club_seen_caro')).toBe('60'); // edits never move the unread cursor
+        expect(document.getElementById('cb-chat-unread').hidden).toBe(true);
+      } finally { jest.useRealTimers(); }
+    });
+
+    it('a tick that left before my PATCH cannot repaint the row with the older text', async () => {
+      jest.useFakeTimers({ doNotFake: ['setTimeout', 'clearTimeout', 'setImmediate', 'nextTick'] });
+      try {
+        await boot(clubAs('member'), [msg(1, { mine: true, text: 'cũ' })]);
+        let release;
+        global.fetch = jest.fn((url, o = {}) => {
+          const u = String(url);
+          if (o.method === 'PATCH') return ok({ id: 1, text: 'mới', editedAt: AT });
+          if (u.includes('after=')) return new Promise((r) => { release = () => r({ ok: true, status: 200, json: () => Promise.resolve({ messages: [], rev: 3, edited: [{ id: 1, text: 'giữa', editedAt: AT, mentioned: [] }] }) }); });
+          if (u.includes('/messages')) return ok({ messages: [msg(1, { mine: true, text: 'cũ' })], rev: 2 });
+          return ok(clubAs('member'));
+        });
+        await openChat();
+        jest.advanceTimersByTime(8000); // tick out with the pre-edit row version
+        await flush();
+        key('ArrowUp');
+        type('mới');
+        document.getElementById('cb-chat-form').onsubmit(new Event('submit'));
+        await flush(); await flush();
+        expect(rowEl(1).querySelector('.cb-chat__text').textContent).toBe('mới');
+        release();
+        await flush(); await flush();
+        expect(rowEl(1).querySelector('.cb-chat__text').textContent).toBe('mới');
+      } finally { jest.useRealTimers(); }
+    });
+
+    it('report dialog replaces window.prompt: preset reason, "Lý do khác" needs text, POSTs the reason', async () => {
+      await boot(clubAs('member'), [msg(2)]);
+      stub(clubAs('member'), () => ({ messages: [msg(2)] }));
+      window.prompt = jest.fn();
+      await openChat();
+      const dlg = document.getElementById('cb-dlg-report');
+      rowEl(2).querySelector('[data-act="report"]').click();
+      expect(dlg.hasAttribute('open')).toBe(true);
+      expect(document.activeElement.value).toBe('abuse');
+      expect(document.getElementById('cb-report-more').hidden).toBe(true);
+      const other = dlg.querySelector('input[value="other"]');
+      other.checked = true;
+      other.dispatchEvent(new Event('change', { bubbles: true }));
+      expect(document.getElementById('cb-report-more').hidden).toBe(false);
+      global.fetch.mockClear();
+      document.getElementById('cb-report-form').onsubmit(new Event('submit', { cancelable: true }));
+      await flush();
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(document.getElementById('cb-report-error').textContent).toBe('clubs.report_need_text');
+      document.getElementById('cb-report-text').value = '  lừa đảo  ';
+      document.getElementById('cb-report-form').onsubmit(new Event('submit', { cancelable: true }));
+      await flush(); await flush();
+      expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/messages/2/report');
+      expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toEqual({ reason: 'lừa đảo' });
+      expect(dlg.hasAttribute('open')).toBe(false);
+      expect(document.getElementById('cb-msg').textContent).toBe('clubs.report_sent');
+      expect(document.activeElement).toBe(rowEl(2).querySelector('.cb-tools__more'));
+      // a preset reason sends its label
+      rowEl(2).querySelector('[data-act="report"]').click();
+      global.fetch.mockClear();
+      document.getElementById('cb-report-form').onsubmit(new Event('submit', { cancelable: true }));
+      await flush(); await flush();
+      expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toEqual({ reason: 'clubs.report_abuse' });
+      expect(window.prompt).not.toHaveBeenCalled();
+    });
+
+    it('own delete: "Xoá tin nhắn này?" + no-undo note; Huỷ sends nothing and returns focus to ⋯', async () => {
+      await boot(clubAs('member'), [msg(1, { mine: true })]);
+      await openChat();
+      rowEl(1).querySelector('[data-act="delete"]').click();
+      expect(document.getElementById('cb-dlg-delete-h').textContent).toBe('clubs.confirm_delete_message');
+      expect(document.getElementById('cb-dlg-delete-warn').textContent).toBe('clubs.delete_warn_own');
+      global.fetch.mockClear();
+      document.getElementById('cb-dlg-delete-cancel').click();
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(rowEl(1).querySelector('.cb-tools__more'));
+    });
+
+    it('dialogs live inside .cl-hq; every new string is in both dictionaries', () => {
+      for (const id of ['cb-sheet-actions', 'cb-dlg-delete', 'cb-dlg-report']) expect(document.getElementById(id).closest('.cl-hq')).not.toBeNull();
+      const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'i18n.js'), 'utf8');
+      for (const k of ['clubs.editing', 'clubs.edit_save', 'clubs.edited', 'clubs.act_select', 'clubs.delete_warn_staff', 'clubs.report_need_text', 'clubs.msg_actions_of']) {
+        expect(src.split("'" + k + "'").length - 1).toBe(2);
       }
     });
   });
