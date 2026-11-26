@@ -446,20 +446,45 @@ function listClubs({ q, page, limit, category }) {
 }
 
 /** Club page payload; pending requests are visible to staff only. */
+const EVENT_SELECT = `
+    SELECT e.id, e.title, e.starts_at, e.kind,
+      (SELECT COUNT(*) FROM club_event_rsvps r JOIN club_members m ON m.club_id = e.club_id AND m.user_id = r.user_id
+        WHERE r.event_id = e.id AND m.role != 'pending') AS going,
+      EXISTS (SELECT 1 FROM club_event_rsvps r WHERE r.event_id = e.id AND r.user_id = ?) AS mine
+    FROM club_events e`;
+const eventOut = (e) => ({ id: e.id, title: e.title, startsAt: e.starts_at, kind: e.kind, going: e.going, mine: !!e.mine });
+
 /**
  * Upcoming events (starts_at >= now), soonest first, capped. B450: `going` = RSVP count among confirmed members,
  * `mine` = the viewer RSVP'd (false for no viewer).
  */
 function upcomingEvents(clubId, viewerId = null) {
-  return db().prepare(`
-    SELECT e.id, e.title, e.starts_at, e.kind,
-      (SELECT COUNT(*) FROM club_event_rsvps r JOIN club_members m ON m.club_id = e.club_id AND m.user_id = r.user_id
-        WHERE r.event_id = e.id AND m.role != 'pending') AS going,
-      EXISTS (SELECT 1 FROM club_event_rsvps r WHERE r.event_id = e.id AND r.user_id = ?) AS mine
-    FROM club_events e
+  return db().prepare(`${EVENT_SELECT}
     WHERE e.club_id = ? AND e.starts_at >= ? ORDER BY e.starts_at, e.id LIMIT ?`)
     .all(viewerId || '', clubId, new Date().toISOString(), MAX_UPCOMING_EVENTS)
-    .map((e) => ({ id: e.id, title: e.title, startsAt: e.starts_at, kind: e.kind, going: e.going, mine: !!e.mine }));
+    .map(eventOut);
+}
+
+const MONTH_EVENTS_MAX = 100;
+const MONTH_RE = /^(\d{4})-(0[1-9]|1[0-2])$/;
+
+/**
+ * B480: the calendar's month "YYYY-MM" = Vietnam days 1 00:00 GMT+7 up to the next month's, past events included,
+ * capped. Same fields as upcomingEvents. Visibility is the club page's (router.param checkAccess).
+ */
+function monthEvents(slug, viewerId, month) {
+  const m = MONTH_RE.exec(typeof month === 'string' ? month : '');
+  const y = m && Number(m[1]);
+  const mo = m && Number(m[2]);
+  const from = m && policy.vnToIso({ y, m: mo, d: 1 });
+  const to = m && policy.vnToIso(mo === 12 ? { y: y + 1, m: 1, d: 1 } : { y, m: mo + 1, d: 1 });
+  if (!from || !to) throw new ClubError('CLUB_MONTH_INVALID', 400, 'Tháng không hợp lệ (YYYY-MM).');
+  const club = getClub(slug);
+  const events = db().prepare(`${EVENT_SELECT}
+    WHERE e.club_id = ? AND e.starts_at >= ? AND e.starts_at < ? ORDER BY e.starts_at, e.id LIMIT ?`)
+    .all(viewerId || '', club.id, from, to, MONTH_EVENTS_MAX)
+    .map(eventOut);
+  return { month: m[0], events };
 }
 
 function requireStaff(club, userId) {
@@ -1238,7 +1263,7 @@ function userIdByUsername(username) {
 module.exports = {
   clubActivity, removeContent, checkAccess, clubHistory, reportMessage, removedMessages, moderate, ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
   COLORS, createClub, updateClub, deleteClub, join, leave, approve, remove, setRole, invite, revokeInvite,
-  createEvent, deleteEvent, rsvpEvent, remindDueEvents, staffClubId, clubRosterForTournament, tournamentClubs, listMessages, postMessage, deleteMessage, editMessage, editRefresh, _resetFanOut,
+  createEvent, deleteEvent, rsvpEvent, monthEvents, MONTH_EVENTS_MAX, remindDueEvents, staffClubId, clubRosterForTournament, tournamentClubs, listMessages, postMessage, deleteMessage, editMessage, editRefresh, _resetFanOut,
   createPoll, refreshPolls, votePoll, closePoll, pollVoters, MAX_OPEN_POLLS,
   clubForImageEdit, setImageVersion, getClub, listClubs, getClubDetail, clubsOfUser, userIdByUsername,
 };

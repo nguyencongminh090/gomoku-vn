@@ -1,5 +1,5 @@
 # B480 — Club events: month calendar + create sheet (Vietnam time)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-26 — branch feature/480-club-event-calendar; full `npm test` 5097/5097, cache-bust OK, Chromium pass 390 px (touch) + 1280 px, both themes, temp DB, browser in America/New_York (shots `features/club-chat-refactor/shots/b480/`). NOT tried on a real phone. Deviations: out-of-month cells are selectable (open their month); before the month answer arrives the grid uses the page's upcoming list; staff keep the trash button per agenda row; channel subtitle now "Lịch hoạt động của nhóm" (mockup)
 **Area:** `client/js/club-policy.js` (VN helpers), `ClubService` (month query), `routes/clubs.js`, `client/club.html` + `club.js` + `club.css` (sự-kiện), sprite (`caret-left`), i18n, tests
 **From:** [features/club-chat-refactor](../../features/club-chat-refactor/planning.md) §4, §6.6, mockups `calendar`/`event`, 2026-11-26   **Depends:** —
 

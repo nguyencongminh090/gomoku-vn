@@ -59,7 +59,7 @@ date: 2026-10-10 (#214)
 | Answer move | target | | Close (modal, window, stand up) | x (bold on lobby/room) |
 | Message actions (⋯ menu) | dots-three | | Report | flag |
 | Copy | copy | | Select text | text-align-left |
-| Move item up / down (reorder) | arrow-up / arrow-down | | | |
+| Move item up / down (reorder) | arrow-up / arrow-down | | Previous / next month | caret-left / caret-right |
 
 ## Don't
 - Don't scale icons with `1em` inside small text (that produced 11–13px icons).
