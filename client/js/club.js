@@ -193,6 +193,7 @@
     if (updateHash && currentChannel() !== name) history.replaceState(null, '', location.pathname + location.search + '#ch=' + name); // <base href="/"> would resolve a bare '#x' to "/#x" (#451)
     if (name === 'chat') openChat();
     if (name === 'board') loadActivity();
+    if (name === 'events' && state.club) renderCal();
     syncUnread();
   }
 
@@ -909,7 +910,6 @@
     else if (state.latestOther > state.chat.lastId) fetchChat('newer'); // the unread dot saw these: show them now, not on the next poll
   }
 
-  // --- sự-kiện channel (B450): grouped by the viewer's local day, RSVP "tham gia" for reminders ---
   // --- poll sheet (B479). Limits and folding mirror server validatePoll (ClubChatCommands.js); a test pins parity. ---
   const POLL = { MIN: 2, MAX: 6, QUESTION: 140, OPTION: 50 };
   const options = () => [...$('cb-options').querySelectorAll('input')];
@@ -1097,50 +1097,291 @@
     $('cb-poll-summary').scrollIntoView?.({ block: 'nearest' });
   }
 
-  function previewEvent() {
-    const when = $('cb-event-when').value;
-    $('cb-event-preview').replaceChildren(window.PlatformShell.meta([t('clubs.preview'), $('cb-event-title').value, when && fmtWhen(when)]));
+  // --- sự-kiện (B450 RSVP, B480 calendar). Every day, time and form value is Vietnam time through ClubPolicy.vnParts /
+  // vnToIso, whatever the viewer's zone. Wall-date arithmetic uses Date.UTC only, so no zone or DST shifts a day. ---
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const monthKey = (y, m) => y + '-' + pad2(m);
+  const isoDay = (p) => p.y + '-' + pad2(p.m) + '-' + pad2(p.d); // also the <input type=date> value
+  const addDays = (p, n) => { const v = new Date(Date.UTC(p.y, p.m - 1, p.d + n)); return { y: v.getUTCFullYear(), m: v.getUTCMonth() + 1, d: v.getUTCDate() }; };
+  const weekday = (p) => new Date(Date.UTC(p.y, p.m - 1, p.d)).getUTCDay();
+  const daysIn = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const shiftMonth = (p, n) => {
+    const i = p.y * 12 + p.m - 1 + n;
+    const y = Math.floor(i / 12);
+    const m = (i % 12) + 1;
+    return { y, m, d: Math.min(p.d, daysIn(y, m)) };
+  };
+  const vnToday = () => window.ClubPolicy.vnParts(Date.now());
+  const fmtDay = (p, opts) => new Date(Date.UTC(p.y, p.m - 1, p.d)).toLocaleDateString(lang(), { timeZone: 'UTC', ...opts });
+  const dayHeading = (p) => fmtDay(p, { weekday: 'long', day: 'numeric', month: 'numeric' });
+  const hhmm = (p) => pad2(p.hh) + ':' + pad2(p.mi);
+  const EVENT_TITLE_MAX = 60; // ClubService EVENT_TITLE_MAX
+  const TIME_CHIPS = ['19:00', '19:30', '20:00', '21:00'];
+
+  // sel = the selected VN day {y, m, d}; its month is the one shown. months: 'YYYY-MM' → that month's events.
+  // gen bumps on every club reload, so an answer fetched before a create/delete is dropped.
+  const cal = { sel: null, months: new Map(), pending: new Set(), failed: new Set(), gen: 0 };
+
+  function resetCalendar() {
+    cal.gen++;
+    cal.months.clear();
+    cal.pending.clear();
+    cal.failed.clear();
   }
 
-  function eventRow(e, staff) {
-    const row = el('div', undefined, 'prow cl-event' + (e.mine ? ' is-going' : ''));
-    row.dataset.event = e.id;
-    const body = el('div', undefined, 'prow__body');
-    body.append(el('div', e.title, 'prow__t'),
-      window.PlatformShell.meta(new Date(e.startsAt).toLocaleTimeString(lang(), { hour: '2-digit', minute: '2-digit' })),
-      el('div', e.going ? t('clubs.event_going_n', { n: e.going }) : t('clubs.event_going_none'), 'prow__m cl-event__going'));
-    row.append(window.PlatformShell.icon('ph-regular-calendar'), body);
-    if (isMember()) {
+  async function loadMonth(y, m) {
+    const key = monthKey(y, m);
+    if (cal.months.has(key) || cal.pending.has(key) || cal.failed.has(key)) return;
+    const gen = cal.gen;
+    cal.pending.add(key);
+    let events = null;
+    try {
+      const res = await fetch(base() + '/events?month=' + key, { credentials: 'same-origin' });
+      const data = res.ok ? await res.json() : null;
+      if (data && Array.isArray(data.events)) events = data.events;
+    } catch (_) { /* shown as an error in the agenda */ }
+    if (gen !== cal.gen) return;
+    cal.pending.delete(key);
+    if (events) cal.months.set(key, events); else cal.failed.add(key);
+    if (state.ch === 'events') renderCal();
+  }
+
+  /** A day's events: that month's answer, or (not fetched yet) the upcoming list from the club payload. */
+  function eventsOn(p) {
+    const list = cal.months.get(monthKey(p.y, p.m)) || (state.club ? state.club.events : []);
+    const key = isoDay(p);
+    return list.filter((e) => isoDay(window.ClubPolicy.vnParts(e.startsAt)) === key);
+  }
+
+  function dayCell(p, shownMonth, today) {
+    const key = isoDay(p);
+    const evs = eventsOn(p);
+    const selected = key === isoDay(cal.sel);
+    const td = el('td', undefined, 'cb-day' + (p.m !== shownMonth ? ' is-out' : '') + (key < isoDay(today) ? ' is-past' : ''));
+    td.setAttribute('role', 'gridcell');
+    td.dataset.date = key;
+    td.tabIndex = selected ? 0 : -1;
+    td.setAttribute('aria-selected', String(selected));
+    if (key === isoDay(today)) td.setAttribute('aria-current', 'date');
+    td.setAttribute('aria-label', fmtDay(p, { weekday: 'long', day: 'numeric', month: 'long' })
+      + (evs.length ? ', ' + t('clubs.cal_n_events', { n: evs.length }) : ''));
+    const dots = el('span', undefined, 'cb-day__dots');
+    for (let i = 0; i < Math.min(3, evs.length); i++) dots.append(document.createElement('i'));
+    td.append(el('span', String(p.d), 'cb-day__n'), dots);
+    return td;
+  }
+
+  /** Month grid (APG grid: one tab stop on the selected day) + the selected day's agenda. */
+  function renderCal({ focus = false } = {}) {
+    const today = vnToday();
+    if (!cal.sel) cal.sel = { y: today.y, m: today.m, d: today.d };
+    const { y, m } = cal.sel;
+    const refocus = focus || $('cb-cal-days').contains(document.activeElement);
+    const title = t('clubs.cal_month', { m, y, name: fmtDay({ y, m, d: 1 }, { month: 'long' }) });
+    if ($('cb-cal-title').textContent !== title) $('cb-cal-title').textContent = title; // aria-live: announce month changes only
+    $('cb-cal-wd').replaceChildren(...t('clubs.cal_wd').split(',').map((label, i) => {
+      const th = el('th');
+      th.scope = 'col';
+      const abbr = el('abbr', label);
+      abbr.title = fmtDay(addDays({ y: 2024, m: 1, d: 1 }, i), { weekday: 'long' }); // 1 Jan 2024 was a Monday
+      th.append(abbr);
+      return th;
+    }));
+    const lead = (weekday({ y, m, d: 1 }) + 6) % 7; // Monday first
+    const weeks = Math.ceil((lead + daysIn(y, m)) / 7);
+    let p = addDays({ y, m, d: 1 }, -lead);
+    const rows = [];
+    for (let w = 0; w < weeks; w++) {
+      const tr = el('tr');
+      for (let i = 0; i < 7; i++, p = addDays(p, 1)) tr.append(dayCell(p, m, today));
+      rows.push(tr);
+    }
+    $('cb-cal-days').replaceChildren(...rows);
+    renderAgenda();
+    if (refocus) $('cb-cal-days').querySelector('[tabindex="0"]').focus();
+    loadMonth(y, m);
+  }
+
+  function renderAgenda() {
+    const p = cal.sel;
+    const key = monthKey(p.y, p.m);
+    $('cb-agenda-h').textContent = dayHeading(p);
+    const evs = eventsOn(p);
+    const empty = cal.failed.has(key) ? 'clubs.error' : cal.months.has(key) ? 'clubs.cal_empty_day' : 'clubs.cal_loading';
+    $('cb-events').replaceChildren(...(evs.length ? evs.map((e) => eventRow(e)) : [el('p', t(empty), 'cb-empty')]));
+  }
+
+  function selectDay(p, opts) {
+    cal.sel = p;
+    renderCal(opts);
+  }
+
+  /** `preview`: the sheet's card (no id, disabled toggle, `time` stands in until the date is valid). */
+  function eventRow(e, { preview = false } = {}) {
+    const at = e.startsAt ? window.ClubPolicy.vnParts(e.startsAt) : null;
+    const past = !preview && Date.parse(e.startsAt) <= Date.now();
+    const row = el('div', undefined, 'cb-ev' + (past ? ' is-past' : '') + (e.mine ? ' is-going' : ''));
+    if (!preview) row.dataset.event = e.id;
+    const time = el('span', at ? hhmm(at) : e.time || '--:--', 'cb-ev__time');
+    time.append(el('small', 'GMT+7'));
+    const body = el('div', undefined, 'cb-ev__body');
+    body.append(el('div', e.title, 'cb-ev__t'),
+      el('div', e.going ? t('clubs.event_going_n', { n: e.going }) : t('clubs.event_going_none'), 'cb-ev__m'));
+    const acts = el('div', undefined, 'cb-ev__acts');
+    if (past) acts.append(el('span', t('clubs.event_past'), 'cl-count'));
+    else if (preview || isMember()) {
       // Joined = aria-pressed (tinted), not a filled primary per row (DESIGN.md: one filled button per screen).
-      const b = el('button', t(e.mine ? 'clubs.event_going' : 'clubs.event_join'), 'pbtn pbtn--sm');
+      const b = el('button', undefined, 'pbtn pbtn--sm');
       b.type = 'button';
+      if (e.mine) b.append(icon('check'));
+      b.append(t(e.mine ? 'clubs.event_going' : 'clubs.event_join'));
       b.setAttribute('aria-pressed', String(!!e.mine));
       b.title = t('clubs.event_join_hint');
+      b.disabled = preview;
       b.onclick = async () => {
         b.disabled = true;
         const r = await act(e.mine ? 'DELETE' : 'POST', '/events/' + encodeURIComponent(e.id) + '/rsvp');
         if (r) {
           Object.assign(e, { going: r.going, mine: r.mine });
-          const fresh = eventRow(e, staff);
+          const fresh = eventRow(e);
           row.replaceWith(fresh);
           fresh.querySelector('button').focus();
         } else b.disabled = false;
       };
-      row.append(b);
+      acts.append(b);
     }
-    if (staff) row.append(iconBtn('trash', t('clubs.delete_event'), () => act('DELETE', '/events/' + encodeURIComponent(e.id), null, 'clubs.confirm_delete_event')));   // icon: one text action per row
+    // icon: one text action per row
+    if (isStaff() && !preview) acts.append(iconBtn('trash', t('clubs.delete_event'), () => act('DELETE', '/events/' + encodeURIComponent(e.id), null, 'clubs.confirm_delete_event')));
+    if (acts.children.length) body.append(acts);
+    row.append(time, body);
     return row;
   }
 
-  function renderEvents(events, staff) {
-    if (!events.length) { $('cb-events').replaceChildren(el('p', t('clubs.no_events'), 'pnote')); return; }
-    const out = [];
-    let last = '';
-    for (const e of events) {
-      if (dayKey(e.startsAt) !== last) { last = dayKey(e.startsAt); out.push(el('h3', dayLabel(e.startsAt), 'cl-evday')); }
-      out.push(eventRow(e, staff));
+  // --- "Tạo sự kiện" sheet (B480): date and time inputs carry no zone, so they are read as VN wall time ---
+  let eventTried = false; // after a failed submit the error follows every edit
+
+  function eventWhen() {
+    const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec($('cb-event-date').value);
+    const tm = /^(\d{2}):(\d{2})/.exec($('cb-event-time').value);
+    const day = dm ? { y: +dm[1], m: +dm[2], d: +dm[3] } : null;
+    return { day, time: tm ? tm[0] : '', iso: day && tm ? window.ClubPolicy.vnToIso({ ...day, hh: +tm[1], mi: +tm[2] }) : null };
+  }
+
+  /** [i18n key, field id] of the first problem, or null. */
+  function eventError() {
+    if (!$('cb-event-title').value.trim()) return ['clubs.event_err_title', 'cb-event-title'];
+    const { day, iso } = eventWhen();
+    if (!day) return ['clubs.event_err_day', 'cb-event-date'];
+    if (!iso) return ['clubs.event_err_time', 'cb-event-time'];
+    if (Date.parse(iso) <= Date.now()) return ['clubs.event_err_past', 'cb-event-time'];
+    return null;
+  }
+
+  function showEventError(text, fieldId) {
+    $('cb-event-err').textContent = text || '';
+    $('cb-event-err').hidden = !text;
+    for (const id of ['cb-event-title', 'cb-event-date', 'cb-event-time']) {
+      if (id === fieldId) $(id).setAttribute('aria-invalid', 'true'); else $(id).removeAttribute('aria-invalid');
     }
-    $('cb-events').replaceChildren(...out);
+  }
+
+  function previewEvent() {
+    const title = $('cb-event-title').value;
+    $('cb-event-title-n').textContent = title.length + '/' + EVENT_TITLE_MAX;
+    const { day, time, iso } = eventWhen();
+    for (const b of $('cb-event-days').children) b.setAttribute('aria-pressed', String(b.dataset.date === $('cb-event-date').value));
+    for (const b of $('cb-event-times').children) b.setAttribute('aria-pressed', String(b.dataset.time === time));
+    $('cb-event-preview').replaceChildren(el('h4', day ? dayHeading(day) : t('clubs.event_pick_day'), 'cb-agenda__h'),
+      eventRow({ title: title.trim() || t('clubs.event_title'), startsAt: iso, time, going: 0, mine: false }, { preview: true }));
+    if (eventTried) { const bad = eventError(); showEventError(bad && t(bad[0]), bad && bad[1]); }
+  }
+
+  function chip(label, data) {
+    const b = el('button', label, 'pchip');
+    b.type = 'button';
+    Object.assign(b.dataset, data);
+    return b;
+  }
+
+  /** Opens on the selected calendar day (today if that is past); `at` (an ISO from /lich) wins. */
+  function openEventSheet({ title = '', at = null } = {}) {
+    const today = vnToday();
+    const next = (wd) => addDays(today, (wd - today.wd + 7) % 7);
+    const days = [['clubs.event_chip_today', today], ['clubs.event_chip_sat', next(6)], ['clubs.event_chip_sun', next(0)]]
+      .filter(([, p], i) => i === 0 || isoDay(p) !== isoDay(today)); // on a weekend "Hôm nay" already covers it
+    $('cb-event-days').replaceChildren(...days.map(([k, p]) => chip(t(k), { date: isoDay(p) })));
+    $('cb-event-times').replaceChildren(...TIME_CHIPS.map((v) => chip(v, { time: v })));
+    const when = at && window.ClubPolicy.vnParts(at);
+    const day = cal.sel && isoDay(cal.sel) >= isoDay(today) ? cal.sel : today;
+    eventTried = false;
+    showEventError('');
+    $('cb-event-title').value = title;
+    $('cb-event-date').min = isoDay(today);
+    $('cb-event-date').value = isoDay(when || day);
+    $('cb-event-time').value = when ? hhmm(when) : '20:00';
+    previewEvent();
+    if (!$('cb-event-editor').open) $('cb-event-editor').showModal();
+    $('cb-event-title').focus();
+  }
+
+  function bindCalendar() {
+    $('cb-cal-prev').onclick = () => selectDay(monthStart(shiftMonth(cal.sel, -1)));
+    $('cb-cal-next').onclick = () => selectDay(monthStart(shiftMonth(cal.sel, 1)));
+    $('cb-cal-today').onclick = () => { const p = vnToday(); selectDay({ y: p.y, m: p.m, d: p.d }); };
+    $('cb-cal-days').addEventListener('click', (ev) => {
+      const td = ev.target.closest('td[data-date]');
+      if (!td) return;
+      const [y, m, d] = td.dataset.date.split('-').map(Number);
+      selectDay({ y, m, d }, { focus: true });
+    });
+    $('cb-cal-days').addEventListener('keydown', (ev) => {
+      if (!ev.target.closest('td[data-date]')) return;
+      const p = cal.sel;
+      const fromMonday = (weekday(p) + 6) % 7;
+      const next = {
+        ArrowLeft: () => addDays(p, -1), ArrowRight: () => addDays(p, 1), ArrowUp: () => addDays(p, -7), ArrowDown: () => addDays(p, 7),
+        Home: () => addDays(p, -fromMonday), End: () => addDays(p, 6 - fromMonday),
+        PageUp: () => shiftMonth(p, ev.shiftKey ? -12 : -1), PageDown: () => shiftMonth(p, ev.shiftKey ? 12 : 1),
+      }[ev.key];
+      if (!next) return;
+      ev.preventDefault();
+      selectDay(next(), { focus: true });
+    });
+    $('cb-event-new').onclick = () => openEventSheet();
+    $('cb-event-x').onclick = $('cb-event-cancel').onclick = () => $('cb-event-editor').close();
+    $('cb-event-form').oninput = previewEvent;
+    $('cb-event-form').addEventListener('click', (ev) => {
+      const c = ev.target.closest('.pchip[data-date], .pchip[data-time]');
+      if (!c) return;
+      if (c.dataset.date) $('cb-event-date').value = c.dataset.date; else $('cb-event-time').value = c.dataset.time;
+      previewEvent();
+    });
+    $('cb-event-form').onsubmit = async (ev) => {
+      ev.preventDefault();
+      eventTried = true;
+      const bad = eventError();
+      showEventError(bad && t(bad[0]), bad && bad[1]);
+      if (bad) { $(bad[1]).focus(); return; }
+      const { iso } = eventWhen();
+      const submit = $('cb-event-form').querySelector('[type=submit]');
+      submit.disabled = true;
+      try {
+        if (!(await act('POST', '/events', { title: $('cb-event-title').value.trim(), startsAt: iso }))) {
+          showEventError($('cb-msg').textContent);
+          return;
+        }
+        $('cb-event-editor').close();
+        const p = window.ClubPolicy.vnParts(iso);
+        cal.sel = { y: p.y, m: p.m, d: p.d };
+        await load();
+      } finally { submit.disabled = false; }
+    };
+  }
+
+  /** Month navigation lands on today in today's month, else on the 1st. */
+  function monthStart(p) {
+    const today = vnToday();
+    return p.y === today.y && p.m === today.m ? { y: p.y, m: p.m, d: today.d } : { y: p.y, m: p.m, d: 1 };
   }
 
   // --- composer popup (B447 commands, B478 mentions): only what this club enabled and this member may use ---
@@ -1604,9 +1845,9 @@
 
     $('cb-events-count').hidden = !c.events.length;
     $('cb-events-count').textContent = String(c.events.length);
-    renderEvents(c.events, staff);
+    resetCalendar(); // showChannel below re-renders it, and refetches the month, if sự-kiện is open
     $('cb-poll-new').hidden = !isMember() || !chatSet().cmdPoll;
-    $('cb-event-box').hidden = !staff;
+    $('cb-event-new').hidden = !staff;
 
     $('cb-tournaments').replaceChildren(...(c.tournaments.length ? c.tournaments.map((x) => {
       const a = el('a', undefined, 'prow');
@@ -1760,17 +2001,7 @@
         await fetchChat('newer');
       } finally { submit.disabled = false; }
     };
-    $('cb-event-form').oninput = previewEvent;
-    $('cb-event-form').onsubmit = async (ev) => {
-      ev.preventDefault();
-      const when = new Date($('cb-event-when').value); // datetime-local = viewer's local time
-      if (Number.isNaN(when.getTime())) return;
-      if (await act('POST', '/events', { title: $('cb-event-title').value, startsAt: when.toISOString() })) {
-        $('cb-event-form').reset();
-        $('cb-event-preview').textContent = '';
-        load();
-      }
-    };
+    bindCalendar();
     for (const ch of ALL_CHANNELS) {
       $('cb-ch-' + ch).addEventListener('click', () => showChannel(ch, { updateHash: true }));
     }
@@ -1815,13 +2046,9 @@
       }
       if (kind === 'poll' && chatSet().cmdPoll) { openPoll(arg); return; }
       if (kind === 'calendar' && isStaff() && chatSet().cmdCalendar) {
-        const draft = window.ClubPolicy.parseEventArg(arg);
-        $('cb-event-title').value = draft.title || arg;
-        const at = draft.startsAt && new Date(draft.startsAt);
-        $('cb-event-when').value = at ? new Date(+at - at.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
+        const draft = window.ClubPolicy.parseEventArg(arg); // VN time, like the server's /lich
         showChannel('events', { updateHash: true });
-        previewEvent();
-        $('cb-event-title').focus();
+        openEventSheet({ title: draft.title || arg, at: draft.startsAt || null });
         $('cb-chat-input').value = '';
         return;
       }

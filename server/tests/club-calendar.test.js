@@ -137,6 +137,97 @@ describe('parseEventArg (pure, Vietnam time)', () => {
   });
 });
 
+describe('vnParts / vnToIso (pure, B480)', () => {
+  const policy = require('../../client/js/club-policy');
+  it.each([
+    ['2026-11-30T16:59:00.000Z', { y: 2026, m: 11, d: 30, hh: 23, mi: 59, wd: 1 }],
+    ['2026-11-30T17:00:00.000Z', { y: 2026, m: 12, d: 1, hh: 0, mi: 0, wd: 2 }],    // VN midnight = 17:00 UTC the day before
+    ['2026-12-31T17:00:00.000Z', { y: 2027, m: 1, d: 1, hh: 0, mi: 0, wd: 5 }],
+  ])('vnParts(%s)', (iso, parts) => {
+    expect(policy.vnParts(iso)).toEqual(parts);
+    expect(policy.vnParts(Date.parse(iso))).toEqual(parts);
+    expect(policy.vnToIso(parts)).toBe(iso); // round trip
+  });
+  it('vnToIso: 28/11 20:00 → 13:00Z; hh/mi default to midnight', () => {
+    expect(policy.vnToIso({ y: 2026, m: 11, d: 28, hh: 20, mi: 0 })).toBe('2026-11-28T13:00:00.000Z');
+    expect(policy.vnToIso({ y: 2026, m: 11, d: 1 })).toBe('2026-10-31T17:00:00.000Z');
+  });
+  it.each([
+    [{ y: 2026, m: 2, d: 29, hh: 20, mi: 0 }], [{ y: 2026, m: 13, d: 1 }], [{ y: 2026, m: 0, d: 1 }], [{ y: 2026, m: 11, d: 31 }],
+    [{ y: 2026, m: 11, d: 28, hh: 24, mi: 0 }], [{ y: 2026, m: 11, d: 28, hh: 20, mi: 60 }], [{ y: 26, m: 11, d: 28 }],
+    [{ y: 2026, m: 11, d: NaN }], [{ y: '2026', m: 11, d: 28 }], [{}], [undefined],
+  ])('vnToIso(%j) → null', (parts) => expect(policy.vnToIso(parts)).toBeNull());
+  it('vnParts of garbage → null', () => {
+    expect(policy.vnParts('')).toBeNull();
+    expect(policy.vnParts('2026-13-45')).toBeNull();
+  });
+});
+
+describe('GET /events?month= (B480)', () => {
+  // Service-level where possible: the whole file shares one IP against the router's 300/15 min limit (fake clock).
+  const put = (iso, title = iso, slug = SLUG) => {
+    const id = 'ev-' + slug + '-' + iso + '-' + title;
+    const club = db.prepare('SELECT id FROM clubs WHERE slug = ?').get(slug);
+    db.prepare('INSERT INTO club_events (id, club_id, title, starts_at, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(id, club.id, title, iso, U.own, new Date(T0).toISOString());
+    return id;
+  };
+  const titles = (m) => ClubService.monthEvents(SLUG, U.mem, m).events.map((e) => e.title);
+  const month = (m, as = 'mem') => call('GET', `/api/clubs/${SLUG}/events` + (m === undefined ? '' : '?month=' + encodeURIComponent(m)), as);
+
+  // The fake clock never lets the router's per-IP limits (300 / 15 min, 120 writes / h) roll over, and this file
+  // is near both. Step past both windows once so each limiter resets its count, then go back (beforeEach).
+  beforeAll(async () => {
+    jest.setSystemTime(T0 + 2 * HOUR);
+    await setChat('own', { ...chat.CHAT_DEFAULTS });
+  });
+
+  it('VN month edges: 1st 00:00 GMT+7 in, next 1st 00:00 GMT+7 out; past events included, soonest first', () => {
+    put('2026-10-31T16:59:00.000Z', 'oct-31-2359');
+    put('2026-10-31T17:00:00.000Z', 'nov-01-0000');
+    put('2026-11-02T13:00:00.000Z', 'nov-02-past'); // before T0
+    put('2026-11-30T16:59:00.000Z', 'nov-30-2359');
+    put('2026-11-30T17:00:00.000Z', 'dec-01-0000');
+    put('2026-12-31T16:59:00.000Z', 'dec-31-2359');
+    put('2026-12-31T17:00:00.000Z', 'jan-01-0000');
+    expect(titles('2026-11')).toEqual(['nov-01-0000', 'nov-02-past', 'nov-30-2359']);
+    expect(titles('2026-10')).toEqual(['oct-31-2359']);
+    expect(titles('2026-12')).toEqual(['dec-01-0000', 'dec-31-2359']); // December runs to 1 Jan 00:00 GMT+7
+    expect(titles('2027-01')).toEqual(['jan-01-0000']);
+  });
+
+  it('only this club, capped at 100', () => {
+    ClubService.createClub(U.mem2, { name: 'Other Cal', joinPolicy: 'open' });
+    put('2026-11-20T13:00:00.000Z', 'elsewhere', 'other-cal');
+    for (let i = 0; i < 105; i++) put(new Date(Date.parse('2026-11-01T00:00:00.000Z') + i * HOUR).toISOString(), 'n' + i);
+    const got = titles('2026-11');
+    expect(got).toHaveLength(ClubService.MONTH_EVENTS_MAX);
+    expect(got[0]).toBe('n0');
+    expect(got).not.toContain('elsewhere');
+    db.prepare("DELETE FROM clubs WHERE slug = 'other-cal'").run();
+  });
+
+  it.each([undefined, null, 202611, '', '2026-13', '2026-00', '2026-1', '26-11', '2026/11', '2026-11-01', 'abc', '0999-01', ' 2026-11'])(
+    'month=%j → CLUB_MONTH_INVALID 400', (m) => {
+      expect(() => ClubService.monthEvents(SLUG, U.mem, m)).toThrow(expect.objectContaining({ code: 'CLUB_MONTH_INVALID', status: 400 }));
+    });
+
+  it('route: same fields as the club page, going = confirmed members, mine = viewer (false for visitors); 400; 404', async () => {
+    const id = await event(2 * HOUR, 'RSVP me');
+    await rsvp('mem', id);
+    await rsvp('off', id);
+    const r = await month('2026-11');
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ month: '2026-11', events: [{ id, title: 'RSVP me', startsAt: new Date(T0 + 2 * HOUR).toISOString(), kind: 'event', going: 2, mine: true }] });
+    expect((await page('mem')).body.events).toEqual(r.body.events);
+    expect((await month('2026-11', 'mem2')).body.events[0].mine).toBe(false);
+    expect((await month('2026-11', null)).body.events[0]).toMatchObject({ going: 2, mine: false });
+    expect(await month('2026-13')).toMatchObject({ status: 400, body: { code: 'CLUB_MONTH_INVALID' } });
+    expect(await month(undefined)).toMatchObject({ status: 400, body: { code: 'CLUB_MONTH_INVALID' } });
+    expect((await call('GET', '/api/clubs/no-such-club/events?month=2026-11', 'mem')).status).toBe(404);
+  });
+});
+
 describe('/lich', () => {
   it('no arg: any member gets the upcoming list, nothing is stored in chat', async () => {
     const id = await event(2 * HOUR);

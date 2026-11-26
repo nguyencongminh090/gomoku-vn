@@ -198,7 +198,9 @@ describe('club page', () => {
       expect(panel('requests').contains(document.getElementById('cb-pending'))).toBe(true);
       expect(panel('requests').contains(document.getElementById('cb-invite-form'))).toBe(true);
       expect(panel('log').contains(document.getElementById('cb-history'))).toBe(true);
-      expect(panel('events').contains(document.getElementById('cb-event-form'))).toBe(true);
+      expect(panel('events').contains(document.getElementById('cb-event-new'))).toBe(true); // B480: opens the sheet
+      expect(document.getElementById('cb-event-form').closest('dialog').id).toBe('cb-event-editor');
+      expect(panel('events').contains(document.getElementById('cb-event-editor'))).toBe(false); // a hidden panel would hide it
       expect(panel('members').querySelectorAll('button').length).toBeGreaterThan(0);
       expect(panel('board').querySelectorAll('tbody button')).toHaveLength(0);
     });
@@ -314,90 +316,7 @@ describe('club page', () => {
     });
   });
 
-  describe('events — Sắp tới (#200 slice 2)', () => {
-    const EVENTS = [{ id: 'e1', title: '<b>Giao hữu</b>', startsAt: '2026-12-01T13:00:00.000Z', kind: 'event' }];
-
-    it('shows the empty note, then events as text; members get no delete button', async () => {
-      await bootClub(CLUB);
-      expect(document.getElementById('cb-events').textContent).toBe('clubs.no_events');
-      await bootClub({ ...CLUB, myRole: 'member', events: EVENTS });
-      expect(document.querySelector('#cb-events .prow__t').textContent).toBe('<b>Giao hữu</b>');
-      expect(document.querySelector('#cb-events b')).toBeNull();
-      expect([...document.querySelectorAll('#cb-events button')].map((b) => b.textContent)).toEqual(['clubs.event_join']); // RSVP only, no delete
-      await bootClub({ ...CLUB, myRole: null, events: EVENTS });
-      expect(document.querySelectorAll('#cb-events button')).toHaveLength(0); // visitors: no RSVP
-    });
-
-    it('B450: grouped under a day heading per local day (Hôm nay / Ngày mai / date)', async () => {
-      const at = (dayOffset, h) => { const d = new Date(); d.setDate(d.getDate() + dayOffset); d.setHours(h, 0, 0, 0); return d.toISOString(); };
-      const evs = [
-        { id: 'a', title: 'A', startsAt: at(0, 23), going: 0, mine: false },
-        { id: 'b', title: 'B', startsAt: at(1, 20), going: 3, mine: true },
-        { id: 'c', title: 'C', startsAt: at(1, 21), going: 1, mine: false },
-        { id: 'd', title: 'D', startsAt: at(5, 9), going: 0, mine: false },
-      ];
-      await bootClub({ ...CLUB, myRole: 'member', events: evs });
-      const seq = [...document.getElementById('cb-events').children].map((x) => (x.matches('.cl-evday') ? '#' + x.textContent : x.dataset.event));
-      const d5 = new Date(evs[3].startsAt).toLocaleDateString(undefined, { weekday: 'long', day: '2-digit', month: '2-digit' });
-      expect(seq).toEqual(['#clubs.day_today', 'a', '#clubs.day_tomorrow', 'b', 'c', '#' + d5, 'd']);
-      const b = document.querySelector('[data-event="b"]');
-      expect(b.querySelector('.cl-event__going').textContent).toBe('clubs.event_going_n{"n":3}');
-      expect(b.querySelector('button').textContent).toBe('clubs.event_going');
-      expect(b.querySelector('button').getAttribute('aria-pressed')).toBe('true');
-      expect(document.querySelector('[data-event="a"] .cl-event__going').textContent).toBe('clubs.event_going_none');
-    });
-
-    it('B450: Tham gia posts the RSVP and re-renders the row from the reply; again takes it back', async () => {
-      await bootClub({ ...CLUB, myRole: 'member', events: [{ ...EVENTS[0], going: 0, mine: false }] });
-      global.fetch = jest.fn(() => ok({ id: 'e1', going: 1, mine: true }));
-      document.querySelector('#cb-events button').click();
-      await flush(); await flush();
-      expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/events/e1/rsvp');
-      expect(global.fetch.mock.calls[0][1].method).toBe('POST');
-      const btn = document.querySelector('#cb-events button');
-      expect([btn.textContent, btn.getAttribute('aria-pressed')]).toEqual(['clubs.event_going', 'true']);
-      expect(document.activeElement).toBe(btn);
-      expect(document.querySelector('.cl-event__going').textContent).toBe('clubs.event_going_n{"n":1}');
-      global.fetch = jest.fn(() => ok({ id: 'e1', going: 0, mine: false }));
-      btn.click();
-      await flush(); await flush();
-      expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
-      expect(document.querySelector('#cb-events button').textContent).toBe('clubs.event_join');
-    });
-
-    it('B450: a refused RSVP keeps the row and re-enables the button', async () => {
-      await bootClub({ ...CLUB, myRole: 'member', events: [{ ...EVENTS[0], going: 0, mine: false }] });
-      global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ error: 'Không tìm thấy sự kiện.' }) }));
-      const btn = document.querySelector('#cb-events button');
-      btn.click();
-      await flush(); await flush();
-      expect(document.querySelector('#cb-events button')).toBe(btn);
-      expect(btn.disabled).toBe(false);
-      expect(document.getElementById('cb-msg').textContent).not.toBe('');
-    });
-
-    it('staff delete sends DELETE /events/:id after confirm', async () => {
-      await bootClub({ ...CLUB, myRole: 'officer', events: EVENTS });
-      window.confirm = jest.fn(() => true);
-      global.fetch.mockClear();
-      [...document.querySelectorAll('#cb-events button')].find((b) => b.getAttribute('aria-label') === 'clubs.delete_event').click();
-      await flush();
-      expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/events/e1');
-      expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
-    });
-
-    it('add form posts title + UTC ISO time', async () => {
-      await bootClub({ ...CLUB, myRole: 'owner' });
-      document.getElementById('cb-event-title').value = 'Giải tuần';
-      document.getElementById('cb-event-when').value = '2030-01-02T20:00';
-      global.fetch.mockClear();
-      document.getElementById('cb-event-form').onsubmit(new Event('submit'));
-      await flush();
-      const [url, opts] = global.fetch.mock.calls[0];
-      expect(url).toBe('/api/clubs/caro/events');
-      expect(JSON.parse(opts.body)).toEqual({ title: 'Giải tuần', startsAt: new Date('2030-01-02T20:00').toISOString() });
-    });
-  });
+  // sự-kiện (calendar, agenda, RSVP, staff delete, the create sheet): client/tests/club-calendar.test.js (B480).
 
   describe('chat (#200 slice 3)', () => {
     const MSGS = [
@@ -1230,8 +1149,9 @@ describe('chat commands + notifications (B447)', () => {
       expect(input().value).toBe('/binhchon');
     });
 
-    it('B477: a bare /lich opens sự-kiện with no server call', async () => {
-      const evs = [{ id: 'z', title: 'Từ lệnh', startsAt: new Date(Date.now() + 3600e3).toISOString(), going: 2, mine: false }];
+    it('B477: a bare /lich opens sự-kiện with no chat call (only the calendar asks for its month)', async () => {
+      const today = window.ClubPolicy.vnParts(Date.now());
+      const evs = [{ id: 'z', title: 'Từ lệnh', startsAt: window.ClubPolicy.vnToIso({ ...today, hh: 12, mi: 0 }), going: 2, mine: false }];
       await boot(clubAs('member', { events: evs }));
       global.fetch.mockClear();
       input().value = '/lich';
@@ -1239,22 +1159,27 @@ describe('chat commands + notifications (B447)', () => {
       await flush(); await flush();
       expect(location.hash).toBe('#ch=events');
       expect(document.getElementById('cb-panel-events').hidden).toBe(false);
-      expect(document.querySelector('[data-event="z"] .prow__t').textContent).toBe('Từ lệnh');
+      expect(document.querySelector('[data-event="z"] .cb-ev__t').textContent).toBe('Từ lệnh'); // today is selected
       expect(input().value).toBe('');
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(global.fetch.mock.calls.map(([u]) => String(u))).toEqual(['/api/clubs/caro/events?month=' + today.y + '-' + String(today.m).padStart(2, '0')]);
     });
 
-    it('B450: staff /lich create reloads the club and opens sự-kiện', async () => {
+    it('B450/B480: staff /lich with an argument opens the create sheet prefilled in Vietnam time, nothing posted', async () => {
       await boot(clubAs('owner'));
-      const created = clubAs('owner', { events: [{ id: 'n', title: 'Mới', startsAt: new Date(Date.now() + 864e5).toISOString(), going: 0, mine: false }] });
-      global.fetch = jest.fn((url, opts) => (opts && opts.method === 'POST' ? ok({ kind: 'event', eventId: 'n' }) : ok(created)));
+      const dlg = document.getElementById('cb-event-editor');
+      dlg.showModal = jest.fn(() => dlg.setAttribute('open', ''));
+      global.fetch.mockClear();
       input().value = '/lich 25/12 20:00 Mới';
       document.getElementById('cb-chat-form').onsubmit(new Event('submit'));
       await flush(); await flush(); await flush();
       expect(global.fetch.mock.calls.some(([, o]) => o?.method === 'POST')).toBe(false);
       expect(location.hash).toBe('#ch=events');
+      expect(dlg.showModal).toHaveBeenCalled();
       expect(document.getElementById('cb-event-title').value).toBe('Mới');
+      expect(document.getElementById('cb-event-date').value).toBe(window.ClubPolicy.parseEventArg('25/12 20:00 x').startsAt.slice(0, 4) + '-12-25');
+      expect(document.getElementById('cb-event-time').value).toBe('20:00');
       expect(document.getElementById('cb-event-preview').textContent).toContain('Mới');
+      expect(input().value).toBe('');
     });
 
     it('members never see them', async () => {

@@ -15,6 +15,7 @@
  * PUT    /api/clubs/:slug/members/:username/role   {role: officer|member|owner}
  * POST   /api/clubs/:slug/invites/:username      staff invite (invitee joins without approval)
  * DELETE /api/clubs/:slug/invites/:username      staff revoke
+ * GET    /api/clubs/:slug/events?month=YYYY-MM     that Vietnam month, past included, ≤ 100 (B480; public like the page)
  * POST   /api/clubs/:slug/events                   {title, startsAt} staff
  * DELETE /api/clubs/:slug/events/:id                staff
  * POST   /api/clubs/:slug/events/:id/rsvp           members: "tham gia" (B450) → {id, going, mine}
@@ -211,6 +212,11 @@ router.post('/:slug/moderation', ...write, h((req, res) => {
 
 router.post('/:slug/polls', ...write, h((req, res) => {
   res.status(201).json(svc.createPoll(req.user.userId, req.params.slug, req.body || {}));
+}));
+
+router.get('/:slug/events', h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(svc.monthEvents(req.params.slug, optionalUserId(req), req.query.month));
 }));
 
 router.post('/:slug/events', ...write, h((req, res) => {
