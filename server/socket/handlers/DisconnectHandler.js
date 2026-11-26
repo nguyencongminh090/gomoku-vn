@@ -12,6 +12,7 @@
 const logger      = require('../../utils/logger');
 const roomManager = require('../../managers/RoomManager');
 const config      = require('../../config');
+const presenceCore = require('../../presence/presence-core');
 const {
   timerMap,
   disconnectTimers,
@@ -106,7 +107,7 @@ function handleDisconnect(io, socket) {
 /** True if anyone other than `userId` in the room is still connected. */
 function hasOtherConnectedUser(room, userId) {
   for (const [id, u] of room.users) {
-    if (id !== userId && u.presence !== 'disconnected') return true;
+    if (id !== userId && presenceCore.isConnectedMember(u)) return true;
   }
   return false;
 }
@@ -126,7 +127,7 @@ function reapGhostRoom(io, roomId) {
   if (!room || !room.users || room.users.size === 0) return;
   if (room.gameState && room.gameState.status === 'ongoing') return;
   for (const [id, u] of room.users) {
-    if (u.presence !== 'disconnected') return;
+    if (presenceCore.isConnectedMember(u)) return;
     if (emptyRoomGraceTimers.has(id) || spectatorGraceTimers.has(id) || disconnectTimers.has(id)) return;
   }
   for (const [id, u] of [...room.users]) {
@@ -241,7 +242,7 @@ function startEmptyRoomGrace(io, room, user) {
     if (result && !result.destroyed && result.room) reapGhostRoom(io, roomId);
   }, config.EMPTY_ROOM_GRACE_MS);
 
-  emptyRoomGraceTimers.set(user.userId, { timeout, roomId });
+  emptyRoomGraceTimers.set(user.userId, { timeout, roomId, until: Date.now() + config.EMPTY_ROOM_GRACE_MS });
   logger.debug(`[Disconnect] Empty-room grace started for ${user.displayName} in room ${roomId} (${graceSec}s)`);
 }
 
@@ -298,7 +299,7 @@ function startSpectatorGrace(io, room, user) {
     reapGhostRoom(io, roomId);
   }, config.SPECTATOR_GRACE_MS);
 
-  spectatorGraceTimers.set(user.userId, { timeout, roomId });
+  spectatorGraceTimers.set(user.userId, { timeout, roomId, until: Date.now() + config.SPECTATOR_GRACE_MS });
   logger.debug(`[Disconnect] Spectator grace started for ${user.displayName} in room ${roomId} (${graceSec}s)`);
 }
 
@@ -400,7 +401,7 @@ function startDisconnectGrace(io, room, user) {
     reapGhostRoom(io, roomId);
   }, config.DISCONNECT_GRACE_MS);
 
-  disconnectTimers.set(user.userId, { timeout, countdown, roomId });
+  disconnectTimers.set(user.userId, { timeout, countdown, roomId, until: Date.now() + config.DISCONNECT_GRACE_MS });
   logger.debug(`[Disconnect] Grace period started for ${user.displayName} in room ${roomId}`);
 }
 

@@ -44,7 +44,6 @@ const {
   broadcastOnlineUsers,
   setHideOnline,
   isVisiblyOnline,
-  hasPresentSocket,
   awayUsers,
   getOnlineUsersSorted,
   broadcastRoomUpdate,
@@ -67,6 +66,8 @@ const TournamentHandler      = require('./handlers/TournamentHandler');
 const TournamentMatchHandler = require('./handlers/TournamentMatchHandler');
 const EngineHandler     = require('./handlers/EngineHandler');
 const MatchHandler           = require('./handlers/MatchHandler');
+const presence               = require('../presence');
+const tournamentState        = require('./tournamentState');
 const HomeFeed               = require('./home-feed');
 
 /**
@@ -74,6 +75,15 @@ const HomeFeed               = require('./home-feed');
  * @param {import('socket.io').Server} io
  */
 function init(io) {
+  // #487: the one presence derivation reads activity from the match queue and live tournament matches.
+  presence.setHooks({
+    isQueued: (userId) => MatchHandler.isQueued(userId),
+    inTournament: (userId) => {
+      for (const m of tournamentState.tournamentGameMap.values()) if (m.entryByUserId && m.entryByUserId.has(userId)) return true;
+      return false;
+    },
+  });
+
   // One-time wiring of TournamentManager's events (tournament_started,
   // tournament_completed, pairing_changed) to broadcasts — see
   // TournamentHandler.js's header for why this is init(), not register().
@@ -87,7 +97,7 @@ function init(io) {
   require('../managers/ChallengeService').setHooks({
     // Seat check only: "did they ever connect a socket?" — NOT presence (#372 review). An away
     // room tab must keep its seat; a heartbeat from social.html is not a socket in the room.
-    isOnline: (userId) => sessions.has(userId),
+    isOnline: (userId) => presence.hasSocket(userId),
     onlineUsers: () => getOnlineUsersSorted(), // #361 Home picker: visible presence only (ids — no avatar lookup per online user, #381)
     onRoomChanged: (room) => { broadcastRoomUpdate(io, room); broadcastLobbyUpdate(io, room.roomId); },
     onSeated: (room, userIds) => {
@@ -133,7 +143,7 @@ function init(io) {
   // Persisted DMs (#198 slice 4): the socket handler stores member↔member messages; REST sends push live.
   const DmService = require('../managers/DmService');
   // Live push needs a visible socket: away tab or heartbeat-only page (no socket) → bell entry too.
-  DmService.setHooks({ isOnline: (userId) => hasPresentSocket(userId), hasSocket: (userId) => sessions.has(userId) });
+  DmService.setHooks({ isOnline: (userId) => presence.canPushLive(userId), hasSocket: (userId) => presence.hasSocket(userId) });
   PrivateChatHandler.setStore(DmService);
 
   // Live push for the bell (#198): one socket per user lives in `sessions`.

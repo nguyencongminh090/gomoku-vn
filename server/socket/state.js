@@ -15,6 +15,7 @@ const TimerManager = require('../managers/TimerManager');
 const { resolveClientIp } = require('../utils/get-client-ip');
 const rankCache   = require('../managers/rank-cache');
 const { WINNING_RULES } = require('../managers/rules');
+const presenceCore = require('../presence/presence-core');
 
 // ---------------------------------------------------------------------------
 // Shared state maps
@@ -103,23 +104,43 @@ function setUserPresence(userId, presence) {
 
 /**
  * HTTP heartbeats (#372) for pages WITHOUT a socket (social, profile, forum, clubs, puzzles…): the shell
- * posts {presence} every ~20s. A beat counts for BEAT_TTL_MS; no beat (tab closed / hidden pauses the
- * timer) = gone. userId → { at, away, user: { userId, displayName, isGuest } }.
+ * posts {presence, tab} every ~20s. A beat counts for BEAT_TTL_MS; no beat (tab closed / hidden pauses the
+ * timer) = gone. userId → { user: { userId, displayName, isGuest }, tabs: Map(tabId → { at, away }) }.
+ * #487: one slot per TAB — with one slot per user, a hidden tab's 'away' edge overwrote a visible tab's
+ * 'active' and the user flickered offline until the next tick. A client without a tab id (cached pre-#487
+ * shell) shares the '' slot, i.e. the old behaviour. presence-core also reads a legacy `{ at, away }` entry.
  */
-const BEAT_TTL_MS = 45_000;
+const BEAT_TTL_MS = presenceCore.BEAT_TTL_MS;
+const MAX_BEAT_TABS = 16;
 const heartbeats = new Map();
 
+/** The fresh beats of a user, or null when none (falsy = "no live beat page"). */
 function _freshBeat(userId, now = Date.now()) {
-  const b = heartbeats.get(userId);
-  return b && now - b.at <= BEAT_TTL_MS ? b : null;
+  const beats = presenceCore.freshBeats(heartbeats.get(userId), now);
+  return beats.length ? beats : null;
 }
 
-/** Record a heartbeat. Returns true if the user's visible-online state may have changed (list re-broadcast). */
-function touchHeartbeat(user, presence, now = Date.now()) {
-  const prev = _freshBeat(user.userId, now);
-  const away = presence === 'away';
-  heartbeats.set(user.userId, { at: now, away, user: { userId: user.userId, displayName: user.displayName, isGuest: !!user.isGuest } });
-  const changed = !prev || prev.away !== away;
+/** Present on some beat page: a fresh beat whose tab is not away. */
+const _beatActive = (userId, now) => presenceCore.isPresent({ hasSocket: false, beat: heartbeats.get(userId) || null }, now);
+
+/**
+ * Record a heartbeat. Returns true if the user's visible-online state may have changed (list re-broadcast).
+ * @param {string} [tab] the page's tab id (#487); '' for clients that send none
+ */
+function touchHeartbeat(user, presence, now = Date.now(), tab = '') {
+  const wasActive = _beatActive(user.userId, now);
+  const wasFresh = !!_freshBeat(user.userId, now);
+  let entry = heartbeats.get(user.userId);
+  if (!entry || !(entry.tabs instanceof Map)) {
+    entry = { user: null, tabs: new Map() };
+    heartbeats.set(user.userId, entry);
+  }
+  entry.user = { userId: user.userId, displayName: user.displayName, isGuest: !!user.isGuest };
+  for (const [id, b] of entry.tabs) if (now - b.at > BEAT_TTL_MS) entry.tabs.delete(id);
+  let slot = typeof tab === 'string' ? tab : '';
+  if (!entry.tabs.has(slot) && entry.tabs.size >= MAX_BEAT_TABS) slot = ''; // bounds memory per member
+  entry.tabs.set(slot, { at: now, away: presence === 'away' });
+  const changed = !wasFresh || wasActive !== _beatActive(user.userId, now);
   if (changed && _lastIo) broadcastOnlineUsers(_lastIo);
   return changed;
 }
@@ -127,8 +148,16 @@ function touchHeartbeat(user, presence, now = Date.now()) {
 /** Drop expired beats; re-broadcast if any present user vanished. */
 function pruneHeartbeats(now = Date.now()) {
   let gone = false;
-  for (const [id, b] of heartbeats) {
-    if (now - b.at > BEAT_TTL_MS) { heartbeats.delete(id); if (!b.away) gone = true; }
+  for (const [id, entry] of heartbeats) {
+    let lostActive = false; // an expiring beat that was present
+    if (entry.tabs instanceof Map) {
+      for (const [tab, b] of entry.tabs) if (now - b.at > BEAT_TTL_MS) { entry.tabs.delete(tab); if (!b.away) lostActive = true; }
+      if (entry.tabs.size === 0) heartbeats.delete(id);
+    } else if (now - entry.at > BEAT_TTL_MS) { // legacy single-slot entry
+      heartbeats.delete(id);
+      if (!entry.away) lostActive = true;
+    }
+    if (lostActive && !_beatActive(id, now)) gone = true;
   }
   if (gone && _lastIo) broadcastOnlineUsers(_lastIo);
   return gone;
@@ -150,19 +179,27 @@ function dropHeartbeat(userId) {
  * so a DM to that user must still create the bell entry.
  */
 function hasPresentSocket(userId) {
-  return sessions.has(userId) && !awayUsers.has(userId);
+  return presenceCore.hasPresentSocket(_presenceFacts(userId));
+}
+
+/** #487: the facts presence-core derives from — the only place state.js reads its presence stores together. */
+function _presenceFacts(userId) {
+  return {
+    hasSocket: sessions.has(userId),
+    socketAway: awayUsers.has(userId),
+    beat: heartbeats.get(userId) || null,
+    hidden: hiddenOnline.has(userId),
+  };
 }
 
 /** Present = a socket that is visible+focused, OR a fresh non-away heartbeat. Hidden-online is a separate privacy filter. */
 function isPresent(userId) {
-  if (sessions.has(userId) && !awayUsers.has(userId)) return true;
-  const b = _freshBeat(userId);
-  return !!(b && !b.away);
+  return presenceCore.isPresent(_presenceFacts(userId));
 }
 
 /** Connected, present and not hiding it (#199) — what other members may be told (#222 friend picker). */
 function isVisiblyOnline(userId) {
-  return isPresent(userId) && !hiddenOnline.has(userId);
+  return presenceCore.isVisiblyOnline(_presenceFacts(userId));
 }
 
 /**
@@ -180,7 +217,7 @@ function _visibleOnlineUsers() {
   const byId = new Map();
   for (const s of sessions.values()) if (!awayUsers.has(s.user.userId)) byId.set(s.user.userId, s.user);
   const now = Date.now();
-  for (const [id, b] of heartbeats) if (!byId.has(id) && !b.away && now - b.at <= BEAT_TTL_MS) byId.set(id, b.user);
+  for (const [id, b] of heartbeats) if (!byId.has(id) && b.user && _beatActive(id, now)) byId.set(id, b.user);
   return Array.from(byId.values()).filter(u => !hiddenOnline.has(u.userId));
 }
 
@@ -1348,6 +1385,7 @@ module.exports = {
   getOnlineUsersSorted,
   getOnlineUsersCount,
   setHideOnline,
+  isHiddenOnline: (userId) => hiddenOnline.has(userId),
   isVisiblyOnline,
   isPresent,
   hasPresentSocket,

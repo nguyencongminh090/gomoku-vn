@@ -38,6 +38,7 @@ const { WINNING_RULES, applyOpeningRule } = require('./rules');
 const logger = require('../utils/logger');
 const EventEmitter = require('events');
 const ChallengeSeries = require('./ChallengeSeries');
+const presenceCore = require('../presence/presence-core');
 
 /** Shared empty Set — default for createRoom's optional graceRoomIds param. */
 const EMPTY_SET = new Set();
@@ -334,7 +335,7 @@ class RoomManager extends EventEmitter {
 
     let hostTransferred = false;
     if (room.host === userId) {
-      const next = room.joinOrder.find(id => id !== userId && room.users.get(id) && room.users.get(id).presence !== 'disconnected');
+      const next = room.joinOrder.find(id => id !== userId && room.users.get(id) && presenceCore.isConnectedMember(room.users.get(id)));
       if (next) {
         room.host = next;
         hostTransferred = true;
@@ -780,7 +781,7 @@ class RoomManager extends EventEmitter {
         playerCount++;
         if (!u.isGuest) seatIds.push(u.userId);
       }
-      if (u.slot === null && u.presence === 'disconnected') continue; // ghost viewer, see lobbyEntry
+      if (presenceCore.isGhostViewer(u)) continue; // ghost viewer, see lobbyEntry
       userCount++;
     }
     const s = room.settings;
@@ -816,7 +817,7 @@ class RoomManager extends EventEmitter {
         players[u.slot - 1].rating = r ? r.rating : null;
         players[u.slot - 1].provisional = !!(r && r.provisional);
       }
-      if (u.slot === null && u.presence === 'disconnected') continue;
+      if (presenceCore.isGhostViewer(u)) continue;
       userCount++;
     }
 
