@@ -68,6 +68,20 @@
     return ctx && ctx.inRoom ? describeMember(input, ctx) : describeStatus(input);
   }
 
+  /**
+   * A person row's wire status: the server's `st` (#488), or — for a row without it (an online-list entry,
+   * an older server mid-deploy) — mapped from the legacy `online` / `activity` / `roomId` / `startedAt`.
+   */
+  function stOfRow(row) {
+    if (!row) return { c: 'off' };
+    if (row.st && typeof row.st === 'object') return row.st;
+    if (!row.online) return { c: 'off' };
+    var st = { c: 'on', k: row.activity === 'playing' ? 'play' : row.activity === 'watching' ? 'watch' : 'idle' };
+    if (row.roomId) st.r = row.roomId;
+    if (row.startedAt) st.t = row.startedAt;
+    return st;
+  }
+
   /** Seconds left of a grace deadline (server ms) for a countdown; null when none. */
   function secondsLeft(graceUntil, now) {
     if (typeof graceUntil !== 'number') return null;
@@ -89,5 +103,5 @@
     return '<span class="' + escapeAttr(cls) + '" role="img" aria-label="' + escapeAttr(label) + '" title="' + escapeAttr(label) + '"></span>';
   }
 
-  return { describe: describe, secondsLeft: secondsLeft, dotHtml: dotHtml };
+  return { describe: describe, stOfRow: stOfRow, secondsLeft: secondsLeft, dotHtml: dotHtml };
 });

@@ -81,6 +81,19 @@
   const avatar = (p) => (root.PlatformShell && root.PlatformShell.avatar
     ? root.PlatformShell.avatar(p.avatarUrl, p.displayName, 'pav--sm') : el('span'));
 
+  // #489 a person's status through the one renderer (presence-view.js); offline keeps the "invite expires" note.
+  function statusOf(p) {
+    const PV = root.PresenceView;
+    const desc = PV ? PV.describe(PV.stOfRow(p))
+      : (p.online ? { state: 'online', key: 'challenge.online', tone: 'ok', glyph: 'fill' } : { state: 'offline', key: 'challenge.offline', tone: 'off', glyph: 'hollow' });
+    return { desc, label: desc.state === 'offline' ? t('challenge.offline') : t(desc.key) };
+  }
+  function presDot(desc, cls) {
+    const d = el('span', undefined, 'pres-dot pres-dot--' + desc.tone + ' pres-dot--' + desc.glyph + (cls ? ' ' + cls : ''));
+    d.setAttribute('aria-hidden', 'true'); // the label next to it says it
+    return d;
+  }
+
   let uid = 0;
   /** Radio segment: [[value, label]] → {node, get(), set(v), inputs}. */
   function seg(name, label, options, value) {
@@ -182,8 +195,9 @@
           b.type = 'button';
           b.setAttribute('role', 'listitem');
           const body = el('span', undefined, 'prow__body');
-          body.append(el('span', f.displayName, 'prow__t'), el('span', f.online ? t('challenge.online') : t('challenge.offline'), 'prow__m'));
-          b.append(avatar(f), body, el('span', undefined, 'pdot' + (f.online ? ' pdot--on' : '')));
+          const status = statusOf(f);
+          body.append(el('span', f.displayName, 'prow__t'), el('span', status.label, 'prow__m'));
+          b.append(avatar(f), body, presDot(status.desc, 'pchal__pd'));
           b.addEventListener('click', () => settings(f, true));
           return b;
         }));

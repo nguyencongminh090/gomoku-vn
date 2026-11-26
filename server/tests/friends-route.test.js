@@ -304,6 +304,8 @@ describe('#370 presence activity', () => {
     expect(activityFromRoom(room('playing', 'finished', [['u', { slot: 1 }]]), 'u')).toEqual({ activity: 'free' });
     expect(activityFromRoom(null, 'u')).toEqual({ activity: 'free' });
     expect(activityFromRoom(room('playing', 'ongoing', []), 'u')).toEqual({ activity: 'free' });
+    // #489 problem 3: the seat whose game is interrupted (the other player in grace) is still playing.
+    expect(activityFromRoom(room('interrupted', 'ongoing', [['u', { slot: 1 }]]), 'u')).toEqual({ activity: 'playing', startedAt: 1234, roomId: 'r1' });
   });
 
   it('friends list: online friends carry the hook activity; offline / hidden ones get null and the hook is not asked', async () => {

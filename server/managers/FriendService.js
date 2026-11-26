@@ -17,6 +17,7 @@ const privacyGate = require('./PrivacyGate');
 const userSearch = require('../db/user-search');
 const { resolveWinnerSeat } = require('../db/games');
 const { PROVISIONAL_RD } = require('./RatingService');
+const presenceCore = require('../presence/presence-core');
 
 const MAX_FRIENDS = 500;
 const MAX_OUTGOING = 50;
@@ -159,13 +160,13 @@ function setHooks(h = {}) {
  * in a room without a seat → watching, otherwise free. roomId lets a friend open "Xem ván".
  */
 function activityFromRoom(room, userId) {
-  const u = room && room.users && room.users.get(userId);
-  if (!u) return { activity: 'free' };
-  const game = room.state === 'playing' && room.gameState && room.gameState.status === 'ongoing' ? room.gameState : null;
-  if (u.slot === 1 || u.slot === 2) {
-    return game ? { activity: 'playing', startedAt: game.startedAt || null, roomId: room.roomId } : { activity: 'free' };
-  }
-  return { activity: 'watching', roomId: room.roomId };
+  // #489: the legacy fields come from the one derivation (presence-core), so they agree with `st`: a seat whose
+  // game is interrupted (someone in grace) is still playing (problem 3). Search/tournament stay 'free' here —
+  // the old vocabulary has no word for them; `st` carries them.
+  const a = presenceCore.activityOf(userId, { room });
+  if (a.kind === 'playing') return { activity: 'playing', startedAt: a.since || null, roomId: a.roomId };
+  if (a.kind === 'watching') return { activity: 'watching', roomId: a.roomId };
+  return { activity: 'free' };
 }
 
 function list(me) {

@@ -1,3 +1,4 @@
+- ✅ **#489.** Presence consumer: friends + challenge pickers `[Model: Sonnet]` — [detail](docs/todo/B489-presence-friends-consumers.md)
 - ✅ **#488.** Presence: wire field `st` + client presence-view `[Model: Sonnet]` — [detail](docs/todo/B488-presence-wire-and-view.md)
 - ✅ **#487.** Presence: one server derivation module `[Model: Opus]` — [detail](docs/todo/B487-presence-core-module.md)
 - ✅ **#486.** Presence: emit-count baseline per transition `[Model: Sonnet]` — [detail](docs/todo/B486-presence-emit-baseline.md)

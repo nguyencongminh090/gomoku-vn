@@ -473,3 +473,20 @@ button:not(:disabled):active,
   border: 1px solid var(--c-border);
   overflow: hidden;
 }
+
+/* ── Status dot (#489, features/presence-status) ─────────────────────────────
+   One look for a player's status on every page, driven by presence-view.js:
+   tone = colour (#114 semaphore), glyph = shape, so colour is never the only cue.
+   The text label sits in aria-label/title or next to the dot. */
+.pres-dot { --pd: 10px; --pd-c: var(--c-ink-3); display: inline-block; flex: none; box-sizing: border-box;
+  width: var(--pd); height: var(--pd); border-radius: 50%; background: var(--pd-c); vertical-align: middle; }
+.pres-dot--ok { --pd-c: var(--c-success); }
+.pres-dot--idle { --pd-c: var(--c-ink-3); }
+.pres-dot--warn { --pd-c: var(--c-warning); }
+.pres-dot--bad { --pd-c: var(--c-error); }
+.pres-dot--off { --pd-c: var(--c-ink-3); }
+.pres-dot--core { background: radial-gradient(circle, var(--c-surface) 0 26%, var(--pd-c) 32%); }
+.pres-dot--ring, .pres-dot--dotted, .pres-dot--gap, .pres-dot--hollow { background: transparent; border: 2px solid var(--pd-c); }
+.pres-dot--dotted { border-style: dotted; }
+.pres-dot--gap { border-right-color: transparent; }
+.pres-dot--half { background: linear-gradient(90deg, var(--pd-c) 50%, transparent 50%); border: 1.5px solid var(--pd-c); }
