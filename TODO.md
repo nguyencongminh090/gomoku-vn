@@ -67,3 +67,14 @@ in the detail file / fix-log).
   theo 1 điểm dữ liệu. Việc tiếp theo là *thu thêm mẫu*, không phải viết code. Lệch đồng hồ máy
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
+- **#488.** Presence: wire field `st` + client presence-view `[Model: Sonnet]` — [detail](docs/todo/B488-presence-wire-and-view.md)
+- **#489.** Presence consumer: friends + challenge pickers `[Model: Sonnet]` — [detail](docs/todo/B489-presence-friends-consumers.md)
+- **#490.** Presence consumer: lobby list, rooms roster, home counts, DM window `[Model: Sonnet]` — [detail](docs/todo/B490-presence-lobby-dm-consumers.md)
+- **#491.** Presence consumer: room seats + spectators `[Model: Sonnet]` — [detail](docs/todo/B491-presence-room-consumers.md)
+- **#492.** Presence: one report per edge on the room page `[Model: Sonnet]` — [detail](docs/todo/B492-presence-single-report.md)
+- **#493.** Rated games: running clock, absence window, abandon/abort results `[Model: Opus]` — [detail](docs/todo/B493-rated-disconnect-policy.md)
+- **#494.** Casual games: cumulative grace budget `[Model: Sonnet]` — [detail](docs/todo/B494-casual-grace-budget.md)
+- **#495.** Repeat abandonment: events table + limits `[Model: Sonnet]` — [detail](docs/todo/B495-abandonment-limits.md)
+- **#496.** Fair-play: per-game presence summary for staff `[Model: Sonnet]` — [detail](docs/todo/B496-fairplay-presence-summary.md)
+- **#497.** Presence: real-browser pass, 2 players + 1 spectator `[Model: Sonnet]` — [detail](docs/todo/B497-presence-real-browser-pass.md)
+- **#498.** Presence: remove deprecated wire fields `[Model: Haiku]` — [detail](docs/todo/B498-presence-remove-legacy-fields.md)
