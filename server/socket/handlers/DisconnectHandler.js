@@ -37,7 +37,9 @@ const { handleGameEnd } = require('./GameHandler');
 const ABORT_MS = 30_000;
 const BOTH_GONE_MS = 15_000;
 const ABSENCE_POLL_MS = 1_000;
-const OUTAGE = { windowMs: 5_000, share: 0.3, min: 10, holdMs: 120_000 };
+// min/share count MEMBERS only (guest tabs are free to open); pairGapMs = both seats of a game must drop this close
+// together; maxMs caps how long a burst of drops can keep the window open (security review of #493).
+const OUTAGE = { windowMs: 5_000, share: 0.3, min: 6, holdMs: 120_000, pairGapMs: 15_000, maxMs: 300_000 };
 
 /** Absence budget W for a room's time control (Chess.com-style, clamped 30-120 s; per_move = one move). */
 function absenceWindowMs(settings) {
@@ -53,19 +55,22 @@ function isRatedEngine(engine) {
   return !!engine && typeof engine.isRated === 'function' && engine.isRated() === true;
 }
 
-// Outage detection counts DISTINCT users (one flapping account, or a burst of throwaway guest tabs, counts
-// once each), and a void additionally needs BOTH players of the game to have dropped inside the outage:
-// one player cannot turn their own abandonment into a void by dropping many sockets of their own (security
+// Outage detection counts DISTINCT MEMBERS (one flapping account counts once; guest tabs do not count), and a
+// void additionally needs BOTH players of the game to have dropped inside the outage, within pairGapMs of each
+// other: one player cannot turn their own abandonment into a void by dropping sockets of their own (security
 // review of #493). A real tunnel/network blip drops both seats of a game together.
 const _winQ = [];            // { uid, at } inside OUTAGE.windowMs, oldest first
 const _winCount = new Map(); // uid → occurrences in _winQ (distinct-user count = its size)
 const _lastDrop = new Map(); // uid → last drop time, kept for windowMs + holdMs, oldest first
 let _outageFrom = 0;
+let _outageStart = 0;
 let _outageUntil = 0;
 /** Count a real drop (not an evicted tab); open the outage window when many distinct users drop together. */
-function noteDrop(uid, now = Date.now()) {
-  _winQ.push({ uid, at: now });
-  _winCount.set(uid, (_winCount.get(uid) || 0) + 1);
+function noteDrop(uid, isGuest, now = Date.now()) {
+  if (!isGuest) {
+    _winQ.push({ uid, at: now });
+    _winCount.set(uid, (_winCount.get(uid) || 0) + 1);
+  }
   while (_winQ.length && now - _winQ[0].at > OUTAGE.windowMs) {
     const e = _winQ.shift();
     const c = _winCount.get(e.uid) - 1;
@@ -77,18 +82,20 @@ function noteDrop(uid, now = Date.now()) {
   const n = _winCount.size;
   const live = (sessions ? sessions.size : 0) + n; // each drop already left `sessions`
   if (n >= OUTAGE.min && n >= OUTAGE.share * live) {
-    if (now >= _outageUntil) _outageFrom = now - OUTAGE.windowMs;
-    _outageUntil = now + OUTAGE.holdMs;
+    if (now >= _outageUntil) { _outageStart = now; _outageFrom = now - OUTAGE.windowMs; } // a new outage
+    if (now - _outageStart <= OUTAGE.maxMs) _outageUntil = Math.min(now + OUTAGE.holdMs, _outageStart + OUTAGE.maxMs);
   }
 }
 function inOutage(now = Date.now()) { return now < _outageUntil; }
 /** An outage is open and every listed player dropped inside it. */
 function outageCovers(userIds, now = Date.now()) {
   if (!inOutage(now)) return false;
-  return userIds.every((id) => (_lastDrop.get(id) || 0) >= _outageFrom);
+  const at = userIds.map((id) => _lastDrop.get(id) || 0);
+  if (at.some((t) => t < _outageFrom)) return false;
+  return Math.max(...at) - Math.min(...at) <= OUTAGE.pairGapMs;
 }
 /** Tests only. */
-function _resetOutage() { _winQ.length = 0; _winCount.clear(); _lastDrop.clear(); _outageFrom = 0; _outageUntil = 0; }
+function _resetOutage() { _winQ.length = 0; _winCount.clear(); _lastDrop.clear(); _outageFrom = 0; _outageStart = 0; _outageUntil = 0; }
 
 /** The game's absence bookkeeping (budget left per player, who was absent when it ended — #495 reads it). */
 function absenceOf(engine) {
@@ -264,7 +271,7 @@ function handleDisconnect(io, socket) {
   const user = socket.user;
   // #493 Q13: SocketHandler already removed this socket from `sessions` if it was the live one; an
   // evicted tab (a newer socket took over) is not a drop.
-  if (sessions && !sessions.has(user.userId)) noteDrop(user.userId);
+  if (sessions && !sessions.has(user.userId)) noteDrop(user.userId, !!user.isGuest || String(user.userId).startsWith('guest_'));
   const roomId = roomManager.getRoomIdByUser(user.userId);
   if (!roomId) return;
 

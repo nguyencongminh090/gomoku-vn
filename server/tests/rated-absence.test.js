@@ -237,14 +237,33 @@ describe('abort, both gone, outage (void, never rated)', () => {
     expect(database.saveGame).not.toHaveBeenCalled();
   });
 
-  test('security: a player cannot void their own abandonment by dropping many sockets while the opponent stays', () => {
+  test('security: guest tabs do not count toward an outage', () => {
     setup({ moves: 2 });
-    flood(12, 'guest_tab'); // throwaway guest tabs closed together
+    flood(20, 'guest_tab'); // throwaway guest tabs closed together
+    expect(DisconnectHandler.inOutage()).toBe(false);
+  });
+
+  test('security: a member flood with the opponent still connected does not void the abandonment', () => {
+    setup({ moves: 2 });
+    flood(12); // e.g. accounts the leaver controls
     expect(DisconnectHandler.inOutage()).toBe(true);
     drop('a'); // b never dropped
     jest.advanceTimersByTime(61_500);
     expect(engine.result).toEqual({ winner: 'b', reason: 'abandon' });
     expect(DisconnectHandler.voidsClockTimeout(room.roomId, 'a')).toBe(false);
+  });
+
+  test('security: both seats dropped but far apart (> 15 s) is not one outage for this game', () => {
+    setup({ moves: 2 });
+    flood(12);
+    drop('a');
+    jest.advanceTimersByTime(20_000);
+    drop('b');
+    const back = makeSocket('b', room.roomId);
+    state.sessions.set('b', back);
+    DisconnectHandler.cancelDisconnectGrace(io, back);
+    jest.advanceTimersByTime(45_000);
+    expect(engine.result).toEqual({ winner: 'b', reason: 'abandon' });
   });
 
   test('security: one account flapping its socket counts once (no outage)', () => {
