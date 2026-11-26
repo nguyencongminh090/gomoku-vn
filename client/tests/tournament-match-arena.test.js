@@ -143,6 +143,56 @@ describe('tournament match arena rendering', () => {
     delete window.matchMedia;
   });
 
+  // #473: same uploaded photo as room.html — the server sends avatarUrl on players and series scores.
+  describe('avatars (#473)', () => {
+    const URL1 = '/api/profile/avatar/u1.webp?v=7';
+    const withAvatars = (extra) => basePayload({
+      players: [{ ...PLAYER1, avatarUrl: URL1 }, { ...PLAYER2, avatarUrl: null }], ...extra,
+    });
+    const series = (scores) => ({ series: { seriesMode: 'fixedCount', gameIndex: 1, seriesGameCount: 3, scores } });
+    const heroImgs = () => [...$('score-hero').querySelectorAll('.score-hero__av')].map((av) => {
+      const img = av.querySelector('img');
+      return img ? img.getAttribute('src') : av.textContent;
+    });
+
+    test('seat cards: a photo for the player who has one, initials for the other', () => {
+      setupPage(PLAYER2.userId);
+      loadTournamentMatchModule();
+      lastSocketClient.trigger('tmatch:init', withAvatars());
+      expect($('seatcard-top').querySelector('.seatcard__av img').getAttribute('src')).toBe(URL1);
+      expect($('seatcard-bottom').querySelector('.seatcard__av img')).toBeNull();
+    });
+
+    test('score card: series scores carry avatarUrl and draw the photo', () => {
+      setupPage(PLAYER1.userId);
+      loadTournamentMatchModule();
+      lastSocketClient.trigger('tmatch:init', withAvatars(series([
+        { displayName: PLAYER1.displayName, score: 1, avatarUrl: URL1 },
+        { displayName: PLAYER2.displayName, score: 0, avatarUrl: null },
+      ])));
+      expect(heroImgs()).toEqual([URL1, 'PT']);
+    });
+
+    test('score card before the first result (scores null) uses the players\' avatars', () => {
+      setupPage(PLAYER1.userId);
+      loadTournamentMatchModule();
+      lastSocketClient.trigger('tmatch:init', withAvatars(series(null)));
+      expect(heroImgs()).toEqual([URL1, 'PT']);
+    });
+
+    test('a non-avatar URL is ignored, and a broken image falls back to initials', () => {
+      setupPage(PLAYER1.userId);
+      loadTournamentMatchModule();
+      lastSocketClient.trigger('tmatch:init', withAvatars(series([
+        { displayName: PLAYER1.displayName, score: 1, avatarUrl: URL1 },
+        { displayName: PLAYER2.displayName, score: 0, avatarUrl: 'https://evil.example/x.png' },
+      ])));
+      expect(heroImgs()).toEqual([URL1, 'PT']);
+      $('score-hero').querySelector('img').dispatchEvent(new Event('error'));
+      expect(heroImgs()).toEqual(['PO', 'PT']);
+    });
+  });
+
   test('moves fill both lists and an opponent draw offer is a toast with accept/decline', () => {
     setupPage(PLAYER2.userId);
     loadTournamentMatchModule();

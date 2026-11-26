@@ -47,6 +47,7 @@ const tournamentState = require('../tournamentState');
 const { findSocketsByUserId } = require('../state');
 const config = require('../../config');
 const database = require('../../db/database');
+const { avatarUrlFor } = require('../../managers/avatar-lookup');
 // Reused as-is (TODO.md #50 step 7 "UI/component reuse" — the SAME rule
 // applies to the chat mechanism underneath it): managers/ChatHandler.js's
 // handleMessage() is already decoupled from RoomManager, it just broadcasts
@@ -144,6 +145,24 @@ function _generateLayout(ruleSet) {
 }
 
 /**
+ * A player's avatar URL (#473) — same source and URL form as the room (RoomManager's avatarLookup):
+ * guests have none. `who` is an engine player or a tournament entry ({ userId, isGuest }).
+ */
+function _avatarOf(who) {
+  return who && who.userId && !who.isGuest ? avatarUrlFor(who.userId) : null;
+}
+
+/** Engine players as sent to the page (tmatch:init, tmatch:swap2_state), avatarUrl included (#473). */
+function _playersOut(engine) {
+  return engine.players.map((p) => ({ userId: p.userId, displayName: p.displayName, color: p.color, avatarUrl: _avatarOf(p) }));
+}
+
+/** engine.serialize() for a tmatch:init payload, its players carrying avatarUrl (#473). */
+function _serializeForInit(engine) {
+  return { ...engine.serialize(), players: _playersOut(engine) };
+}
+
+/**
  * Series info block (TODO.md #50) attached to every tmatch:init — the
  * pairing's current game index + running score, always present (null-shaped
  * for a plain 'single'-mode pairing) so the client doesn't need two payload
@@ -163,8 +182,8 @@ function _seriesInfo(tournament, pairing) {
   const entry2 = tournament.entries.get(pairing.player2EntryId);
   const scores = pairing.seriesScore
     ? [
-        { displayName: entry1 ? entry1.displayName : '—', score: pairing.seriesScore[pairing.player1EntryId] || 0 },
-        { displayName: entry2 ? entry2.displayName : '—', score: pairing.seriesScore[pairing.player2EntryId] || 0 },
+        { displayName: entry1 ? entry1.displayName : '—', score: pairing.seriesScore[pairing.player1EntryId] || 0, avatarUrl: _avatarOf(entry1) },
+        { displayName: entry2 ? entry2.displayName : '—', score: pairing.seriesScore[pairing.player2EntryId] || 0, avatarUrl: _avatarOf(entry2) },
       ]
     : null;
   return {
@@ -267,7 +286,7 @@ function startMatch(io, tournamentId, pairingId) {
   io.to(matchRoom(pairingId)).emit('tmatch:init', {
     tournamentId,
     pairingId,
-    ...engine.serialize(),
+    ..._serializeForInit(engine),
     timer: timer ? timer.getTimers() : null,
     timerSync: timer ? timer.getSync() : null,
     // Series info (TODO.md #50) — always present, null-shaped the same way
@@ -366,7 +385,7 @@ function resyncOnConnect(io, socket) {
     socket.emit('tmatch:init', {
       tournamentId: match.tournamentId,
       pairingId,
-      ...match.engine.serialize(),
+      ..._serializeForInit(match.engine),
       timer: timer ? timer.getTimers() : null,
       timerSync: timer ? timer.getSync() : null,
       series: (tournament && pairing) ? _seriesInfo(tournament, pairing) : null,
@@ -572,7 +591,7 @@ function register(io, socket) {
     socket.emit('tmatch:init', {
       tournamentId: payload.tournamentId,
       pairingId: payload.pairingId,
-      ...match.engine.serialize(),
+      ..._serializeForInit(match.engine),
       timer: timer ? timer.getTimers() : null,
       timerSync: timer ? timer.getSync() : null,
       series: (tournament && pairing) ? _seriesInfo(tournament, pairing) : null,
@@ -692,7 +711,7 @@ function register(io, socket) {
       openingPhase: engine.openingPhase,
       swap2: engine.serialize().swap2,
       // Colours are assigned when the opening ends — the page needs them to play on (#427 / B428).
-      players: engine.players.map((p) => ({ userId: p.userId, displayName: p.displayName, color: p.color })),
+      players: _playersOut(engine),
       lastStone: r.offered ? null : { x: r.x, y: r.y, color: r.color }, // offered 5ths stay off the board (#427)
       nextColor: r.nextColor,
     });
@@ -736,7 +755,7 @@ function register(io, socket) {
       openingPhase: engine.openingPhase,
       swap2: engine.serialize().swap2,
       // Colours are assigned when the opening ends — the page needs them to play on (#427 / B428).
-      players: engine.players.map((p) => ({ userId: p.userId, displayName: p.displayName, color: p.color })),
+      players: _playersOut(engine),
       lastStone: null,
       nextColor: r.done ? null : r.nextColor,
     });
