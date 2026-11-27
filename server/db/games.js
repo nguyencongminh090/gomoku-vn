@@ -29,9 +29,9 @@ function saveGame(game) {
       (id, room_id, black_player_id, white_player_id,
        black_player_name, white_player_name,
        winner, winner_color, reason, board_size, rule_wall, rule_portal,
-       moves, walls, portals, started_at, ended_at, ranked)
+       moves, walls, portals, started_at, ended_at, ranked, winning_rule)
     VALUES
-      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertPlayerGame = stmt(
@@ -76,7 +76,8 @@ function saveGame(game) {
       JSON.stringify(game.portals),
       game.startedAt,
       game.endedAt,
-      game.ranked ? 1 : 0
+      game.ranked ? 1 : 0,
+      game.winningRule || null
     );
 
     // Link registered players to game for history lookup
@@ -245,11 +246,21 @@ function getGameById(gameId) {
     SELECT id, room_id, black_player_id, white_player_id,
            black_player_name, white_player_name,
            winner, winner_color, reason, board_size, rule_wall, rule_portal,
-           moves, walls, portals,
+           moves, walls, portals, winning_rule,
            started_at, ended_at
     FROM games WHERE id = ?
   `).get(gameId);
   return row && withWinnerName(row);
+}
+
+/**
+ * Internal user ids of a game's two seats (null for guests), for the replay's
+ * seat payload (#500). Never sent to the client as-is.
+ * @param {string} gameId
+ * @returns {{black: string|null, white: string|null}|undefined}
+ */
+function getGameSeatUserIds(gameId) {
+  return stmt('SELECT black_player_id AS black, white_player_id AS white FROM games WHERE id = ?').get(gameId);
 }
 
 /**
@@ -297,4 +308,4 @@ function getGameStatsByResult(filters = {}) {
   return { win: row.win || 0, draw: row.draw || 0, total: row.total || 0 };
 }
 
-module.exports = { saveGame, getPlayerHistory, getRecentGames, getGameById, getGameCount, getGameStatsByDate, getGameStatsByResult, withWinnerName, resolveWinnerSeat };
+module.exports = { saveGame, getPlayerHistory, getRecentGames, getGameById, getGameSeatUserIds, getGameCount, getGameStatsByDate, getGameStatsByResult, withWinnerName, resolveWinnerSeat };

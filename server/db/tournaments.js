@@ -219,11 +219,11 @@ function getPairingsByTournament(tournamentId) {
  *
  * @param {{ gameId, tournamentId, pairingId, gameIndex,
  *   players: Array<{id, name, color, isGuest, entryId}>, result: {winner, reason}|null,
- *   boardSize, ruleWall, rulePortal, moveHistory, walls, portals, startedAt, endedAt }} game
+ *   boardSize, ruleWall, rulePortal, moveHistory, walls, portals, startedAt, endedAt, winningRule }} game
  */
 function saveTournamentGame({
   gameId, tournamentId, pairingId, gameIndex, players, result,
-  boardSize, ruleWall, rulePortal, moveHistory, walls, portals, startedAt, endedAt,
+  boardSize, ruleWall, rulePortal, moveHistory, walls, portals, startedAt, endedAt, winningRule,
 }) {
   const black = players.find((p) => p.color === 'BLACK');
   const white = players.find((p) => p.color === 'WHITE');
@@ -240,8 +240,8 @@ function saveTournamentGame({
     INSERT INTO tournament_games
       (id, tournament_id, pairing_id, game_index, black_entry_id, white_entry_id,
        black_player_name, white_player_name, winner, reason, board_size,
-       rule_wall, rule_portal, moves, walls, portals, started_at, ended_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       rule_wall, rule_portal, moves, walls, portals, started_at, ended_at, winning_rule)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     gameId,
     tournamentId,
@@ -260,7 +260,8 @@ function saveTournamentGame({
     JSON.stringify(walls),
     JSON.stringify(portals),
     startedAt,
-    endedAt
+    endedAt,
+    winningRule || null
   );
   logger.info(`[DB] Tournament game ${gameId} saved (pairing ${pairingId}, game ${gameIndex}).`);
 }
@@ -330,6 +331,22 @@ function getTournamentGameById(id) {
 }
 
 /**
+ * Member user ids of a tournament game's two seats via their entries (null for
+ * guests), for the replay's seat payload (#500). Never sent to the client as-is.
+ * @param {string} id
+ * @returns {{black: string|null, white: string|null}|undefined}
+ */
+function getTournamentGameSeatUserIds(id) {
+  return stmt(`
+    SELECT bp.player_id AS black, wp.player_id AS white
+    FROM tournament_games tg
+    LEFT JOIN tournament_players bp ON bp.entry_id = tg.black_entry_id
+    LEFT JOIN tournament_players wp ON wp.entry_id = tg.white_entry_id
+    WHERE tg.id = ?
+  `).get(id);
+}
+
+/**
  * Insert or replace a club's team entry and ordered board roster in one transaction (B236).
  */
 function saveTournamentTeamRoster({ team, entries, previousTeamId = null }) {
@@ -389,4 +406,4 @@ function updateTournamentTeamRank(teamId, finalRank) {
   stmt('UPDATE tournament_teams SET final_rank = ? WHERE id = ?').run(finalRank, teamId);
 }
 
-module.exports = { createTournament, getTournamentById, getAllTournaments, updateTournamentStatus, saveTournamentPlayer, deleteTournamentPlayer, getTournamentPlayers, updateTournamentPlayerRank, setTournamentPlayerWithdrawn, updateTournamentPlayerSeed, createTournamentRound, getTournamentRounds, savePairing, getPairingsByTournament, saveTournamentGame, getTournamentGames, getTournamentGameCount, getTournamentGameById, saveTournamentTeamRoster, deleteTournamentTeam, getTournamentTeams, getTournamentTeamRoster, updateTournamentTeamRank };
+module.exports = { createTournament, getTournamentById, getAllTournaments, updateTournamentStatus, saveTournamentPlayer, deleteTournamentPlayer, getTournamentPlayers, updateTournamentPlayerRank, setTournamentPlayerWithdrawn, updateTournamentPlayerSeed, createTournamentRound, getTournamentRounds, savePairing, getPairingsByTournament, saveTournamentGame, getTournamentGames, getTournamentGameCount, getTournamentGameById, getTournamentGameSeatUserIds, saveTournamentTeamRoster, deleteTournamentTeam, getTournamentTeams, getTournamentTeamRoster, updateTournamentTeamRank };

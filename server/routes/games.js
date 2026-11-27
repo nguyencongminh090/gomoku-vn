@@ -17,6 +17,7 @@ const database = require('../db/database');
 const { verifyToken } = require('../middleware/auth');
 const { rejectGuests } = require('../middleware/guest-guard');
 const cheat = require('../managers/CheatReportService');
+const { replaySeats } = require('../managers/replay-seats');
 
 const router = express.Router();
 
@@ -121,6 +122,7 @@ router.get('/:id', (req, res, next) => {
     game.moves   = JSON.parse(game.moves   || '[]');
     game.walls   = JSON.parse(game.walls   || '[]');
     game.portals = JSON.parse(game.portals || '[]');
+    game.seats = replaySeats(game.id, database.getGameSeatUserIds(game.id)); // #500
 
     res.json({ game });
   } catch (err) {
