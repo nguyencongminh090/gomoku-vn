@@ -1,3 +1,5 @@
+- ✅ **#167.** Survey: server-side lag compensation for game:move `[Model: Sonnet 5]` — [detail](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
+- ✅ **#136.** Zen drawer collapses to rail when the start modal opens (desktop) `[Model: Opus 5]` — [detail](docs/todo/B136-drawer-thut-vao-khi-modal-hien-len.md)
 - ✅ **#503.** Surface Puzzle and Clubs entry buttons on desktop and phone Home `[Model: Sonnet]` — [detail](docs/todo/B503-home-club-puzzle-buttons.md)
 - ✅ **#502.** Replay page redesign — mockup A, modern widgets `[Model: Opus]` — [detail](docs/todo/F502-replay-redesign.md)
 - ✅ **#501.** Store winning rule per game (replay shows no win line without it) `[Model: Sonnet 5]` — [detail](docs/todo/F501-store-winning-rule.md)
