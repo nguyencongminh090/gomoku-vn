@@ -395,6 +395,47 @@ a.prow:hover { background: var(--c-hover); }
 @media (max-width: 860px) { .pswatch { width: 44px; height: 44px; } }   /* B306: touch target (user ok 2026-10-22) */
 @media (max-width: 860px) { .pform input:not([type="checkbox"]):not([type="file"]), .pform textarea, .pform select, .cb-inline input, .padd input, .pdm__form input { font-size: 16px; } }   /* F2: iOS Safari zooms on focus below 16px */
 
+/* ══ #505 Shared Modern controls (Flat 2.0), opt-in: .mbtn / .mtbtn / .mback / .mseg. Used by Replay (#502) + Puzzle (#504).
+   .pbtn / .pchip / .pseg stay unchanged (club, settings, forum, admin overrides). Tokens on .pl so they resolve per theme. */
+.pl { --m-r: 10px; --m-r-lg: 14px; --m-ease: cubic-bezier(.2, .8, .2, 1);
+  --m-ring: 0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-brand-text);
+  --m-elev: 0 1px 2px rgba(0, 0, 0, .18), 0 4px 12px -2px rgba(0, 0, 0, .22); }
+.mbtn, .mtbtn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; min-height: 38px; padding: 0 16px; border-radius: 999px; font-size: var(--text-sm); font-weight: 700; text-decoration: none; cursor: pointer; transition: transform .12s var(--m-ease), background-color .12s, border-color .12s, color .12s, box-shadow .12s; }
+.mbtn .icon, .mtbtn .icon, .mback .icon, .mseg__opt .icon { flex: none; width: var(--icon-sm); height: var(--icon-sm); }
+/* raised primary: strictly one per view */
+.mbtn--primary, .pl a.mbtn--primary { min-height: 40px; padding: 0 18px; border: 1px solid transparent; background: var(--c-brand); color: var(--c-on-brand); box-shadow: var(--m-elev); }
+.mbtn--primary:hover:not(:disabled) { background: var(--c-brand-dark); color: var(--c-on-brand); }
+.mbtn--primary:disabled { background: var(--c-surface-2); color: var(--c-ink-3); border-color: var(--c-border-strong); box-shadow: none; opacity: .55; cursor: default; transform: none; }
+/* tonal pill: secondary actions (>= 3:1 boundary, >= 4.5:1 text on bg / surface / surface-2) */
+.mtbtn, .pl a.mtbtn { background: color-mix(in srgb, var(--c-brand) 14%, var(--c-surface)); color: var(--c-brand-text); border: 1px solid color-mix(in srgb, var(--c-brand-text) 75%, var(--c-surface)); }
+.mtbtn:hover:not(:disabled) { background: color-mix(in srgb, var(--c-brand) 22%, var(--c-surface)); }
+.mtbtn--danger, .pl a.mtbtn--danger { background: color-mix(in srgb, var(--c-error) 10%, var(--c-surface)); color: var(--c-error); border-color: color-mix(in srgb, var(--c-error) 75%, var(--c-surface)); }
+.mtbtn--danger:hover:not(:disabled) { background: color-mix(in srgb, var(--c-error) 18%, var(--c-surface)); }
+.mtbtn--quiet, .pl a.mtbtn--quiet { background: var(--c-surface); color: var(--c-ink-2); border-color: var(--c-border-strong); font-weight: 600; }
+.mtbtn--quiet:hover:not(:disabled) { background: color-mix(in srgb, var(--c-ink) 8%, var(--c-surface)); color: var(--c-strong); }
+.mtbtn--sm, .pl a.mtbtn--sm { min-height: 34px; padding: 0 13px; }
+.mtbtn--icon { min-width: 38px; min-height: 38px; padding: 0; }
+.mtbtn:disabled { opacity: .45; cursor: default; transform: none; }
+/* back pill */
+.mback, .pl a.mback { display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box; min-height: 34px; padding: 0 12px 0 8px; border: 1px solid var(--c-border-strong); border-radius: 999px; background: var(--c-surface); color: var(--c-ink-2); font-size: var(--text-sm); font-weight: 600; text-decoration: none; cursor: pointer; transition: transform .12s var(--m-ease), background-color .12s, color .12s; }
+.pl .mback:hover { background: color-mix(in srgb, var(--c-ink) 8%, var(--c-surface)); color: var(--c-strong); }
+/* pill segmented control */
+.mseg { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px; border-radius: 26px; background: var(--c-surface-2); border: 1px solid var(--c-border-strong); }
+.mseg__opt, .pl a.mseg__opt { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; min-height: 32px; padding: 4px 14px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--c-ink-2); font-size: var(--text-sm); font-weight: 600; text-decoration: none; cursor: pointer; transition: background-color .12s, color .12s, border-color .12s, box-shadow .18s var(--m-ease), transform .12s var(--m-ease); }
+.pl .mseg__opt:hover { background: var(--c-hover); color: var(--c-strong); }
+.pl .mseg__opt[aria-pressed="true"], .pl .mseg__opt[aria-current="page"], .pl .mseg__opt[aria-selected="true"] { background: var(--c-surface); color: var(--c-strong); font-weight: 700; border-color: color-mix(in srgb, var(--c-brand-text) 75%, var(--c-surface)); box-shadow: var(--m-elev); }
+.mbtn--primary:active:not(:disabled), .mtbtn:active:not(:disabled), .mback:active, .mseg__opt:active { transform: scale(.96); }
+/* two-ring focus (beats main.css :focus-visible !important outline); .pl prefix outranks the (0,2,1) `.pl a.m*` resets */
+.pl .mbtn:focus-visible, .pl .mtbtn:focus-visible, .pl .mback:focus-visible, .pl .mseg__opt:focus-visible { outline: none !important; box-shadow: var(--m-ring); }
+@media (max-width: 860px) {
+  .mbtn, .mtbtn, .pl a.mtbtn, .mbtn--primary, .pl a.mbtn--primary, .mtbtn--sm, .pl a.mtbtn--sm, .mback, .pl a.mback, .mseg__opt, .pl a.mseg__opt { min-height: 44px; }
+  .mtbtn--icon { min-width: 44px; padding: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mbtn, .mtbtn, .mback, .mseg__opt { transition: none; }
+  .mbtn:active, .mtbtn:active, .mback:active, .mseg__opt:active { transform: none !important; }
+}
+
 /* ── Settings › Hồ sơ: bento tiles (ui/settings-profile-bento, SB) ──────────────────────────────────
    Every fill is opaque (tints are color-mix against a solid surface); no transparent button/div. */
 .pset { max-width: 1040px; --ctl-r: 14px; --ctl-h: 44px; }

@@ -10,9 +10,9 @@
   <link rel="stylesheet" href="css/main.css?v=93220240" />
   <link rel="stylesheet" href="css/tokens.css?v=bd768e32" />
   <link rel="stylesheet" href="css/platform-shell.css?v=174b5103" />
-  <link rel="stylesheet" href="css/platform.css?v=f4b4f520" />
+  <link rel="stylesheet" href="css/platform.css?v=35725b58" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
-  <link rel="stylesheet" href="css/replay.css?v=9f3a13c4" />
+  <link rel="stylesheet" href="css/replay.css?v=6246a0a8" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
   <script src="js/skin-preload.js?v=399486e6"></script>
@@ -32,7 +32,7 @@
   <h1 id="rp-title" class="rp-sr" data-i18n="replay.info">Thông tin ván</h1>
 
   <div class="rp-back">
-    <button id="replay-back" class="rp-backbtn" type="button">
+    <button id="replay-back" class="mback" type="button">
       <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-arrow-left"></use></svg>
       <span data-i18n="replay.back">Quay lại</span>
     </button>
@@ -75,7 +75,7 @@
       <button type="button" class="pseg__opt is-active" data-speed="600" aria-pressed="true">1×</button>
       <button type="button" class="pseg__opt" data-speed="300" aria-pressed="false">2×</button>
     </div>
-    <button id="rp-share" type="button" class="rp-tbtn" data-i18n-title="replay.share_title" title="Sao chép liên kết tới nước đang xem">
+    <button id="rp-share" type="button" class="mtbtn" data-i18n-title="replay.share_title" title="Sao chép liên kết tới nước đang xem">
       <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-link"></use></svg>
       <span data-i18n="replay.share">Chia sẻ</span>
     </button>
@@ -92,12 +92,12 @@
   <div id="rp-moves" class="rp-moves" role="group" data-i18n-aria="replay.moves_list" aria-label="Danh sách nước đi"></div>
 
   <div class="rp-foot">
-    <button id="btn-delete-branch" type="button" class="rp-tbtn rp-tbtn--danger" data-i18n-title="replay.delete_branch_title" title="Xoá nhánh đang xem (Delete)" disabled>
+    <button id="btn-delete-branch" type="button" class="mtbtn mtbtn--danger" data-i18n-title="replay.delete_branch_title" title="Xoá nhánh đang xem (Delete)" disabled>
       <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-trash"></use></svg>
       <span data-i18n="replay.delete_branch">Xoá nhánh</span>
     </button>
     <div id="replay-report" class="rp-report" hidden>
-      <button type="button" id="rr-open" class="rp-tbtn rp-tbtn--quiet">
+      <button type="button" id="rr-open" class="mtbtn mtbtn--quiet">
         <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-flag"></use></svg>
         <span data-i18n="replay.report_open">Báo gian lận</span>
       </button>

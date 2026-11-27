@@ -139,7 +139,7 @@ describe('solve page', () => {
     expect(document.getElementById('pz-explore-note').hidden).toBe(false);
     const reset = document.getElementById('pz-reset');
     expect(reset.hidden).toBe(false);
-    expect(reset.classList.contains('pz-btn--primary')).toBe(false); // the single raised primary stays "Puzzle khác"
+    expect(reset.classList.contains('mbtn--primary')).toBe(false); // the single raised primary stays "Puzzle khác"
     expect(solveCalls()).toBe(1);
     // board: 2 black (h8 + B9) vs 1 white → white, then black
     r.opts.onCellClick(3, 3); r.opts.onCellClick(4, 4);
@@ -322,7 +322,7 @@ describe('list page', () => {
 
   it('a filter chip re-queries with the filter', async () => {
     listBoot(); await settle();
-    const chip = [...document.querySelectorAll('#pz-levels .pz-seg__opt')].find((b) => b.textContent === 'puzzles.level_hard');
+    const chip = [...document.querySelectorAll('#pz-levels .mseg__opt')].find((b) => b.textContent === 'puzzles.level_hard');
     chip.click(); await settle();
     expect(global.fetch.mock.calls.pop()[0]).toBe('/api/puzzles?level=hard');
     chip.click(); await settle(); // cleared → back to one shelf per level
@@ -365,7 +365,7 @@ describe('list page — #508 training path (shelves, progress, continue)', () =>
     expect(c.hidden).toBe(false);
     expect(c.getAttribute('href')).toBe('/puzzle/e2');
     expect(c.textContent).toBe('puzzles.continue{"title":"T-e2"}');
-    expect([...document.querySelectorAll('.pz-btn--primary')].filter((n) => !n.hidden)).toHaveLength(1);
+    expect([...document.querySelectorAll('.mbtn--primary')].filter((n) => !n.hidden)).toHaveLength(1);
   });
 
   it('cards give each fact its own chip (no " · " join) and keep title text as text', async () => {
@@ -415,7 +415,7 @@ describe('list page — #277 pager scrolls to the list', () => {
     const spy = jest.fn(); Element.prototype.scrollIntoView = spy;
     boot({ html: LIST_HTML, scripts: ['../js/puzzles.js'], fetchImpl: (u) => ok(pg(u.includes('page=2') ? 2 : 1)) }); await settle();
     expect(spy).not.toHaveBeenCalled();
-    [...document.querySelectorAll('#pz-levels .pz-seg__opt')][0].click(); await settle();
+    [...document.querySelectorAll('#pz-levels .mseg__opt')][0].click(); await settle();
     expect(spy).not.toHaveBeenCalled();
     [...document.querySelectorAll('#pz-pager button')][1].click(); await settle(); // Sau
     expect(spy).toHaveBeenCalledTimes(1);
@@ -437,7 +437,7 @@ describe('list page — #274 URL under <base href="/"> / #275 member actions / #
     listBoot(); await settle();
     expect(window.location.pathname).toBe('/puzzles');
     expect(window.location.search).toBe('');
-    [...document.querySelectorAll('#pz-levels .pz-seg__opt')].find((b) => b.textContent === 'puzzles.level_easy').click(); await settle();
+    [...document.querySelectorAll('#pz-levels .mseg__opt')].find((b) => b.textContent === 'puzzles.level_easy').click(); await settle();
     expect(window.location.pathname).toBe('/puzzles');
     expect(window.location.search).toBe('?level=easy');
   });
@@ -496,12 +496,22 @@ describe('Modern control hierarchy & tokens (#504)', () => {
     }
     const css = raw('css/puzzles.css');
     const replayCss = raw('css/replay.css');
-    for (const val of ['10px', '14px', 'cubic-bezier(.2, .8, .2, 1)', '0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-brand-text)', '0 1px 2px rgba(0, 0, 0, .18), 0 4px 12px -2px rgba(0, 0, 0, .22)']) {
-      expect(replayCss).toContain(val);
-      expect(css).toContain(val);
+    // #505: the Modern tokens + controls live once in platform.css; Replay and Puzzle only consume them.
+    const platformCss = raw('css/platform.css');
+    const shared = platformCss.slice(platformCss.indexOf('#505 Shared Modern controls'));
+    for (const val of ['--m-r: 10px', '--m-r-lg: 14px', '--m-ease: cubic-bezier(.2, .8, .2, 1)', '--m-ring: 0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-brand-text)', '--m-elev: 0 1px 2px rgba(0, 0, 0, .18), 0 4px 12px -2px rgba(0, 0, 0, .22)']) {
+      expect(shared).toContain(val);
     }
+    for (const page of [css, replayCss]) {
+      expect(page).not.toMatch(/--(m|pz|rp)-(r|r-lg|ease|ring|elev)\s*:/);   // no page-local copy of a shared token
+      expect(page).not.toMatch(/^\s*(\.(pz|rp)-page )?(a)?\.(mbtn|mtbtn|mback|mseg|mseg__opt)\s*[{,]/m);   // no page-local base control rule
+    }
+    for (const cls of ['.mbtn--primary', '.mtbtn--danger', '.mtbtn--quiet', '.mtbtn--sm', '.mtbtn--icon', '.mback', '.mseg__opt']) {
+      expect(shared).toContain(cls);
+    }
+    expect(shared).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
+    expect(shared).toMatch(/@media \(max-width: 860px\)[\s\S]*min-height:\s*44px/);
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
-    expect(css).toMatch(/@media \(max-width: 860px\)[\s\S]*min-height:\s*44px/);
 
     // List page with pagination: 1 raised primary, segmented tabs + filters, quiet pager, 0 .pbtn
     window.GvnSession = { getUser: () => ({ userId: 'u1', isGuest: false }) };
@@ -514,11 +524,11 @@ describe('Modern control hierarchy & tokens (#504)', () => {
     });
     await settle();
     delete window.GvnSession;
-    [...document.querySelectorAll('#pz-levels .pz-seg__opt')][0].click(); await settle(); // the pager belongs to one level's grid (#508)
+    [...document.querySelectorAll('#pz-levels .mseg__opt')][0].click(); await settle(); // the pager belongs to one level's grid (#508)
     expect(document.querySelectorAll('.pbtn, .pchip, .ptab')).toHaveLength(0);
-    expect(document.querySelectorAll('.pz-btn--primary:not([hidden])')).toHaveLength(1);
-    expect(document.querySelectorAll('.pz-tabs .pz-seg__opt')).toHaveLength(2);
-    expect(document.querySelectorAll('#pz-pager .pz-tbtn--quiet')).toHaveLength(2);
+    expect(document.querySelectorAll('.mbtn--primary:not([hidden])')).toHaveLength(1);
+    expect(document.querySelectorAll('.pz-tabs .mseg__opt')).toHaveLength(2);
+    expect(document.querySelectorAll('#pz-pager .mtbtn--quiet')).toHaveLength(2);
 
     // Solve page unsolved -> solved: exactly 1 active raised primary in each state, danger clear pill
     boot({
@@ -528,9 +538,9 @@ describe('Modern control hierarchy & tokens (#504)', () => {
     });
     await settle();
     expect(document.querySelectorAll('.pbtn, .pchip, .ptab')).toHaveLength(0);
-    const activePrimaries = () => [...document.querySelectorAll('.pz-btn--primary')].filter((n) => !n.disabled && !n.closest('[hidden]'));
+    const activePrimaries = () => [...document.querySelectorAll('.mbtn--primary')].filter((n) => !n.disabled && !n.closest('[hidden]'));
     expect(activePrimaries().map((n) => n.id)).toEqual(['pz-submit']);
-    expect(document.getElementById('pz-clear').classList.contains('pz-tbtn--danger')).toBe(true);
+    expect(document.getElementById('pz-clear').classList.contains('mtbtn--danger')).toBe(true);
 
     typeAnswer('B9'); submitForm(); await settle();
     expect(activePrimaries().map((n) => n.id)).toEqual(['pz-next-link']);

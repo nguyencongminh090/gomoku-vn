@@ -45,7 +45,7 @@ function boot(page, script, fetchImpl) {
   document.dispatchEvent(new Event('DOMContentLoaded'));
 }
 const $ = (id) => document.getElementById(id);
-const clickTool = (id) => document.querySelector('#ed-tools .pz-seg__opt[data-tool="' + id + '"]').click();
+const clickTool = (id) => document.querySelector('#ed-tools .mseg__opt[data-tool="' + id + '"]').click();
 
 describe('editor', () => {
   it('a guest (200 with a guest_ id) gets the login hint, not the editor (#275)', async () => {
@@ -85,7 +85,7 @@ describe('editor', () => {
   it('the only stone tool is Auto (default); erase removes a stone (#506)', async () => {
     editorBoot(); await settle();
     const r = renderers[0];
-    const tools = [...document.querySelectorAll('#ed-tools .pz-seg__opt')].map((b) => b.dataset.tool);
+    const tools = [...document.querySelectorAll('#ed-tools .mseg__opt')].map((b) => b.dataset.tool);
     expect(tools).toEqual(['AUTO', 'WALL', 'PORTAL', 'ERASE', 'ANSWER']);
     expect(document.querySelector('#ed-tools [aria-pressed="true"]').dataset.tool).toBe('AUTO');
     expect(document.querySelector('#ed-tools .pz-stone--black, #ed-tools .pz-stone--white')).toBeNull();
@@ -626,25 +626,25 @@ describe('Modern control hierarchy on mine & editor (#504)', () => {
     await settle();
     const firstRow = document.querySelector('#mn-list .pz-mine');
     const delBtn = [...firstRow.querySelectorAll('button')].find((b) => b.textContent === 'puzzles.delete');
-    expect(delBtn.classList.contains('pz-tbtn--danger')).toBe(true);
+    expect(delBtn.classList.contains('mtbtn--danger')).toBe(true);
     [...firstRow.querySelectorAll('button')].find((b) => b.textContent === 'puzzles.rename').click();
     expect(document.querySelectorAll('.pbtn, .pchip, .ptab')).toHaveLength(0);
     // Inline Save is a tonal pill, keeping "Đăng puzzle mới" as the sole raised primary on /puzzles/mine
-    expect(document.querySelectorAll('.pz-btn--primary')).toHaveLength(1);
-    expect(firstRow.querySelector('.pz-rename-form .pz-tbtn')).not.toBeNull();
-    expect(document.querySelectorAll('#mn-pager .pz-tbtn--quiet')).toHaveLength(2);
+    expect(document.querySelectorAll('.mbtn--primary')).toHaveLength(1);
+    expect(firstRow.querySelector('.pz-rename-form .mtbtn')).not.toBeNull();
+    expect(document.querySelectorAll('#mn-pager .mtbtn--quiet')).toHaveLength(2);
 
     // /puzzles/new with 2 answers: 1 raised primary (#ed-submit), danger icon trash, segmented tools, tonal tag chips, 0 .pbtn
     boot('editor', '../js/puzzle-editor.js', (u) => (u.includes('/rankings/me') ? ok({ userId: 'u1' }) : ok({})));
     await settle();
     $('ed-add-answer').click();
     expect(document.querySelectorAll('.pbtn, .pchip, .ptab')).toHaveLength(0);
-    const shown = () => [...document.querySelectorAll('.pz-btn--primary')].filter((n) => !n.hidden).map((n) => n.id);
+    const shown = () => [...document.querySelectorAll('.mbtn--primary')].filter((n) => !n.hidden).map((n) => n.id);
     expect(shown()).toEqual(['ed-next']); // #508: one primary per step — Next, then Submit on the answers tab
     $('ed-next').click(); $('ed-next').click();
     expect(shown()).toEqual(['ed-submit']);
-    expect(document.querySelectorAll('#ed-answers .pz-tbtn--danger.pz-tbtn--icon')).toHaveLength(2);
-    expect(document.querySelectorAll('#ed-tools .pz-seg__opt')).toHaveLength(5);
+    expect(document.querySelectorAll('#ed-answers .mtbtn--danger.mtbtn--icon')).toHaveLength(2);
+    expect(document.querySelectorAll('#ed-tools .mseg__opt')).toHaveLength(5);
     expect(document.querySelectorAll('#ed-tags .pz-chip')).toHaveLength(5);
   });
 });

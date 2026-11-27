@@ -14,5 +14,4 @@ line from here to the top of `docs/todo/DONE.md` prefixed `✅` (one-liner, no n
 in the detail file / fix-log).
 
 ## Open
-- **#505.** Evaluate promoting shared Modern control tokens from replay.css / puzzles.css into platform.css `[Model: Sonnet]` — [detail](docs/todo/B505-promote-modern-control-tokens.md)
 
