@@ -18,6 +18,8 @@ const database = require('../db/database');
 const state = require('../socket/state');
 
 const router = express.Router();
+/** A tab id is a short random token from the shell; anything else is treated as "no tab id". */
+const TAB_RE = /^[A-Za-z0-9_-]{1,32}$/;
 // Two layers: a loose per-IP flood guard before auth (many members share one IP behind CGNAT /
 // a school or café network), then the real budget per member. A 429 here silently drops the
 // user offline, so the per-user cap leaves ample room over the ~3 beats/min + edge reports.
@@ -34,7 +36,9 @@ router.post('/', express.json({ limit: '1kb' }), (req, res, next) => {
       const prof = database.getProfileById(u.userId);
       state.setHideOnline(u.userId, !!(prof && prof.hide_online));
     }
-    state.touchHeartbeat(u, req.body && req.body.presence === 'away' ? 'away' : 'active');
+    // #487: one beat slot per tab; a cached shell without `tab` shares the '' slot (pre-#487 behaviour).
+    const tab = req.body && typeof req.body.tab === 'string' && TAB_RE.test(req.body.tab) ? req.body.tab : '';
+    state.touchHeartbeat(u, req.body && req.body.presence === 'away' ? 'away' : 'active', Date.now(), tab);
     res.status(204).end();
   } catch (err) { next(err); }
 });

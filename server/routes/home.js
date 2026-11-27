@@ -24,6 +24,7 @@ const { getClientIpFromReq } = require('../utils/get-client-ip');
 const { readSessionIdFromHeader } = require('../utils/session-cookie');
 const sessionManager = require('../managers/SessionManager');
 const roomManager = require('../managers/RoomManager');
+const presenceCore = require('../presence/presence-core');
 const tournamentManager = require('../managers/tournament/TournamentManager');
 
 const LIVE_LIMIT = 3;
@@ -145,7 +146,7 @@ function liveOf(rooms) {
     const name = (color) => (players.find((p) => p.color === color) || {}).displayName || null;
     let viewers = 0;
     for (const u of room.users.values()) {
-      if (u.slot === null && u.presence !== 'disconnected') viewers++;
+      if (u.slot === null && presenceCore.isConnectedMember(u)) viewers++;
     }
     out.push({
       roomId: room.roomId,

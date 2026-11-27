@@ -16,6 +16,8 @@ jest.mock('../socket/state', () => ({
   broadcastRoomUpdate: jest.fn(),
 }));
 
+const mockFairPlay = { onPresence: jest.fn() };
+jest.mock('../managers/FairPlayPresence', () => mockFairPlay);
 const state = require('../socket/state');
 const roomManager = require('../managers/RoomManager');
 const { register } = require('../socket/handlers/RoomHandler');
@@ -75,5 +77,22 @@ describe('room presence follows the room page only (#373)', () => {
     s.handlers[ev]({ presence: reported });
     expect(roomManager.setPresence).toHaveBeenCalledWith('a', roomPresence);
     expect(state.awayUsers.has('a')).toBe(siteAway);
+  });
+});
+
+// #496: a changed table presence feeds the fair-play summary with the room's game (the module ignores casual games).
+describe('fair-play hook (#496)', () => {
+  const io = { to: () => ({ emit: jest.fn() }) };
+  beforeEach(() => { state.sessions.clear(); mockFairPlay.onPresence.mockClear(); mockChanged = true; });
+  afterAll(() => state.sessions.clear());
+
+  test('changed report → onPresence(game, user, table presence); a repeat report → nothing', () => {
+    const s = makeSocket('a'); s.data = { roomPageId: 'r1' }; register(io, s); state.sessions.set('a', s);
+    mockRoom.gameState = { tag: 'game' };
+    s.handlers['room:presence']({ presence: 'away' });
+    expect(mockFairPlay.onPresence).toHaveBeenCalledWith(mockRoom.gameState, 'a', 'away');
+    mockChanged = false;
+    s.handlers['room:presence']({ presence: 'away' });
+    expect(mockFairPlay.onPresence).toHaveBeenCalledTimes(1);
   });
 });

@@ -22,6 +22,10 @@ const mockRoomManager = {
 };
 
 jest.mock('../managers/RoomManager', () => mockRoomManager);
+// #497: friend status for DM partner lookups (FriendService SQL is covered in friends-route.test.js).
+const mockFriendIds = { set: new Set() };
+jest.mock('../managers/FriendService', () => ({ friendIdsAmong: () => mockFriendIds.set }));
+jest.mock('../presence', () => ({ statusOf: (id, aud) => ({ c: 'on', a: 1, k: 'play', aud }) }));
 
 // F402: remembering the member's last room settings
 const mockDb = { setLastRoomSettings: jest.fn() };
@@ -508,6 +512,18 @@ describe('LobbyHandler — lobby:online_query', () => {
     const query = setup();
     expect(() => query({ q: 'a' })).not.toThrow();
     expect(mockState.queryOnlineUsers).not.toHaveBeenCalled();
+  });
+
+  test('#497 id lookup: friends among the ids get st in the friend audience; strangers do not', () => {
+    const query = setup(); const ack = jest.fn();
+    mockState.queryOnlineUsers.mockReturnValueOnce({ online: [] });
+    mockFriendIds.set = new Set(['f1']);
+    query({ ids: ['f1', 'x2'] }, ack);
+    expect(ack).toHaveBeenCalledWith({ online: [], st: { f1: { c: 'on', a: 1, k: 'play', aud: 'friend' } } });
+    mockFriendIds.set = new Set();
+    mockState.queryOnlineUsers.mockReturnValueOnce({ online: [] });
+    query({ ids: ['x2'] }, ack);
+    expect(ack).toHaveBeenLastCalledWith({ online: [] });
   });
 
   test('name searches faster than typing are refused; id lookups are never throttled', () => {

@@ -365,6 +365,16 @@
   // the server treats "present" as a union, so the two never disagree.
   let beatTimer = null;
   let beatAway = null;
+  // #487: one server-side beat slot per tab, so a hidden tab's 'away' never overrides a visible one.
+  // Kept in sessionStorage (per tab, survives page-to-page navigation): a fresh id per page load would
+  // leave the previous page's 'active' slot alive for the TTL after the tab is hidden.
+  const beatTab = (() => {
+    try {
+      let id = sessionStorage.getItem('gvn_beat_tab');
+      if (!id) { id = Math.random().toString(36).slice(2, 12) || 't'; sessionStorage.setItem('gvn_beat_tab', id); }
+      return id;
+    } catch (_) { return ''; } // storage blocked: shared slot, the pre-#487 behaviour
+  })();
   let edgeTimer = null;
   // mode: 'first' always sends; 'tick' = the 20s heartbeat (silent once away was reported);
   // 'edge' = focus/blur/visibility — sends only when active/away actually flipped (the server
@@ -377,7 +387,7 @@
     fetch('/api/presence', {
       method: 'POST', credentials: 'same-origin', keepalive: true,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ presence: away ? 'away' : 'active' }),
+      body: JSON.stringify({ presence: away ? 'away' : 'active', tab: beatTab }),
     }).catch(() => { /* offline: the server expires us */ });
   }
   function startPresenceBeat() {

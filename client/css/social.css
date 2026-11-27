@@ -3,7 +3,7 @@
    ≤860px: list only; an open thread / notifications view covers the page between nav and tab bar.
    Name rule: one line + ellipsis + full name in title (set in social.js); every flex/grid ancestor min-width:0. */
 
-:root { --sc-on: #43a047; --sc-busy: #e08a1e; --sc-watch: #3b82c4; --sc-win: #2e7d32; --sc-chip-ink: #fff;
+:root { --sc-win: #2e7d32; --sc-chip-ink: #fff;
   --sc-wood: #d9a35f; --sc-wood-line: rgba(60, 35, 10, .55); --sc-stone-b: #141210;
   --sc-stone-w: radial-gradient(circle at 34% 30%, #fff 0, #f1efe9 45%, #cfcbc2 100%); --sc-stone-w-shadow: 0 2px 4px rgba(0, 0, 0, .28), inset 0 0 0 1px rgba(0, 0, 0, .08); }
 .sc { --sc-nav: 56px;
@@ -36,14 +36,9 @@
 /* ── avatar + presence dot ── */
 .sc-av { position: relative; display: inline-flex; flex: none; border-radius: 50%; }
 .sc-av .pav { width: var(--s, 44px); height: var(--s, 44px); font-size: calc(var(--s, 44px) * .34); }
-.sc-av[data-st]::after { content: ''; position: absolute; right: -1px; bottom: -1px; width: 30%; height: 30%; min-width: 10px; min-height: 10px; border-radius: 50%;
-  background: var(--sc-on); box-shadow: 0 0 0 2px var(--c-surface); }
-.sc-av[data-st="playing"]::after { background: var(--sc-busy); }
-.sc-av[data-st="watching"]::after { background: var(--sc-watch); }
-.sc-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--sc-on); }
-.sc-dot[data-st="playing"] { background: var(--sc-busy); }
-.sc-dot[data-st="watching"] { background: var(--sc-watch); }
-.sc-dot[data-st="off"] { background: var(--c-ink-3); }
+/* #489: the avatar badge and the status-line dot are the shared .pres-dot (main.css); only placement here. */
+.sc-av__pd { position: absolute; right: -1px; bottom: -1px; width: 30%; height: 30%; min-width: 10px; min-height: 10px; box-shadow: 0 0 0 2px var(--c-surface); }
+.sc-dot { --pd: 9px; }
 
 /* ── left pane ── */
 .sc-top { display: grid; gap: 10px; padding: 16px 16px 8px; }
@@ -60,7 +55,7 @@
 .sc-story::-webkit-scrollbar { display: none; }
 .sc-story__i { display: grid; justify-items: center; gap: 4px; width: 56px; flex: none; padding: 0; border: 0; background: none; color: var(--c-ink); cursor: pointer; font: inherit; font-size: calc(11.5px * var(--fs-scale, 1)); font-weight: 700; }
 .sc-story__i .sc-av { --s: 48px; }
-.sc-story__i .sc-av[data-st="playing"] { box-shadow: 0 0 0 2px var(--c-surface), 0 0 0 4px var(--sc-busy); }
+.sc-story__i .sc-av[data-st="play"], .sc-story__i .sc-av[data-st="tour"] { box-shadow: 0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-success); }
 .sc-story__i .sc-nm { width: 100%; text-align: center; }
 .sc-story__i.is-off .pav { filter: grayscale(.7); opacity: .7; }
 .sc-story__add .pav { background: var(--c-fill); color: var(--c-ink-2); font-size: calc(20px * var(--fs-scale, 1)); }

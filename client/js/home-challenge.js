@@ -64,6 +64,14 @@
   const avatar = (p) => (root.PlatformShell && root.PlatformShell.avatar
     ? root.PlatformShell.avatar(p.avatarUrl, p.displayName, 'pav--sm') : el('span', null, 'pav pav--sm'));
 
+  // #489 a person's status through the one renderer (presence-view.js); offline keeps the "invite expires" note.
+  function statusOf(p) {
+    const PV = root.PresenceView;
+    const desc = PV ? PV.describe(PV.stOfRow(p))
+      : (p.online ? { state: 'online', key: 'challenge.online', tone: 'ok', glyph: 'fill' } : { state: 'offline', key: 'challenge.offline', tone: 'off', glyph: 'hollow' });
+    return { desc, label: desc.state === 'offline' ? t('challenge.offline') : t(desc.key) };
+  }
+
   async function getJson(url) {
     const res = await fetch(url, { credentials: 'same-origin' });
     if (res.status === 401) { location.href = '/login.html'; throw new Error('401'); }
@@ -156,10 +164,16 @@
         b.type = 'button';
         b.dataset.u = p.username;
         b.setAttribute('aria-pressed', String(p === chosen));
+        const status = statusOf(p);
         const av = el('span', null, 'hch__av' + (p.online ? ' is-on' : ''));
         av.appendChild(avatar(p));
+        if (status.desc.state !== 'offline') {
+          const d = el('span', null, 'pres-dot pres-dot--' + status.desc.tone + ' pres-dot--' + status.desc.glyph + ' hch__pd');
+          d.setAttribute('aria-hidden', 'true');
+          av.appendChild(d);
+        }
         const name = el('span', null, 'hch__name');
-        name.append(el('span', p.displayName, 'hch__dn'), el('span', p.online ? t('challenge.online') : t('challenge.offline'), 'hch__st'));
+        name.append(el('span', p.displayName, 'hch__dn'), el('span', status.label, 'hch__st'));
         b.append(av, name);
         if (p.friend) b.appendChild(el('span', t('home.ch_friend_tag'), 'hch__tag'));
         b.addEventListener('click', () => { setChosen(p); status.textContent = ''; });

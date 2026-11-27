@@ -17,6 +17,7 @@ const privacyGate = require('./PrivacyGate');
 const userSearch = require('../db/user-search');
 const { resolveWinnerSeat } = require('../db/games');
 const { PROVISIONAL_RD } = require('./RatingService');
+const presenceCore = require('../presence/presence-core');
 
 const MAX_FRIENDS = 500;
 const MAX_OUTGOING = 50;
@@ -48,6 +49,17 @@ const countFriends = (id) => db().prepare(
 ).get(id, id).n;
 
 /** 'self' | 'none' | 'friends' | 'outgoing' (I asked) | 'incoming' (they asked) */
+/** #497: which of `ids` are accepted friends of `me` — one query for a whole DM-window status check. */
+function friendIdsAmong(me, ids) {
+  const list = (Array.isArray(ids) ? ids : []).filter((id) => typeof id === 'string' && id !== me).slice(0, 50);
+  if (!me || !list.length) return new Set();
+  const rows = db().prepare(`
+    SELECT CASE WHEN user_a = ? THEN user_b ELSE user_a END AS id FROM friendships
+    WHERE status = 'accepted' AND (user_a = ? OR user_b = ?)
+      AND (CASE WHEN user_a = ? THEN user_b ELSE user_a END) IN (SELECT value FROM json_each(?))`).all(me, me, me, me, JSON.stringify(list));
+  return new Set(rows.map((r) => r.id));
+}
+
 function statusBetween(me, other) {
   if (!me || !other) return 'none';
   if (me === other) return 'self';
@@ -143,6 +155,7 @@ const person = (r) => ({
 
 let isOnline = () => false;
 let activityOf = () => null;
+let statusOf = () => undefined;
 /**
  * @param {{isOnline?: (userId: string) => boolean, activityOf?: (userId: string) => object|null}} h
  *   visible presence (#222 picker) and what an online friend is doing (#370), for friends only
@@ -150,6 +163,7 @@ let activityOf = () => null;
 function setHooks(h = {}) {
   isOnline = h.isOnline || (() => false);
   activityOf = h.activityOf || (() => null);
+  statusOf = h.statusOf || (() => undefined); // #488 wire `st` (friend audience), additive
 }
 
 /**
@@ -157,13 +171,13 @@ function setHooks(h = {}) {
  * in a room without a seat → watching, otherwise free. roomId lets a friend open "Xem ván".
  */
 function activityFromRoom(room, userId) {
-  const u = room && room.users && room.users.get(userId);
-  if (!u) return { activity: 'free' };
-  const game = room.state === 'playing' && room.gameState && room.gameState.status === 'ongoing' ? room.gameState : null;
-  if (u.slot === 1 || u.slot === 2) {
-    return game ? { activity: 'playing', startedAt: game.startedAt || null, roomId: room.roomId } : { activity: 'free' };
-  }
-  return { activity: 'watching', roomId: room.roomId };
+  // #489: the legacy fields come from the one derivation (presence-core), so they agree with `st`: a seat whose
+  // game is interrupted (someone in grace) is still playing (problem 3). Search/tournament stay 'free' here —
+  // the old vocabulary has no word for them; `st` carries them.
+  const a = presenceCore.activityOf(userId, { room });
+  if (a.kind === 'playing') return { activity: 'playing', startedAt: a.since || null, roomId: a.roomId };
+  if (a.kind === 'watching') return { activity: 'watching', roomId: a.roomId };
+  return { activity: 'free' };
 }
 
 function list(me) {
@@ -178,7 +192,8 @@ function list(me) {
     if (r.status === 'accepted') {
       const online = !!isOnline(r.id);
       // Activity only for visibly-online friends: hidden presence stays hidden (#370).
-      out.friends.push({ ...person(r), online, ...(online ? (activityOf(r.id) || { activity: 'free' }) : { activity: null }) });
+      const st = statusOf(r.id);
+      out.friends.push({ ...person(r), online, ...(online ? (activityOf(r.id) || { activity: 'free' }) : { activity: null }), ...(st ? { st } : {}) });
     }
     else (r.requested_by === me ? out.outgoing : out.incoming).push(person(r));
   }
@@ -282,5 +297,5 @@ function summary(me, username) {
 module.exports = {
   FriendError, MAX_FRIENDS, MAX_OUTGOING,
   statusBetween, request, acceptRequest, remove, friendIds, list, search, myCode, setHooks,
-  activityFromRoom, summary,
+  activityFromRoom, summary, friendIdsAmong,
 };

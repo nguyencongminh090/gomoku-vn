@@ -404,7 +404,8 @@ body.zen-lobby .hch__row:hover { background: var(--c-fill); }
 body.zen-lobby .hch__row[aria-pressed="true"] { background: var(--c-brand-light); box-shadow: inset 0 0 0 2px var(--c-brand); }
 body.zen-lobby .hch__row:focus-visible { outline: 2px solid var(--c-ink); outline-offset: -2px; }
 body.zen-lobby .hch__av { position: relative; display: inline-flex; flex: none; }
-body.zen-lobby .hch__av.is-on::after { content: ''; position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 50%; background: var(--c-state-playing); border: 2px solid var(--c-surface); }
+/* #489: the status badge is the shared .pres-dot (main.css); placement only. */
+body.zen-lobby .hch__pd { position: absolute; right: -1px; bottom: -1px; --pd: 10px; box-shadow: 0 0 0 2px var(--c-surface); }
 body.zen-lobby .hch__name { display: grid; flex: 1; min-width: 0; }
 body.zen-lobby .hch__dn { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 body.zen-lobby .hch__st { font-size: var(--text-xs); color: var(--c-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

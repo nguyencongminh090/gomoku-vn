@@ -23,6 +23,9 @@ const mockState = {
   cleanupReadyTimer: jest.fn(),
 };
 jest.mock('../socket/state', () => mockState);
+// #496: the presence summary is written next to the game row; its SQL is covered by fairplay-presence.test.js.
+const mockFairPlay = { write: jest.fn() };
+jest.mock('../managers/FairPlayPresence', () => mockFairPlay);
 
 const DELTAS = { gameId: 'g1', category: 'caro', players: [] };
 jest.mock('../managers/RatingService', () => {
@@ -77,6 +80,7 @@ beforeEach(() => {
   database.saveGame.mockReset();
   RatingService.recordGame.mockClear();
   RatingService.recordSeries.mockClear();
+  mockFairPlay.write.mockClear();
 });
 
 describe('handleGameEnd → rating hook', () => {
@@ -90,6 +94,17 @@ describe('handleGameEnd → rating hook', () => {
       expect.any(Function)
     );
     expect(ratingEmits(io)).toEqual([{ room: '#R1', event: 'rating:update', data: DELTAS }]);
+  });
+
+  test('#496 a rated, saved game writes its presence summary once; casual / unsaved / noScore do not', () => {
+    handleGameEnd(makeIo(), makeRoom());
+    expect(mockFairPlay.write).toHaveBeenCalledTimes(1);
+    mockFairPlay.write.mockClear();
+    handleGameEnd(makeIo(), makeRoom({ ranked: false }));
+    handleGameEnd(makeIo(), makeRoom(), { noScore: true });
+    database.saveGame.mockImplementationOnce(() => { throw new Error('disk full'); });
+    handleGameEnd(makeIo(), makeRoom());
+    expect(mockFairPlay.write).not.toHaveBeenCalled();
   });
 
   test('wall game is still rated (no special-board exclusion)', () => {

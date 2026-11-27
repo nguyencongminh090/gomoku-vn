@@ -49,7 +49,11 @@ describe('complete list (total == page): nothing changes', () => {
     expect(document.getElementById('online-users-count').textContent).toBe('3');
     window.PrivateChat.openChat('stranger');
     expect(offline('stranger')).toBe(true); // not in a complete list = offline, as before
-    expect(window.__client.emitAck).not.toHaveBeenCalled();
+    // #497: one id lookup for the partner (a friend's away status is not in the public list); a stranger stays offline.
+    expect(window.__client.emitAck).toHaveBeenCalledTimes(1);
+    expect(acks[0]).toMatchObject({ event: 'lobby:online_query', data: { ids: ['stranger'] } });
+    acks[0].cb(null, { online: [] });
+    expect(offline('stranger')).toBe(true);
   });
 
   it('a call without a total (older caller) means the list is complete', () => {
@@ -154,5 +158,38 @@ describe('truncated list (total > page)', () => {
     acks[0].cb(null, { total: 9000, online: ['far'] });
     window.PrivateChat.updateOnlineUsers(page(40), 40);
     expect(offline('far')).toBe(true);
+  });
+});
+
+// #490: the DM window speaks the shared status vocabulary (presence-view) with its dot.
+describe('DM window status (#490)', () => {
+  it('online partner → presence.online + ok dot; not online → presence.offline + hollow dot', () => {
+    boot();
+    window.PresenceView = require('../js/presence-view.js');
+    window.PrivateChat.updateOnlineUsers(page(2), 2);
+    window.PrivateChat.openChat('p1');
+    const status = () => document.querySelector('.pm-window__status');
+    expect(status().textContent.trim()).toBe('presence.online');
+    expect(status().querySelector('.pres-dot').className).toBe('pres-dot pres-dot--ok pres-dot--fill');
+    window.PrivateChat.updateOnlineUsers(page(1), 1);
+    expect(status().textContent.trim()).toBe('presence.offline');
+    expect(status().querySelector('.pres-dot').className).toBe('pres-dot pres-dot--off pres-dot--hollow');
+    delete window.PresenceView;
+  });
+});
+
+// #497: a friend partner's window uses the friend audience from the {ids} answer.
+describe('DM window with a friend (#497)', () => {
+  it('a friend who is away (not listed) reads "playing, away" instead of offline', () => {
+    boot();
+    window.PresenceView = require('../js/presence-view.js');
+    window.PrivateChat.updateOnlineUsers(page(2), 2);
+    window.PrivateChat.openChat('friend1');
+    const q = acks.find((x) => x.data && Array.isArray(x.data.ids));
+    q.cb(null, { online: [], st: { friend1: { c: 'on', a: 1, k: 'play', r: 'r1' } } });
+    const status = document.querySelector('.pm-window__status');
+    expect(status.textContent.trim()).toBe('presence.playing_away');
+    expect(status.querySelector('.pres-dot').className).toBe('pres-dot pres-dot--warn pres-dot--half');
+    delete window.PresenceView;
   });
 });

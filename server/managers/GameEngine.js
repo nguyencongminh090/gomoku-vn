@@ -114,6 +114,9 @@ class GameEngine {
     // Game state
     this.currentTurn = this.players[0].userId; // BLACK goes first
     this.moveHistory = [];
+    // #493: who has made at least one action (a stone or an opening decision). A rated game in which a
+    // player has not acted yet is abortable (void) instead of abandonable (features/presence-status Q12).
+    this.actedBy = new Set();
     this.moveCount   = 0;
     this.startedAt   = Date.now(); // lobby card "Đang đấu · mm:ss" (#364); fixed so the lobby diff stays stable
     this.status      = 'ongoing'; // 'ongoing' | 'finished'
@@ -239,6 +242,8 @@ class GameEngine {
     if (this.undoOffer && this.undoOffer.from === userId) {
       this.undoOffer = null;
     }
+
+    this.actedBy.add(userId); // #493
 
     // Place stone
     this.board[y][x] = color;
@@ -453,6 +458,7 @@ class GameEngine {
    * @param {string} userId — the player performing this atomic action
    */
   _beginOpeningAction(userId) {
+    this.actedBy.add(userId); // #493: an opening decision is an action
     if (this.undoOffer && this.undoOffer.from === userId) {
       this.undoOffer = null;
     }

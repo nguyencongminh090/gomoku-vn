@@ -34,6 +34,7 @@ const svc = require('../managers/AdminUserService');
 const cheat = require('../managers/CheatReportService');
 const news = require('../managers/NewsService');
 const integrity = require('../managers/RatingIntegrityService');
+const fairPlay = require('../managers/FairPlayPresence');
 
 const oversight = require('../managers/ClubOversight');
 const { ClubError } = require('../managers/ClubService');
@@ -103,6 +104,12 @@ router.post('/cheat-reports/:id/resolve', ...write, h((req, res) => {
 router.get('/rating-integrity', verifyToken, h((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   integrity.reportJson(req.user.userId).then((json) => res.type('application/json').send(json), next);
+}));
+
+// #496: away / disconnect summary of rated games (weak evidence, staff review only; perm rating.integrity).
+router.get('/presence-signals', verifyToken, h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(fairPlay.report(req.user.userId));
 }));
 
 router.delete('/users/:id/avatar', ...write, h((req, res) => {

@@ -24,6 +24,7 @@ Notes are generic: `CLAUDE.md` and `.claude/rules/*` win on conflict. Check `app
 | [auth-session-oauth](auth-session-oauth.md) | sessions/cookies, `Cache-Control` on auth, OAuth state/callback, false "logged in elsewhere" kick |
 | [server-client-clock-sync](server-client-clock-sync.md) | room/tournament clocks, `clockOffsetMs`, `serverNow()`, ready deadline (+ `diagnostic-page-sync` rule) |
 | [realtime-reliability-resync](realtime-reliability-resync.md) | reconnect/grace, connect timeout, `game:move` ack/retry, watchdog resync, ghost viewers |
+| [presence-and-abandonment](presence-and-abandonment.md) | player status axes/vocabulary, disconnect grace, abandoned-game result, repeat leavers, fair-play away/disconnect logging |
 | [broadcast-fanout-perf](broadcast-fanout-perf.md) | lobby/room/tournament broadcast cost, delta vs snapshot, debounce, capacity/backlog |
 | [mobile-layout-zen-ui](mobile-layout-zen-ui.md) | zen/mobile layout: z-index vs sheet, overlays vs drawer, grid tracks, dvh, touch handling |
 | [i18n-and-server-message-codes](i18n-and-server-message-codes.md) | any server message shown to users, new error codes, aria-labels, language switcher |

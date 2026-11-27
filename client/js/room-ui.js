@@ -331,26 +331,35 @@
   // wins over 'away' (tab still open, just not the active/visible one) which
   // always wins over the Active/Inactive pair, since a player who isn't even
   // present can't meaningfully be "playing".
+  // #491: the precedence above now lives in the one renderer (presence-view.js describe(member, {inRoom})),
+  // shared with every other page; this keeps the room's modifier names (tests, #113/#114 wording).
+  const ROOM_MODIFIER = { disconnected: '--disconnected', away: '--away', playing: '--active', waiting: '' };
+  const FALLBACK_TONE = {
+    disconnected: ['room.status_disconnected', 'bad', 'gap'], away: ['room.status_away', 'warn', 'half'],
+    playing: ['room.status_active', 'ok', 'fill'], waiting: ['room.status_waiting', 'idle', 'fill'],
+  };
+  function describeMember(player) {
+    const PV = global.PresenceView;
+    const roomState = S().roomData.state;
+    if (PV) return PV.describe(player, { inRoom: true, roomState });
+    // Without presence-view (a cached page mid-deploy): the same precedence, inline.
+    const state = player.presence === 'disconnected' ? 'disconnected' : player.presence === 'away' ? 'away'
+      : roomState === 'playing' ? 'playing' : 'waiting';
+    const [key, tone, glyph] = FALLBACK_TONE[state];
+    return { state, key, tone, glyph };
+  }
   function playerStatusInfo(player) {
-    if (player.presence === 'disconnected') {
-      return { modifier: '--disconnected', label: t('room.status_disconnected') };
-    }
-    if (player.presence === 'away') {
-      return { modifier: '--away', label: t('room.status_away') };
-    }
-    if (S().roomData.state === 'playing') {
-      return { modifier: '--active', label: t('room.status_active') };
-    }
-    return { modifier: '', label: t('room.status_waiting') };
+    const desc = describeMember(player);
+    return { modifier: ROOM_MODIFIER[desc.state] || '', label: t(desc.key), desc };
   }
 
-  // Symbol only, no visible text — a colored dot is the whole status display
-  // (space/noise tradeoff the user asked for explicitly). The label still
-  // exists for hover (title) and screen readers (aria-label), just not as
-  // rendered text.
+  // Symbol only, no visible text — the dot is the whole status display (space/noise tradeoff the user asked
+  // for explicitly, #113). Colour AND shape carry the state (#491, Q8 A); the label exists for hover (title)
+  // and screen readers (aria-label). The grace countdown is shown by the game:interrupted notice, not here.
   function renderStatusDot(player) {
     const status = playerStatusInfo(player);
-    return `<span class="ready-dot ready-dot${status.modifier}" role="img" aria-label="${escapeAttr(status.label)}" title="${escapeAttr(status.label)}"></span>`;
+    const d = status.desc;
+    return `<span class="ready-dot ready-dot${status.modifier} pres-dot pres-dot--${d.tone} pres-dot--${d.glyph}" role="img" aria-label="${escapeAttr(status.label)}" title="${escapeAttr(status.label)}"></span>`;
   }
 
   // ── Player cards (#216) ───────────────────────────────────────────────────

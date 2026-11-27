@@ -138,6 +138,7 @@ a.prow:hover { background: var(--c-hover); }
 .prow__meta { display: flex; flex-wrap: wrap; gap: 2px var(--space-3); margin-top: var(--space-1); }
 .prows--tickets .pnote { margin: 0; padding: var(--space-3) var(--space-4); }
 .prow__act { flex: none; font-size: calc(14px * var(--fs-scale, 1)); font-weight: 600; color: var(--c-ink-2); }
+.pchal__pd { --pd: 8px; }
 .pdot { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--c-ink-3); }
 .pdot--on { background: var(--c-brand-text); }
 .pdot--loss { background: var(--c-error); }

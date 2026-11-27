@@ -985,6 +985,14 @@
     GameUI.updateBoardState();
   });
 
+  // #493: a player dropped from a RATED game. Unlike game:interrupted nothing pauses — the clock keeps
+  // running and the game stays 'ongoing' (the present player can move); the seat dot shows the drop.
+  client.on('game:absent', (data) => {
+    if (!data) return;
+    ChatUI.appendSystemMessage(t(data.abortable ? 'room.absent_abortable' : 'room.absent', { name: data.playerName }));
+    RoomUI.updateUI();
+  });
+
   // #398: only the others in the room get this; the reconnecting socket gets game:init alone.
   client.on('game:resumed', (data) => {
     // #387: "Đối thủ" only fits the other player; a viewer gets the name, and a stray self

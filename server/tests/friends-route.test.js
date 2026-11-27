@@ -304,6 +304,8 @@ describe('#370 presence activity', () => {
     expect(activityFromRoom(room('playing', 'finished', [['u', { slot: 1 }]]), 'u')).toEqual({ activity: 'free' });
     expect(activityFromRoom(null, 'u')).toEqual({ activity: 'free' });
     expect(activityFromRoom(room('playing', 'ongoing', []), 'u')).toEqual({ activity: 'free' });
+    // #489 problem 3: the seat whose game is interrupted (the other player in grace) is still playing.
+    expect(activityFromRoom(room('interrupted', 'ongoing', [['u', { slot: 1 }]]), 'u')).toEqual({ activity: 'playing', startedAt: 1234, roomId: 'r1' });
   });
 
   it('friends list: online friends carry the hook activity; offline / hidden ones get null and the hook is not asked', async () => {
@@ -371,5 +373,19 @@ describe('#370 GET /api/friends/:username/summary', () => {
     expect((await call('GET', '/api/friends/nobody/summary', 'cat')).status).toBe(404);
     expect((await call('GET', '/api/friends/cat/summary', 'cat')).status).toBe(400);
     expect((await call('GET', '/api/friends/cat/summary', 'guest')).status).toBe(403);
+  });
+});
+
+// #497: one query tells which DM partners are accepted friends (pending requests and strangers are not).
+describe('friendIdsAmong (#497)', () => {
+  beforeEach(reset);
+  it('returns accepted friends among the ids only', async () => {
+    await call('POST', '/api/friends/bob', 'ann');
+    await call('POST', '/api/friends/ann/accept', 'bob');
+    await call('POST', '/api/friends/cat', 'ann'); // pending
+    const got = svc.friendIdsAmong(U.ann, [U.bob, U.cat, U.dan, U.ann, 42]);
+    expect([...got]).toEqual([U.bob]);
+    expect([...svc.friendIdsAmong(U.ann, [])]).toEqual([]);
+    expect([...svc.friendIdsAmong(null, [U.bob])]).toEqual([]);
   });
 });

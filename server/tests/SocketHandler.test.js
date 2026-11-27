@@ -508,6 +508,10 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
     ['room page of a different room', { reconnect: true, roomId: 'r2' }, 'active', 'away'],
     ['room page reconnect, was disconnected', { reconnect: true, roomId: 'r1' }, 'disconnected', 'active'],
     ['room page reconnect, was away', { reconnect: true, roomId: 'r1' }, 'away', 'away'],
+    // #492 (F3): a fresh room-page load names its room from the URL in the first handshake.
+    ['fresh room-page load of this room, was disconnected', { roomPage: true, roomId: 'r1' }, 'disconnected', 'active'],
+    ['fresh room-page load of this room, was active', { roomPage: true, roomId: 'r1' }, 'active', 'active'],
+    ['fresh room-page load of another room', { roomPage: true, roomId: 'r2' }, 'active', 'away'],
   ])('room member connect: %s → %s', (_c, auth, before, after) => {
     const io = makeIo();
     init(io);
@@ -615,16 +619,19 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
 // #372 review: SocketHandler wires two different "online" predicates — they must not both be presence.
 describe('presence hooks wiring (#372 review)', () => {
   const state = require('../socket/state');
-  let challengeHooks, dmHooks;
+  let challengeHooks, dmHooks, friendHooks;
   beforeAll(() => {
     const Challenge = require('../managers/ChallengeService');
     const Dm = require('../managers/DmService');
+    const Friend = require('../managers/FriendService');
     const c = jest.spyOn(Challenge, 'setHooks');
     const d = jest.spyOn(Dm, 'setHooks');
+    const f = jest.spyOn(Friend, 'setHooks');
     init(makeIo());
     challengeHooks = c.mock.calls.at(-1)[0];
     dmHooks = d.mock.calls.at(-1)[0];
-    c.mockRestore(); d.mockRestore();
+    friendHooks = f.mock.calls.at(-1)[0];
+    c.mockRestore(); d.mockRestore(); f.mockRestore();
   });
   beforeEach(() => { sessions.clear(); state.awayUsers.clear(); state.heartbeats.clear(); });
   afterAll(() => { sessions.clear(); state.awayUsers.clear(); state.heartbeats.clear(); });
@@ -649,6 +656,15 @@ describe('presence hooks wiring (#372 review)', () => {
     state.awayUsers.add('p1');
     expect(dmHooks.isOnline('p1')).toBe(false);
     expect(dmHooks.hasSocket('p1')).toBe(true); // away tab still gets the live push
+  });
+
+  test('#488 friends get the wire `st` from the one derivation (friend audience, hide-online respected)', () => {
+    expect(friendHooks.statusOf('p1')).toEqual({ c: 'off' });
+    sessions.set('p1', { user: u });
+    expect(friendHooks.statusOf('p1')).toEqual({ c: 'on', k: 'idle' });
+    state.setHideOnline('p1', true);
+    expect(friendHooks.statusOf('p1')).toEqual({ c: 'off' });
+    state.setHideOnline('p1', false);
   });
 });
 

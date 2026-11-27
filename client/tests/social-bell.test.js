@@ -167,6 +167,7 @@ describe('social page (#370 chat-first)', () => {
       'GET /api/friends/code': () => json({ code: 'me#0042' }), 'GET /api/challenges/online': () => json({ players: [] }),
       'GET /api/friends/bob/summary': () => json(SUM()),
       ...routes } });
+    window.PresenceView = require('../js/presence-view.js'); // UMD: a classic script on the page, module.exports under jest
     require('../js/challenge-modal.js');
     require('../js/social.js');
     document.dispatchEvent(new Event('DOMContentLoaded'));
@@ -207,7 +208,7 @@ describe('social page (#370 chat-first)', () => {
         P('fre', { online: true, activity: 'free' }), P('pla', { online: true, activity: 'playing', startedAt: Date.now(), roomId: 'r1' })] }) });
       const items = [...document.querySelectorAll('#sc-story [data-user]')];
       expect(items.map((b) => b.dataset.user)).toEqual(['pla', 'fre', 'wat', 'off']);
-      expect(items.map((b) => b.querySelector('.sc-av').dataset.st)).toEqual(['playing', 'free', 'watching', undefined]);
+      expect(items.map((b) => b.querySelector('.sc-av').dataset.st)).toEqual(['play', 'online', 'watch', undefined]); // #489 presence-view states
       expect(items[3].classList.contains('is-off')).toBe(true);
       document.querySelector('.sc-story__add').click();
       expect(document.activeElement).toBe(document.getElementById('sc-add-q'));
@@ -552,18 +553,51 @@ describe('social page (#370 chat-first)', () => {
   describe('thread header + profile pane', () => {
     const THREAD = { with: P('bob'), hasMore: false, messages: [] };
 
+    // #497 browser pass: the profile pane's badge stayed on the state it opened with while the header moved on.
+    it('profile pane badge follows the 10 s friends poll', async () => {
+      let st = { c: 'on', k: 'play', r: 'r1' };
+      await bootPage({ 'GET /api/friends': () => json({ ...EMPTY, friends: [P('bob', { online: true, activity: 'playing', st })] }),
+        'GET /api/dm/bob': () => json(THREAD) });
+      await fire('#dm=bob');
+      expect(document.querySelector('#sc-who > .sc-av').dataset.st).toBe('play');
+      st = { c: 'on', a: 1, k: 'play', r: 'r1' };
+      jest.advanceTimersByTime(10_000);
+      await tick();
+      expect(document.querySelector('#sc-who > .sc-av').dataset.st).toBe('away');
+      expect(document.querySelector('#dm-av').dataset.st).toBe('away');
+    });
+
+    // #489: the server's `st` (one derivation) wins over the legacy fields, which said 'free' / offline here.
+    it.each([
+      ['problem 3: waiting opponent of an interrupted game', { online: true, activity: 'free', st: { c: 'on', k: 'play', r: 'r1', t: Date.now() - 5000 } },
+        /^presence\.playing · \d+:\d\d$/, 'play', false],
+      ['playing but the tab is hidden (Q4 A)', { online: false, activity: null, st: { c: 'on', a: 1, k: 'play', r: 'r1' } },
+        /^presence\.playing_away$/, 'away', false],
+      ['dropped mid-game, inside the grace', { online: false, activity: null, st: { c: 're', k: 'play', r: 'r1' } },
+        /^presence\.reconnecting$/, 'reconnecting', true],
+      ['hidden-online / offline', { online: false, activity: null, st: { c: 'off' } }, /^presence\.offline$/, undefined, true],
+    ])('%s', async (_c, row, text, st, watchHidden) => {
+      await bootPage({ 'GET /api/friends': () => json({ ...EMPTY, friends: [P('bob', row)] }), 'GET /api/dm/bob': () => json(THREAD) });
+      await fire('#dm=bob');
+      expect(document.getElementById('dm-st').textContent).toMatch(text);
+      expect(document.querySelector('#dm-av').dataset.st).toBe(st);
+      expect(document.getElementById('dm-watch').hidden).toBe(watchHidden);
+      const dot = document.querySelector('#dm-st .pres-dot');
+      expect(dot.className).toMatch(/pres-dot--(ok|warn|bad|off) pres-dot--(core|half|gap|hollow)/);
+    });
+
     it('a playing friend shows "Đang chơi · m:ss" and a Xem ván link to the room; offline shows no watch link', async () => {
       await bootPage({ 'GET /api/friends': () => json({ ...EMPTY, friends: [P('bob', { online: true, activity: 'playing', startedAt: Date.now() - 65000, roomId: 'r 9' })] }),
         'GET /api/dm/bob': () => json(THREAD) });
       await fire('#dm=bob');
-      expect(document.getElementById('dm-st').textContent).toMatch(/^social\.st_playing · 1:0[5-6]$/);
-      expect(document.querySelector('#dm-st .sc-dot').dataset.st).toBe('playing');
-      expect(document.querySelector('#dm-av').dataset.st).toBe('playing');
+      expect(document.getElementById('dm-st').textContent).toMatch(/^presence\.playing · 1:0[5-6]$/);
+      expect(document.querySelector('#dm-st .sc-dot').dataset.st).toBe('play');
+      expect(document.querySelector('#dm-av').dataset.st).toBe('play');
       const watch = document.getElementById('dm-watch');
       expect(watch.hidden).toBe(false);
       expect(watch.getAttribute('href')).toBe('/room.html?id=r%209');
       await bootPage({ 'GET /api/friends': () => json({ ...EMPTY, friends: [P('bob', { online: false, activity: null })] }), 'GET /api/dm/bob': () => json(THREAD) });
-      expect(document.getElementById('dm-st').textContent).toBe('social.st_offline');
+      expect(document.getElementById('dm-st').textContent).toBe('presence.offline');
       expect(document.getElementById('dm-watch').hidden).toBe(true);
     });
 

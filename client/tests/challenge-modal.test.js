@@ -17,6 +17,7 @@ beforeEach(() => {
   document.body.innerHTML = '<button id="opener">x</button>';
   window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
   window.PlatformShell = { avatar: () => document.createElement('span') };
+  window.PresenceView = require('../js/presence-view.js');
   require('../js/challenge-modal.js');
   M = window.ChallengeModal;
 });
@@ -70,13 +71,27 @@ describe('util', () => {
 });
 
 describe('friend picker', () => {
+  test('#489 status label and dot come from presence-view (st wins; offline keeps the expiry note)', async () => {
+    global.fetch = jest.fn(() => json({ friends: [
+      { ...F('ann', false), st: { c: 'on', a: 1, k: 'idle' } }, { ...F('bob', true), st: { c: 'on', k: 'play', r: 'r1' } }, F('cat', false),
+    ], incoming: [], outgoing: [] }));
+    M.open();
+    await flush();
+    const rows = [...document.querySelectorAll('.pchal__friend')].map((b) => [b.querySelector('.prow__t').textContent, b.querySelector('.prow__m').textContent, b.querySelector('.pres-dot').className]);
+    expect(rows).toEqual([
+      ['BOB', 'presence.playing', 'pres-dot pres-dot--ok pres-dot--core pchal__pd'],
+      ['ANN', 'presence.away', 'pres-dot pres-dot--warn pres-dot--half pchal__pd'],
+      ['CAT', 'challenge.offline', 'pres-dot pres-dot--off pres-dot--hollow pchal__pd'],
+    ]);
+  });
+
   test('lists all friends, online first, offline marked; search filters; picking opens that friend\'s settings', async () => {
     global.fetch = jest.fn(() => json({ friends: [F('dan', false), F('bob', true)], incoming: [], outgoing: [] }));
     M.open();
     await flush();
     expect(document.getElementById('pchal-title').textContent).toBe('challenge.pick_title');
     expect(friendRows()).toEqual(['BOB', 'DAN']);
-    expect(document.querySelectorAll('.pchal__friend .pdot--on')).toHaveLength(1);
+    expect(document.querySelectorAll('.pchal__friend .pres-dot--ok')).toHaveLength(1); // #489 shared dot
     expect(document.querySelectorAll('.pchal__friend')[1].textContent).toContain('challenge.offline');
     const search = document.querySelector('.pchal__search');
     search.value = 'da'; search.dispatchEvent(new Event('input'));

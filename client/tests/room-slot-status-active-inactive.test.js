@@ -55,7 +55,8 @@ function makePlayer(overrides = {}) {
 function dotModifierIn(contentEl) {
   const dot = contentEl.querySelector('.ready-dot');
   expect(dot).not.toBeNull();
-  const modifiers = Array.from(dot.classList).filter((c) => c !== 'ready-dot');
+  // #491: the dot also carries the shared pres-dot classes; only the room's own modifier matters here.
+  const modifiers = Array.from(dot.classList).filter((c) => c.startsWith('ready-dot--'));
   return modifiers[0] || null; // null = no modifier (Inactive/waiting)
 }
 
@@ -107,5 +108,31 @@ describe('playerStatusInfo via the player cards (TODO #114)', () => {
     };
     RoomUI.renderPlayerCards();
     expect(dotModifierIn(contentEl)).toBe('ready-dot--disconnected');
+  });
+});
+
+// #491: with presence-view loaded (as room.html does), the seat dot carries the shared tone + glyph, so the
+// four states differ in shape as well as colour (Q8 A), and the label keeps the room's own words.
+describe('seat dot through presence-view (#491)', () => {
+  let RoomUI;
+  let contentEl;
+  beforeEach(() => {
+    window.PresenceView = require('../js/presence-view.js');
+    RoomUI = loadRoomUI();
+    contentEl = document.getElementById('seatcard-bottom');
+  });
+  afterEach(() => { delete window.PresenceView; });
+
+  test.each([
+    ['playing', 'active', 'pres-dot--ok pres-dot--fill', 'room.status_active'],
+    ['idle', 'active', 'pres-dot--idle pres-dot--fill', 'room.status_waiting'],
+    ['playing', 'away', 'pres-dot--warn pres-dot--half', 'room.status_away'],
+    ['playing', 'disconnected', 'pres-dot--bad pres-dot--gap', 'room.status_disconnected'],
+  ])('room %s, presence %s', (state, presence, cls, label) => {
+    window.RoomState = { roomData: { state, users: [makePlayer({ presence })] }, myUser: { userId: 'someone-else' }, mySlot: null };
+    RoomUI.renderPlayerCards();
+    const dot = contentEl.querySelector('.ready-dot');
+    expect(dot.className).toContain(cls);
+    expect(dot.getAttribute('aria-label')).toBe(label);
   });
 });

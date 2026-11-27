@@ -20,6 +20,7 @@
 
 const logger      = require('../../utils/logger');
 const roomManager = require('../../managers/RoomManager');
+const fairPlay    = require('../../managers/FairPlayPresence');
 const {
   broadcastLobbyUpdate,
   broadcastRoomUpdate,
@@ -144,6 +145,8 @@ function register(io, socket) {
     const result = roomManager.setPresence(user.userId, onRoomPage ? presence : 'away');
     if (result.error) return; // not in a room: the site-wide state above is all there is
     if (result.changed === false) return; // repeat report: no room-wide fan-out
+    // #496: a seated player's away stretches in a rated game feed the staff-only fair-play summary.
+    fairPlay.onPresence(result.room.gameState, user.userId, onRoomPage ? presence : 'away');
     broadcastRoomUpdate(io, result.room);
   };
   socket.on('room:presence', onPresence);

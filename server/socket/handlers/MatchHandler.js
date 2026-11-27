@@ -17,6 +17,7 @@
 
 const logger = require('../../utils/logger');
 const roomManager = require('../../managers/RoomManager');
+const abandonment = require('../../managers/AbandonmentService');
 const { seatPair } = require('../../managers/PairRoom');
 const database = require('../../db/database');
 const { MatchQueue, PRESETS, timeLabel, resolveTime } = require('../../managers/MatchQueue');
@@ -133,6 +134,13 @@ function register(io, socket) {
       socket.emit('match:error', { message: 'Bạn đang ở trong một phòng.', code: 'ALREADY_IN_ANOTHER_ROOM' });
       return;
     }
+    // #495: a repeat leaver waits 10 minutes after their latest abandonment before queueing again.
+    const waitMs = abandonment.cooldownLeftMs(user.userId);
+    if (waitMs > 0) {
+      const minutes = Math.ceil(waitMs / 60000);
+      socket.emit('match:error', { message: `Bạn vừa bỏ nhiều ván xếp hạng. Có thể ghép trận lại sau ${minutes} phút.`, code: 'MATCH_COOLDOWN', vars: { minutes } });
+      return;
+    }
     const rule = String(payload.rule || '');
     const result = queue.join({
       userId: user.userId,
@@ -175,4 +183,4 @@ function _reset() {
   tickCount = 0;
 }
 
-module.exports = { register, queueCounts: () => queue.counts(), queueEstimates: () => queue.estimates(), _queue: queue, _tick: tick, _reset };
+module.exports = { register, isQueued: (userId) => !!queue.get(userId), queueCounts: () => queue.counts(), queueEstimates: () => queue.estimates(), _queue: queue, _tick: tick, _reset };

@@ -32,6 +32,7 @@ const WallGenerator   = require('../../generators/WallGenerator');
 const PortalGenerator = require('../../generators/PortalGenerator');
 const database        = require('../../db/database');
 const RatingService   = require('../../managers/RatingService');
+const FairPlayPresence = require('../../managers/FairPlayPresence');
 const ChallengeSeries = require('../../managers/ChallengeSeries');
 const config          = require('../../config');
 const moveLag         = require('../../utils/move-lag'); // TEMP — TODO.md #167 measurement harness
@@ -724,6 +725,19 @@ function startTimerForGame(io, room, engine, idOverride) {
     // deadline in timer:sync. See review 4.3.
     onTick: () => {},
     onTimeout: (timedOutPlayerId) => {
+      // #493 Q13: an absent player whose clock runs out during a site-wide outage is not charged with it.
+      // Lazy require: DisconnectHandler requires this module at load time.
+      if (engine.status === 'ongoing' && require('./DisconnectHandler').voidsClockTimeout(roomId, timedOutPlayerId)) {
+        engine.status = 'finished';
+        engine.result = { winner: null, reason: 'disconnect' };
+        handleGameEnd(io, room, { noScore: true });
+        io.to(roomId).emit('game:ended', { result: engine.result, scoreTable: room.scoreTable, scoreHistory: room.scoreHistory || [] });
+        io.to(roomId).emit('chat:message', {
+          from: null, fromId: null, text: 'Kết nối tới máy chủ gián đoạn. Ván đấu huỷ, không ghi điểm.',
+          code: 'GAME_OUTAGE_VOID', vars: {}, timestamp: Date.now(), isSystem: true,
+        });
+        return;
+      }
       engine.handleTimeout(timedOutPlayerId);
       handleGameEnd(io, room);
 
@@ -1115,6 +1129,7 @@ function handleGameEnd(io, room, opts = {}) {
     // and guest games are a no-op. Skipped if the game row didn't persist, so
     // rating_history never points at a game that doesn't exist.
     // A series game is rated once, with the rest of the series, in finishSeries().
+    if (rated && saved) FairPlayPresence.write(engine); // #496: one presence summary row per player
     if (inSeries) {
       ChallengeSeries.addGame(series, engine.gameId, engine.result.winner === 'draw' ? 'draw'
         : engine.players.some((p) => p.userId === engine.result.winner) ? engine.result.winner : null);

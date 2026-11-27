@@ -63,3 +63,22 @@ test('rate limit is per member: one member over budget does not 429 another on t
   // Many members behind one IP (all requests here come from 127.0.0.1).
   for (let k = 0; k < 20; k++) expect(await post(`n${k}`)).toBe(204);
 });
+
+// #487: per-tab beat slots. A valid `tab` id gets its own slot; a malformed one falls back to the shared slot.
+function postTab(as, presence, tab) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({ presence, tab });
+    const r = http.request(base + '/api/presence', { method: 'POST', headers: { 'Content-Type': 'application/json', cookie: as } },
+      (res) => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+    r.on('error', reject);
+    r.end(body);
+  });
+}
+
+test('#487 per-tab beats: a hidden tab does not hide a visible one; junk tab ids use the shared slot', async () => {
+  expect(await postTab('m7', 'active', 'tabA')).toBe(204);
+  expect(await postTab('m7', 'away', 'tabB')).toBe(204);
+  expect(state.isPresent('m7')).toBe(true);
+  expect(await postTab('m8', 'active', '<script>')).toBe(204);
+  expect([...state.heartbeats.get('m8').tabs.keys()]).toEqual(['']);
+});

@@ -51,5 +51,11 @@ describe('shell presence beat (#372)', () => {
     fire(window, 'focus');
     jest.advanceTimersByTime(300);
     expect(beats()).toEqual(['away', 'active']);
+
+    // #487: every beat carries this tab's id, stable across page loads of the same tab (sessionStorage).
+    const tabs = global.fetch.mock.calls.map(([, o]) => JSON.parse(o.body).tab);
+    expect(new Set(tabs).size).toBe(1);
+    expect(tabs[0]).toMatch(/^[a-z0-9]{1,32}$/);
+    expect(sessionStorage.getItem('gvn_beat_tab')).toBe(tabs[0]);
   });
 });

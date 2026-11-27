@@ -47,22 +47,43 @@
     b.appendChild(icon(iconName));
     return b;
   }
-  /** Avatar (shared PlatformShell renderer) + presence dot: st = 'playing' | 'watching' | 'free' | null (offline). */
-  function av(p, size, st) {
+  /** #489 the one status dot (presence-view.js): tone = colour, glyph = shape; the label lives next to it. */
+  function presDot(desc, extra) {
+    const d = el('span', undefined, 'pres-dot pres-dot--' + desc.tone + ' pres-dot--' + desc.glyph + (extra ? ' ' + extra : ''));
+    d.dataset.st = desc.state;
+    return d;
+  }
+  /** Avatar (shared PlatformShell renderer) + presence badge; `desc` from presenceOf(), none when offline. */
+  function av(p, size, desc) {
     const w = el('span', undefined, 'sc-av');
     if (size) w.style.setProperty('--s', size + 'px');
-    if (st) w.dataset.st = st;
     w.appendChild(PS().avatar(p.avatarUrl, p.displayName));
+    if (desc && desc.state !== 'offline') {
+      w.dataset.st = desc.state;
+      const badge = presDot(desc, 'sc-av__pd');
+      badge.setAttribute('aria-hidden', 'true'); // the status text says it
+      w.appendChild(badge);
+    }
     return w;
   }
 
   const state = { friends: new Map(), convs: [], challenges: { incoming: [], outgoing: [] }, incoming: [], outgoing: [], code: '', notifs: [] };
   const dm = { with: null, lastId: 0, person: null, summary: null, seq: 0 };
 
+  // #489: the friend's status is the server's wire `st` (one derivation, #487/#488), read through the one
+  // renderer (presence-view.js). Rows without `st` (an older server mid-deploy) are mapped from the legacy fields.
+  const stOf = (f) => (f ? window.PresenceView.stOfRow(f) : null);
+  const describe = (st) => window.PresenceView.describe(st);
+  /** presence-view description of a friend, or null for a non-friend (no status shown). */
   const presenceOf = (username) => {
     const f = state.friends.get(username);
-    return f && f.online ? (f.activity || 'free') : null;
+    return f ? describe(stOf(f)) : null;
   };
+  /** The room a friend can be watched in: playing or watching, online (away included), with a room id. */
+  function watchRoomOf(username) {
+    const st = stOf(state.friends.get(username));
+    return st && st.c === 'on' && st.r && (st.k === 'play' || st.k === 'watch') ? st.r : null;
+  }
   function mmss(ms) {
     const s = Math.max(0, Math.floor(ms / 1000));
     const h = Math.floor(s / 3600);
@@ -72,10 +93,11 @@
   function statusText(username) {
     const f = state.friends.get(username);
     if (!f) return '';
-    if (!f.online) return t('social.st_offline');
-    if (f.activity === 'playing') return t('social.st_playing') + (f.startedAt ? ' · ' + mmss(Date.now() - f.startedAt) : '');
-    if (f.activity === 'watching') return t('social.st_watching');
-    return t('social.st_online');
+    const st = stOf(f);
+    const desc = describe(st);
+    const txt = t(desc.key);
+    // Elapsed game time rides on a playing friend's label (same format as before #489).
+    return desc.state === 'play' && st.t ? txt + ' · ' + mmss(Date.now() - st.t) : txt;
   }
   function ago(iso) {
     const at = Date.parse(iso);
@@ -184,7 +206,9 @@
   }
 
   // ── Friends: story strip + requests ──
-  const RANK = { playing: 0, free: 1, watching: 2 };
+  // #489 story order by presence-view state: games first, then online, watching, away/reconnecting, offline last.
+  const RANK = { play: 0, tour: 0, online: 1, search: 1, watch: 2, away: 3, reconnecting: 3, offline: 4 };
+  const rankOf = (f) => RANK[presenceOf(f.username).state] ?? 4;
   function renderStory() {
     const box = $('sc-story');
     const add = el('button', undefined, 'sc-story__i sc-story__add');
@@ -196,10 +220,9 @@
     addAv.appendChild(plus);
     add.append(addAv, el('span', t('social.story_add'), 'sc-nm'));
     add.addEventListener('click', () => $('sc-add-q').focus());
-    const friends = [...state.friends.values()].sort((a, b) =>
-      (a.online === b.online ? 0 : a.online ? -1 : 1) || ((RANK[a.activity] ?? 3) - (RANK[b.activity] ?? 3)));
+    const friends = [...state.friends.values()].sort((a, b) => rankOf(a) - rankOf(b));
     box.replaceChildren(add, ...friends.map((f) => {
-      const b = el('button', undefined, 'sc-story__i' + (f.online ? '' : ' is-off'));
+      const b = el('button', undefined, 'sc-story__i' + (presenceOf(f.username).state === 'offline' ? ' is-off' : ''));
       b.type = 'button';
       b.dataset.user = f.username;
       b.title = f.displayName + ' — ' + statusText(f.username);
@@ -247,6 +270,7 @@
       renderRequests();
       renderConvs();
       renderHead();
+      refreshWhoBadge();
       renderSuggest();
     } catch (_) {
       if (!quiet) setStatus('social.error'); // a failed presence poll stays silent: the next one fixes it
@@ -464,13 +488,13 @@
     return card;
   }
 
-  function renderStatusLine(st) {
+  function renderStatusLine(desc) {
     const line = $('dm-st');
     const txt = statusText(dm.with);
     line.replaceChildren();
     if (!txt) return;
-    const dot = el('span', undefined, 'sc-dot');
-    dot.dataset.st = st || 'off';
+    const dot = presDot(desc || describe({ c: 'off' }), 'sc-dot');
+    dot.setAttribute('aria-hidden', 'true'); // the text next to it says it
     line.append(dot, nm('span', txt));
   }
 
@@ -484,9 +508,8 @@
     link.title = p.displayName;
     link.href = '/u/' + enc(p.username);
     renderStatusLine(st);
-    const f = state.friends.get(dm.with);
     const watch = $('dm-watch');
-    const room = f && f.online && f.roomId && (f.activity === 'playing' || f.activity === 'watching') ? f.roomId : null;
+    const room = watchRoomOf(dm.with);
     watch.hidden = !room;
     if (room) watch.href = '/room.html?id=' + enc(room);
     $('dm-input').placeholder = t('social.dm_ph', { name: p.displayName });
@@ -546,6 +569,16 @@
       acts.append(un);
     }
     box.replaceChildren(av(p, 72, presenceOf(p.username)), name, user, stat, last, acts);
+  }
+
+  /** #489/#497: the profile pane's avatar badge follows the friends poll like the header and the story strip
+   *  (only the badge — re-rendering the pane would reset a half-armed "unfriend" button). */
+  function refreshWhoBadge() {
+    const box = $('sc-who');
+    const s = dm.summary;
+    if (!dm.with || !s || box.hidden) return;
+    const old = box.querySelector(':scope > .sc-av');
+    if (old) old.replaceWith(av(s.with, 72, presenceOf(s.with.username)));
   }
 
   async function loadSummary(username, seq) {
@@ -732,8 +765,9 @@
   // Elapsed "Đang chơi · mm:ss" ticks once a second while a thread with a playing friend is open.
   function tickHead() {
     if (!dm.with || document.hidden) return;
-    const f = state.friends.get(dm.with);
-    if (f && f.online && f.activity === 'playing' && f.startedAt) renderStatusLine('playing');
+    const desc = presenceOf(dm.with);
+    const st = stOf(state.friends.get(dm.with));
+    if (desc && desc.state === 'play' && st.t) renderStatusLine(desc);
   }
 
   document.addEventListener('DOMContentLoaded', () => {

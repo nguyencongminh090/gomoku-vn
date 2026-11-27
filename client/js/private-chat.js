@@ -45,6 +45,8 @@ let onlineTotal = 0;
 let remote = null;
 let remoteTimer = null;
 const extraOnline = new Set();
+// #497: friend partners' status in the friend audience (st), from the same {ids} query — e.g. "playing, away".
+const friendSt = new Map();
 let lastPartnerCheck = 0;
 const QUERY_TIMEOUT_MS = 5000;
 const SEARCH_DEBOUNCE_MS = 250;
@@ -54,7 +56,8 @@ const inPage = (userId) => onlineUsers.some(u => u.userId === userId);
 
 /** Ask the server which open-chat partners outside the page are online; `force` skips the rate limit. */
 function checkPartners(force) {
-  if (!listTruncated()) return;
+  // Partners outside the page: online beyond a truncated page, or a friend whose status the public list cannot
+  // show (away = not listed, #372). Asked even when the list is complete (#497); strangers stay offline there.
   const ids = [...windows.keys()].filter(id => !inPage(id));
   if (!ids.length) return;
   const now = Date.now();
@@ -64,6 +67,7 @@ function checkPartners(force) {
     if (err || !res || !Array.isArray(res.online)) return;
     for (const id of ids) {
       if (res.online.includes(id)) extraOnline.add(id); else extraOnline.delete(id);
+      if (res.st && res.st[id]) friendSt.set(id, res.st[id]); else friendSt.delete(id);
       updateWindowStatus(id);
     }
   });
@@ -190,7 +194,16 @@ function updateWindowStatus(userId) {
   const w = windows.get(userId);
   if (!w) return;
   const online = isOnline(userId);
-  w.statusEl.textContent = online ? t('private_chat.user_online') : t('private_chat.user_offline');
+  // #490 the shared status vocabulary and dot (presence-view.js). A stranger is "listed online" or not (the public
+  // projection: away reads as offline, #372); a friend's window shows the friend audience's st (#497).
+  const PV = globalThis.PresenceView;
+  const st = !inPage(userId) && friendSt.get(userId);
+  const desc = PV ? PV.describe(st || { c: online ? 'on' : 'off' })
+    : { key: online ? 'presence.online' : 'presence.offline', tone: online ? 'ok' : 'off', glyph: online ? 'fill' : 'hollow' };
+  const dot = document.createElement('span');
+  dot.className = `pres-dot pres-dot--${desc.tone} pres-dot--${desc.glyph}`;
+  dot.setAttribute('aria-hidden', 'true');
+  w.statusEl.replaceChildren(dot, document.createTextNode(' ' + t(desc.key)));
   w.statusEl.classList.toggle('is-offline', !online);
 
   const disabled = !online || !socketConnected;
@@ -625,7 +638,8 @@ function toggleModal() {
 function updateOnlineUsers(users, total) {
   onlineUsers = Array.isArray(users) ? users : [];
   onlineTotal = typeof total === 'number' ? Math.max(total, onlineUsers.length) : onlineUsers.length;
-  if (listTruncated()) checkPartners(false); else extraOnline.clear();
+  if (!listTruncated()) extraOnline.clear();
+  checkPartners(false); // #497: also for a complete list — a friend's away status is not in it
   for (const userId of windows.keys()) updateWindowStatus(userId);
   if (modal && modal.classList.contains('visible')) renderModalList();
 }

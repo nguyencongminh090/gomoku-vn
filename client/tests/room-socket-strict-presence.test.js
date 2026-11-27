@@ -70,3 +70,14 @@ test('no emit outside a room', () => {
   focused = false; window.dispatchEvent(new Event('blur'));
   expect(presences(c)).toEqual([]);
 });
+
+// #493: a rated-game drop does not pause the game client-side — the board stays playable for the present player.
+test('game:absent: system message, game stays ongoing (no pause, watchdog untouched)', () => {
+  const c = load();
+  window.RoomState.gameState = { status: 'ongoing', players: [], moveCount: 3 };
+  c.listeners['game:absent']({ playerId: 'x', playerName: 'Xu', abortable: false });
+  expect(window.ChatUI.appendSystemMessage).toHaveBeenCalledWith(expect.stringMatching(/Xu/));
+  expect(window.RoomState.gameState.status).toBe('ongoing');
+  c.listeners['game:absent']({ playerId: 'x', playerName: 'Xu', abortable: true });
+  expect(window.ChatUI.appendSystemMessage).toHaveBeenCalledTimes(2);
+});
