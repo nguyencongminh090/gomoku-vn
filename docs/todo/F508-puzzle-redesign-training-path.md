@@ -1,5 +1,5 @@
 # F508 — Puzzle area redesign: concept C "Training path"
-**Status:** IMPLEMENTED, uncommitted, awaiting user review (2026-11-27)
+**Status:** ✅ DONE 2026-11-27 — commit 08290c1b, merged to dev (90c12af9)
 **Area:** client/puzzles.html, puzzle.html, puzzles-mine.html, puzzle-editor.html, client/css/puzzles.css, client/js/puzzles*.js, puzzle*.js, i18n.js
 **From:** features/puzzle-modern/prompt.md task 1   **Depends:** B504, F506, F507 (same branch `ui/puzzle-modern`, uncommitted)
 

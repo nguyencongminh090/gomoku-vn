@@ -1,5 +1,5 @@
 # F506 — Puzzle editor: Auto-only stones, live text import, last-stone marker
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-27 — commit ed278dc6, merged to dev (90c12af9)
 **Area:** client/js/puzzle-editor.js, client/puzzle-editor.html, client/js/i18n.js, client/tests/puzzle-authoring-pages.test.js
 **From:** features/puzzle-modern/prompt.md task 2A, 2026-11-27   **Depends:** B504 (same branch, uncommitted)
 

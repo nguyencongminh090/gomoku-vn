@@ -1,5 +1,5 @@
 # B504 — Redesign Puzzle pages controls to Modern style
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-27 — commit 5b721cab, merged to dev (90c12af9)
 **Area:** client/css/puzzles.css, client/puzzles.html, client/puzzle.html, client/puzzles-mine.html, client/puzzle-editor.html, client/js/puzzles.js, client/js/puzzle.js, client/js/puzzles-mine.js, client/js/puzzle-editor.js, client/tests/puzzle-solve-page.test.js, client/tests/puzzle-authoring-pages.test.js
 **From:** features/puzzle-modern (planning.md, user_story.md), 2026-11-27   **Depends:** —
 

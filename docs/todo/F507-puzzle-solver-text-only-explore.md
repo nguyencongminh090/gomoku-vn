@@ -1,5 +1,5 @@
 # F507 — Puzzle solver: text-only answers, no undo, explore board after the end
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-27 — commit f0a00c21, merged to dev (90c12af9)
 **Area:** client/js/puzzle.js, client/puzzle.html, client/js/i18n.js, client/tests/puzzle-solve-page.test.js
 **From:** features/puzzle-modern/prompt.md task 2B, 2026-11-27   **Depends:** B504 (same branch, uncommitted)
 

@@ -1,3 +1,7 @@
+- ✅ **#508.** Puzzle area redesign: concept C "Training path" `[Model: Opus]` — [detail](docs/todo/F508-puzzle-redesign-training-path.md)
+- ✅ **#507.** Puzzle solver: text-only answers, no undo, explore board after the end `[Model: Sonnet]` — [detail](docs/todo/F507-puzzle-solver-text-only-explore.md)
+- ✅ **#506.** Puzzle editor: Auto-only stones, live text import, last-stone marker `[Model: Sonnet]` — [detail](docs/todo/F506-puzzle-editor-auto-live-import.md)
+- ✅ **#504.** Redesign Puzzle pages buttons and controls to Modern style `[Model: Sonnet]` — [detail](docs/todo/B504-puzzle-controls-modern.md)
 - ✅ **#167.** Survey: server-side lag compensation for game:move `[Model: Sonnet 5]` — [detail](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - ✅ **#136.** Zen drawer collapses to rail when the start modal opens (desktop) `[Model: Opus 5]` — [detail](docs/todo/B136-drawer-thut-vao-khi-modal-hien-len.md)
 - ✅ **#503.** Surface Puzzle and Clubs entry buttons on desktop and phone Home `[Model: Sonnet]` — [detail](docs/todo/B503-home-club-puzzle-buttons.md)
