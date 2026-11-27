@@ -11,31 +11,31 @@
   <link rel="stylesheet" href="css/platform-shell.css?v=174b5103" />
   <link rel="stylesheet" href="css/platform.css?v=f4b4f520" />
   <link rel="stylesheet" href="css/forum.css?v=eae48526" />
-  <link rel="stylesheet" href="css/puzzles.css?v=b0f88347" />
+  <link rel="stylesheet" href="css/puzzles.css?v=d75fef19" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
   <script src="js/skin-preload.js?v=399486e6"></script>
 </head>
-<body class="pl">
+<body class="pl pz-page">
 <div id="pl-shell"></div>
 
 <main class="papp" role="main">
-  <nav class="ptabs fm-tabs" aria-label="Learn"><a class="ptab" href="/puzzles" aria-current="page" data-i18n="forum.tab_puzzles">Puzzle</a><a class="ptab" href="/forum" data-i18n="forum.tab_forum">Diễn đàn</a></nav>
+  <nav class="pz-seg pz-tabs" aria-label="Learn"><a class="pz-seg__opt" href="/puzzles" aria-current="page" data-i18n="forum.tab_puzzles">Puzzle</a><a class="pz-seg__opt" href="/forum" data-i18n="forum.tab_forum">Diễn đàn</a></nav>
   <div class="pintro">
     <h1 data-i18n="puzzles.h1">Puzzle</h1>
     <p id="pz-total" class="muted small"></p>
   </div>
 
   <div id="pz-actions" class="pactions" style="margin:0 0 16px">
-    <a class="pbtn pbtn--primary" href="/puzzles/new"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-plus-circle"></use></svg><span data-i18n="puzzles.new">Đăng puzzle mới</span></a>
-    <a class="pbtn pbtn--ghost" href="/puzzles/mine" data-i18n="puzzles.mine">Puzzle của tôi</a>
+    <a class="pz-btn pz-btn--primary" href="/puzzles/new"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-plus-circle"></use></svg><span data-i18n="puzzles.new">Đăng puzzle mới</span></a>
+    <a class="pz-tbtn" href="/puzzles/mine" data-i18n="puzzles.mine">Puzzle của tôi</a>
   </div>
 
   <div class="pz-filters">
-    <div class="pz-filter"><span class="pz-filter__label" data-i18n="puzzles.filter_level">Level</span><div id="pz-levels" class="pchips" role="group" data-i18n-aria="puzzles.filter_level" aria-label="Level"></div></div>
-    <div class="pz-filter"><span class="pz-filter__label" data-i18n="puzzles.filter_rule">Luật</span><div id="pz-rules" class="pchips" role="group" data-i18n-aria="puzzles.filter_rule" aria-label="Luật"></div></div>
-    <div class="pz-filter"><span class="pz-filter__label" data-i18n="puzzles.filter_tag">Chủ đề</span><div id="pz-tags" class="pchips" role="group" data-i18n-aria="puzzles.filter_tag" aria-label="Chủ đề"></div></div>
+    <div class="pz-filter"><span class="pz-filter__label" data-i18n="puzzles.filter_level">Level</span><div id="pz-levels" class="pz-seg" role="group" data-i18n-aria="puzzles.filter_level" aria-label="Level"></div></div>
+    <div class="pz-filter"><span class="pz-filter__label" data-i18n="puzzles.filter_rule">Luật</span><div id="pz-rules" class="pz-seg" role="group" data-i18n-aria="puzzles.filter_rule" aria-label="Luật"></div></div>
+    <div class="pz-filter"><span class="pz-filter__label" data-i18n="puzzles.filter_tag">Chủ đề</span><div id="pz-tags" class="pz-seg" role="group" data-i18n-aria="puzzles.filter_tag" aria-label="Chủ đề"></div></div>
   </div>
 
   <div id="pz-list" class="pz-grid" aria-live="polite"></div>
@@ -50,6 +50,6 @@
 <script src="js/settings-panel.js?v=4f7ecd46"></script>
 <script src="js/platform-shell.js?v=ee86dad9"></script>
 <script src="js/puzzle-board.js?v=8bf7b792"></script>
-<script src="js/puzzles.js?v=24969290"></script>
+<script src="js/puzzles.js?v=ed9d39f4"></script>
 </body>
 </html>

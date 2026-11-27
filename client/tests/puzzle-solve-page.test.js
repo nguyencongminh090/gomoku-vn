@@ -50,6 +50,8 @@ function boot({ html, scripts, fetchImpl }) {
   document.dispatchEvent(new Event('DOMContentLoaded'));
 }
 const settle = async () => { for (let i = 0; i < 5; i++) await flush(); };
+const typeAnswer = (text) => { document.getElementById('pz-input').value = text; };
+const submitForm = () => document.getElementById('pz-form').dispatchEvent(new Event('submit', { cancelable: true }));
 
 describe('solve page', () => {
   const solveBoot = (over = {}) => boot({
@@ -196,7 +198,7 @@ describe('list page', () => {
 
   it('a filter chip re-queries with the filter', async () => {
     listBoot(); await settle();
-    const chip = [...document.querySelectorAll('#pz-levels .pchip')].find((b) => b.textContent === 'puzzles.level_hard');
+    const chip = [...document.querySelectorAll('#pz-levels .pz-seg__opt')].find((b) => b.textContent === 'puzzles.level_hard');
     chip.click(); await settle();
     expect(global.fetch.mock.calls.pop()[0]).toBe('/api/puzzles?level=hard');
     chip.click(); await settle();
@@ -212,7 +214,7 @@ describe('list page — #277 pager scrolls to the list', () => {
     const spy = jest.fn(); Element.prototype.scrollIntoView = spy;
     boot({ html: LIST_HTML, scripts: ['../js/puzzles.js'], fetchImpl: (u) => ok(pg(u.includes('page=2') ? 2 : 1)) }); await settle();
     expect(spy).not.toHaveBeenCalled();
-    [...document.querySelectorAll('#pz-levels .pchip')][0].click(); await settle();
+    [...document.querySelectorAll('#pz-levels .pz-seg__opt')][0].click(); await settle();
     expect(spy).not.toHaveBeenCalled();
     [...document.querySelectorAll('#pz-pager button')][1].click(); await settle(); // Sau
     expect(spy).toHaveBeenCalledTimes(1);
@@ -234,7 +236,7 @@ describe('list page — #274 URL under <base href="/"> / #275 member actions / #
     listBoot(); await settle();
     expect(window.location.pathname).toBe('/puzzles');
     expect(window.location.search).toBe('');
-    [...document.querySelectorAll('#pz-levels .pchip')].find((b) => b.textContent === 'puzzles.level_easy').click(); await settle();
+    [...document.querySelectorAll('#pz-levels .pz-seg__opt')].find((b) => b.textContent === 'puzzles.level_easy').click(); await settle();
     expect(window.location.pathname).toBe('/puzzles');
     expect(window.location.search).toBe('?level=easy');
   });
@@ -281,5 +283,52 @@ describe('solve page — submit availability', () => {
     boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: (u) => (u.includes('/rankings/me') ? ok({}) : ok({ puzzle: PUZZLE })) });
     await settle();
     expect(document.getElementById('pz-submit').disabled).toBe(false);
+  });
+});
+
+describe('Modern control hierarchy & tokens (#504)', () => {
+  const raw = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+
+  it('list and solve pages use body.pz-page, zero classic .pbtn/.pchip/.ptab, and mirror replay.css tokens', async () => {
+    for (const f of ['puzzles.html', 'puzzle.html']) {
+      expect(raw(f)).toMatch(/<body class="pl pz-page">/);
+    }
+    const css = raw('css/puzzles.css');
+    const replayCss = raw('css/replay.css');
+    for (const val of ['10px', '14px', 'cubic-bezier(.2, .8, .2, 1)', '0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-brand-text)', '0 1px 2px rgba(0, 0, 0, .18), 0 4px 12px -2px rgba(0, 0, 0, .22)']) {
+      expect(replayCss).toContain(val);
+      expect(css).toContain(val);
+    }
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
+    expect(css).toMatch(/@media \(max-width: 860px\)[\s\S]*min-height:\s*44px/);
+
+    // List page with pagination: 1 raised primary, segmented tabs + filters, quiet pager, 0 .pbtn
+    window.GvnSession = { getUser: () => ({ userId: 'u1', isGuest: false }) };
+    boot({
+      html: LIST_HTML,
+      scripts: ['../js/puzzles.js'],
+      fetchImpl: () => ok({ puzzles: [], pagination: { page: 1, limit: 20, total: 45, totalPages: 3 } }),
+    });
+    await settle();
+    delete window.GvnSession;
+    expect(document.querySelectorAll('.pbtn, .pchip, .ptab')).toHaveLength(0);
+    expect(document.querySelectorAll('.pz-btn--primary:not([hidden])')).toHaveLength(1);
+    expect(document.querySelectorAll('.pz-tabs .pz-seg__opt')).toHaveLength(2);
+    expect(document.querySelectorAll('#pz-pager .pz-tbtn--quiet')).toHaveLength(2);
+
+    // Solve page unsolved -> solved: exactly 1 active raised primary in each state, danger clear pill
+    boot({
+      html: SOLVE_HTML,
+      scripts: ['../js/puzzle.js'],
+      fetchImpl: (u) => (/\/solve$/.test(u) ? ok({ correct: true }) : u.includes('/rankings/me') ? ok({ userId: 'u1' }) : ok({ puzzle: PUZZLE })),
+    });
+    await settle();
+    expect(document.querySelectorAll('.pbtn, .pchip, .ptab')).toHaveLength(0);
+    const activePrimaries = () => [...document.querySelectorAll('.pz-btn--primary')].filter((n) => !n.disabled && !n.closest('[hidden]'));
+    expect(activePrimaries().map((n) => n.id)).toEqual(['pz-submit']);
+    expect(document.getElementById('pz-clear').classList.contains('pz-tbtn--danger')).toBe(true);
+
+    typeAnswer('B9'); submitForm(); await settle();
+    expect(activePrimaries().map((n) => n.id)).toEqual(['pz-next-link']);
   });
 });

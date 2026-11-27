@@ -132,7 +132,7 @@
     host.replaceChildren();
     // Stones as stones, eraser, target = mark the answer move (#214).
     for (const [id, key, ic] of [['BLACK', 'puzzles.tool_black', 'ph-fill-circle'], ['WHITE', 'puzzles.tool_white', 'ph-fill-circle'], ['AUTO', 'puzzles.tool_auto', 'ph-regular-shuffle'], ['WALL', 'puzzles.tool_wall', 'ph-regular-circle-half'], ['PORTAL', 'puzzles.tool_portal', 'ph-regular-door-open'], ['ERASE', 'puzzles.tool_erase', 'ph-regular-eraser'], ['ANSWER', 'puzzles.tool_answer', 'ph-regular-target']]) {
-      const b = withIcon(el('button', t(key), 'pchip'), ic);
+      const b = withIcon(el('button', t(key), 'pz-seg__opt'), ic);
       // Stone icons keep the stone colour in every chip state (a currentColor disc read as white on the active chip).
       if (id === 'BLACK' || id === 'WHITE') { const svg = b.querySelector('svg'); if (svg) svg.classList.add('pz-stone', 'pz-stone--' + id.toLowerCase()); }
       b.type = 'button';
@@ -146,7 +146,7 @@
     const host = $('ed-tags');
     host.replaceChildren();
     for (const tg of TAGS) {
-      const b = el('button', t('puzzles.tag_' + tg), 'pchip');
+      const b = el('button', t('puzzles.tag_' + tg), 'pz-chip');
       b.type = 'button';
       b.setAttribute('aria-pressed', String(st.tags.has(tg)));
       b.addEventListener('click', () => {
@@ -179,7 +179,7 @@
       input.addEventListener('input', () => { st.answers[i] = input.value; draw(); });
       row.appendChild(input);
       if (st.answers.length > 1) {
-        const del = withIcon(el('button', undefined, 'pbtn pbtn--ghost pbtn--sm'), 'ph-regular-trash');
+        const del = withIcon(el('button', undefined, 'pz-tbtn pz-tbtn--danger pz-tbtn--icon'), 'ph-regular-trash');
         del.type = 'button';
         del.setAttribute('aria-label', t('puzzles.remove_answer'));
         del.addEventListener('click', () => { st.answers.splice(i, 1); st.active = Math.min(st.active, st.answers.length - 1); renderAnswers(); draw(); });

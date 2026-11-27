@@ -45,7 +45,7 @@ function boot(page, script, fetchImpl) {
   document.dispatchEvent(new Event('DOMContentLoaded'));
 }
 const $ = (id) => document.getElementById(id);
-const clickTool = (n) => document.querySelectorAll('#ed-tools .pchip')[n].click();
+const clickTool = (n) => document.querySelectorAll('#ed-tools .pz-seg__opt')[n].click();
 
 describe('editor', () => {
   it('a guest (200 with a guest_ id) gets the login hint, not the editor (#275)', async () => {
@@ -149,8 +149,8 @@ describe('editor', () => {
 
   it('tags are capped at three', async () => {
     editorBoot(); await settle();
-    [...document.querySelectorAll('#ed-tags .pchip')].slice(0, 4).forEach((b) => b.click());
-    expect(document.querySelectorAll('#ed-tags .pchip[aria-pressed="true"]')).toHaveLength(3);
+    [...document.querySelectorAll('#ed-tags .pz-chip')].slice(0, 4).forEach((b) => b.click());
+    expect(document.querySelectorAll('#ed-tags .pz-chip[aria-pressed="true"]')).toHaveLength(3);
   });
 
   it('shrinking the board drops stones that no longer fit', async () => {
@@ -440,5 +440,43 @@ describe('editor — answer lines', () => {
     expect(document.querySelectorAll('.pz-answer')[0]).toBe(first); // same node: not re-rendered
     expect(first.classList.contains('is-active')).toBe(true);
     expect(second.classList.contains('is-active')).toBe(false);
+  });
+});
+
+describe('Modern control hierarchy on mine & editor (#504)', () => {
+  const raw = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+
+  it('mine and editor pages use body.pz-page, zero classic .pbtn/.pchip, danger delete, and 1 raised primary even while renaming', async () => {
+    for (const f of ['puzzles-mine.html', 'puzzle-editor.html']) {
+      expect(raw(f)).toMatch(/<body class="pl pz-page">/);
+    }
+
+    // /puzzles/mine with admin review link, pager, approved row, and open inline rename
+    const rows = Array.from({ length: 20 }, (_, i) => ({
+      id: 'm' + i, number: i + 1, title: 'T' + i, status: 'approved', level: 'easy', rule: 'caro', boardSize: 15, reviewNote: '',
+    }));
+    boot('mine', '../js/puzzles-mine.js', (u) => (u.includes('/review')
+      ? ok({ pagination: { total: 2 } })
+      : ok({ puzzles: rows, canReview: true, pagination: { page: 1, limit: 20, total: 25, totalPages: 2 } })));
+    await settle();
+    const firstRow = document.querySelector('#mn-list .pz-mine');
+    const delBtn = [...firstRow.querySelectorAll('button')].find((b) => b.textContent === 'puzzles.delete');
+    expect(delBtn.classList.contains('pz-tbtn--danger')).toBe(true);
+    [...firstRow.querySelectorAll('button')].find((b) => b.textContent === 'puzzles.rename').click();
+    expect(document.querySelectorAll('.pbtn, .pchip, .ptab')).toHaveLength(0);
+    // Inline Save is a tonal pill, keeping "Đăng puzzle mới" as the sole raised primary on /puzzles/mine
+    expect(document.querySelectorAll('.pz-btn--primary')).toHaveLength(1);
+    expect(firstRow.querySelector('.pz-rename-form .pz-tbtn')).not.toBeNull();
+    expect(document.querySelectorAll('#mn-pager .pz-tbtn--quiet')).toHaveLength(2);
+
+    // /puzzles/new with 2 answers: 1 raised primary (#ed-submit), danger icon trash, segmented tools, tonal tag chips, 0 .pbtn
+    boot('editor', '../js/puzzle-editor.js', (u) => (u.includes('/rankings/me') ? ok({ userId: 'u1' }) : ok({})));
+    await settle();
+    $('ed-add-answer').click();
+    expect(document.querySelectorAll('.pbtn, .pchip, .ptab')).toHaveLength(0);
+    expect([...document.querySelectorAll('.pz-btn--primary')].map((n) => n.id)).toEqual(['ed-submit']);
+    expect(document.querySelectorAll('#ed-answers .pz-tbtn--danger.pz-tbtn--icon')).toHaveLength(2);
+    expect(document.querySelectorAll('#ed-tools .pz-seg__opt')).toHaveLength(7);
+    expect(document.querySelectorAll('#ed-tags .pz-chip')).toHaveLength(5);
   });
 });

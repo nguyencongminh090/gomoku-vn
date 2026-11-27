@@ -23,9 +23,9 @@
     input.type = 'text';
     input.maxLength = 60;
     input.value = p.title;
-    const save = el('button', t('puzzles.save'), 'pbtn pbtn--primary pbtn--sm');
+    const save = el('button', t('puzzles.save'), 'pz-tbtn pz-tbtn--sm');
     save.type = 'button';
-    const cancel = el('button', t('modal.btn_cancel'), 'pbtn pbtn--ghost pbtn--sm');
+    const cancel = el('button', t('modal.btn_cancel'), 'pz-tbtn pz-tbtn--quiet pz-tbtn--sm');
     cancel.type = 'button';
     const rowEl = btn.closest('.pz-mine');
     const err = el('small', undefined, 'pz-rename-form__err');
@@ -73,19 +73,19 @@
     r.appendChild(main);
     if (p.status === 'rejected' && p.reviewNote) r.appendChild(el('p', t('puzzles.reject_note', { note: p.reviewNote }), 'pnote pz-mine__note'));
     const actions = el('div', undefined, 'pactions');
-    const edit = el('a', t('puzzles.edit'), 'pbtn pbtn--ghost pbtn--sm');
+    const edit = el('a', t('puzzles.edit'), 'pz-tbtn pz-tbtn--sm');
     edit.href = '/puzzles/new?id=' + encodeURIComponent(p.id);
     actions.appendChild(edit);
     if (p.status === 'approved') {
-      const view = el('a', t('puzzles.view'), 'pbtn pbtn--ghost pbtn--sm');
+      const view = el('a', t('puzzles.view'), 'pz-tbtn pz-tbtn--quiet pz-tbtn--sm');
       view.href = '/puzzle/' + encodeURIComponent(p.id);
       actions.appendChild(view);
     }
-    const rename = el('button', t('puzzles.rename'), 'pbtn pbtn--ghost pbtn--sm');
+    const rename = el('button', t('puzzles.rename'), 'pz-tbtn pz-tbtn--quiet pz-tbtn--sm');
     rename.type = 'button';
     rename.addEventListener('click', () => startRename(p, nameEl, rename));
     actions.appendChild(rename);
-    const del = el('button', t('puzzles.delete'), 'pbtn pbtn--ghost pbtn--sm');
+    const del = el('button', t('puzzles.delete'), 'pz-tbtn pz-tbtn--danger pz-tbtn--sm');
     del.type = 'button';
     del.addEventListener('click', async () => {
       if (!window.confirm(t('puzzles.delete_confirm', { title: p.title }))) return;
@@ -116,8 +116,8 @@
       const host = $('mn-pager');
       host.replaceChildren();
       if (pg.totalPages <= 1) return;
-      const prev = el('button', t('rankings.prev'), 'pbtn');
-      const next = el('button', t('rankings.next'), 'pbtn');
+      const prev = el('button', t('rankings.prev'), 'pz-tbtn pz-tbtn--quiet');
+      const next = el('button', t('rankings.next'), 'pz-tbtn pz-tbtn--quiet');
       prev.type = next.type = 'button';
       prev.disabled = pg.page <= 1;
       next.disabled = pg.page >= pg.totalPages;

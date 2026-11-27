@@ -37,11 +37,11 @@
     return n;
   }
 
-  /** A row of toggle chips for one filter; clicking the active chip clears it. */
+  /** A row of toggle options for one filter; clicking the active option clears it. */
   function renderChips(host, key, values, labelKey) {
     host.replaceChildren();
     for (const v of values) {
-      const b = el('button', t(labelKey + v), 'pchip');
+      const b = el('button', t(labelKey + v), 'pz-seg__opt');
       b.type = 'button';
       b.setAttribute('aria-pressed', String(state[key] === v));
       b.addEventListener('click', () => {
@@ -77,8 +77,8 @@
   function renderPager(pg) {
     pagerEl.replaceChildren();
     if (pg.totalPages <= 1) return;
-    const prev = el('button', t('rankings.prev'), 'pbtn');
-    const next = el('button', t('rankings.next'), 'pbtn');
+    const prev = el('button', t('rankings.prev'), 'pz-tbtn pz-tbtn--quiet');
+    const next = el('button', t('rankings.next'), 'pz-tbtn pz-tbtn--quiet');
     prev.type = next.type = 'button';
     prev.disabled = pg.page <= 1;
     next.disabled = pg.page >= pg.totalPages;
