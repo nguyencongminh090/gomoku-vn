@@ -191,7 +191,7 @@
     host.replaceChildren();
     // Auto stones (#506: single-colour tools dropped), eraser, target = mark the answer move (#214).
     for (const [id, key, ic] of [['AUTO', 'puzzles.tool_auto', 'ph-regular-shuffle'], ['WALL', 'puzzles.tool_wall', 'ph-regular-circle-half'], ['PORTAL', 'puzzles.tool_portal', 'ph-regular-door-open'], ['ERASE', 'puzzles.tool_erase', 'ph-regular-eraser'], ['ANSWER', 'puzzles.tool_answer', 'ph-regular-target']]) {
-      const b = withIcon(el('button', t(key), 'pz-seg__opt'), ic);
+      const b = withIcon(el('button', t(key), 'mseg__opt'), ic);
       b.type = 'button';
       b.dataset.tool = id;
       b.setAttribute('aria-pressed', String(st.tool === id));
@@ -237,7 +237,7 @@
       input.addEventListener('input', () => { st.answers[i] = input.value; draw(); });
       row.appendChild(input);
       if (st.answers.length > 1) {
-        const del = withIcon(el('button', undefined, 'pz-tbtn pz-tbtn--danger pz-tbtn--icon'), 'ph-regular-trash');
+        const del = withIcon(el('button', undefined, 'mtbtn mtbtn--danger mtbtn--icon'), 'ph-regular-trash');
         del.type = 'button';
         del.setAttribute('aria-label', t('puzzles.remove_answer'));
         del.addEventListener('click', () => { st.answers.splice(i, 1); st.active = Math.min(st.active, st.answers.length - 1); renderAnswers(); draw(); });

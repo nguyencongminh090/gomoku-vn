@@ -10,8 +10,8 @@
   <link rel="stylesheet" href="css/main.css?v=93220240" />
   <link rel="stylesheet" href="css/tokens.css?v=bd768e32" />
   <link rel="stylesheet" href="css/platform-shell.css?v=174b5103" />
-  <link rel="stylesheet" href="css/platform.css?v=f4b4f520" />
-  <link rel="stylesheet" href="css/puzzles.css?v=5d69de03" />
+  <link rel="stylesheet" href="css/platform.css?v=35725b58" />
+  <link rel="stylesheet" href="css/puzzles.css?v=2aaeb6b5" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
@@ -21,7 +21,7 @@
 <div id="pl-shell"></div>
 
 <main class="papp" role="main">
-  <p class="pz-back"><a href="/puzzles" class="pz-backbtn"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-arrow-left"></use></svg><span data-i18n="puzzles.back">Tất cả puzzle</span></a></p>
+  <p class="pz-back"><a href="/puzzles" class="mback"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-arrow-left"></use></svg><span data-i18n="puzzles.back">Tất cả puzzle</span></a></p>
   <div id="pz-error" class="pnote" hidden></div>
 
   <div id="pz-view" class="pz-solve" hidden>
@@ -51,8 +51,8 @@
             <label class="pz-label" for="pz-input" id="pz-input-label"></label>
             <input id="pz-input" type="text" maxlength="200" spellcheck="false" data-i18n-placeholder="puzzles.input_ph" placeholder="H8, J9" />
             <div class="pactions">
-              <button type="submit" id="pz-submit" class="pz-btn pz-btn--primary"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-check-circle"></use></svg><span data-i18n="puzzles.check">Kiểm tra</span></button>
-              <button type="button" id="pz-clear" class="pz-tbtn pz-tbtn--danger" data-i18n="puzzles.clear">Xoá hết</button>
+              <button type="submit" id="pz-submit" class="mbtn mbtn--primary"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-check-circle"></use></svg><span data-i18n="puzzles.check">Kiểm tra</span></button>
+              <button type="button" id="pz-clear" class="mtbtn mtbtn--danger" data-i18n="puzzles.clear">Xoá hết</button>
             </div>
           </form>
           <p id="pz-attempts" class="pz-help" hidden></p>
@@ -66,9 +66,9 @@
           <p id="pz-explore-note" class="pz-help" hidden data-i18n="puzzles.explore_note">Bàn cờ đã mở: đặt quân tự do để nghiên cứu, không tính là lượt thử.</p>
           <div class="pactions">
             <div id="pz-next" class="pactions" hidden>
-              <a id="pz-next-link" class="pz-btn pz-btn--primary" href="/puzzles" data-i18n="puzzles.more">Puzzle khác</a>
+              <a id="pz-next-link" class="mbtn mbtn--primary" href="/puzzles" data-i18n="puzzles.more">Puzzle khác</a>
             </div>
-            <button type="button" id="pz-reset" class="pz-tbtn" hidden><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-arrow-counter-clockwise"></use></svg><span data-i18n="puzzles.reset_board">Về thế ban đầu</span></button>
+            <button type="button" id="pz-reset" class="mtbtn" hidden><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-arrow-counter-clockwise"></use></svg><span data-i18n="puzzles.reset_board">Về thế ban đầu</span></button>
           </div>
         </div></li>
       </ol>

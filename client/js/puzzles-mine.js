@@ -35,9 +35,9 @@
     input.type = 'text';
     input.maxLength = 60;
     input.value = p.title;
-    const save = el('button', t('puzzles.save'), 'pz-tbtn pz-tbtn--sm');
+    const save = el('button', t('puzzles.save'), 'mtbtn mtbtn--sm');
     save.type = 'button';
-    const cancel = el('button', t('modal.btn_cancel'), 'pz-tbtn pz-tbtn--quiet pz-tbtn--sm');
+    const cancel = el('button', t('modal.btn_cancel'), 'mtbtn mtbtn--quiet mtbtn--sm');
     cancel.type = 'button';
     const rowEl = btn.closest('.pz-mine');
     const err = el('small', undefined, 'pz-rename-form__err');
@@ -87,19 +87,19 @@
     r.append(main, facts);
     if (p.status === 'rejected' && p.reviewNote) r.appendChild(el('p', t('puzzles.reject_note', { note: p.reviewNote }), 'pz-result is-wrong pz-mine__note'));
     const actions = el('div', undefined, 'pactions');
-    const edit = withIcon(el('a', t('puzzles.edit'), 'pz-tbtn pz-tbtn--sm'), 'ph-regular-pencil-simple');
+    const edit = withIcon(el('a', t('puzzles.edit'), 'mtbtn mtbtn--sm'), 'ph-regular-pencil-simple');
     edit.href = '/puzzles/new?id=' + encodeURIComponent(p.id);
     actions.appendChild(edit);
     if (p.status === 'approved') {
-      const view = el('a', t('puzzles.view'), 'pz-tbtn pz-tbtn--quiet pz-tbtn--sm');
+      const view = el('a', t('puzzles.view'), 'mtbtn mtbtn--quiet mtbtn--sm');
       view.href = '/puzzle/' + encodeURIComponent(p.id);
       actions.appendChild(view);
     }
-    const rename = el('button', t('puzzles.rename'), 'pz-tbtn pz-tbtn--quiet pz-tbtn--sm');
+    const rename = el('button', t('puzzles.rename'), 'mtbtn mtbtn--quiet mtbtn--sm');
     rename.type = 'button';
     rename.addEventListener('click', () => startRename(p, nameEl, rename));
     actions.appendChild(rename);
-    const del = el('button', t('puzzles.delete'), 'pz-tbtn pz-tbtn--danger pz-tbtn--sm');
+    const del = el('button', t('puzzles.delete'), 'mtbtn mtbtn--danger mtbtn--sm');
     del.type = 'button';
     del.addEventListener('click', async () => {
       if (!window.confirm(t('puzzles.delete_confirm', { title: p.title }))) return;
@@ -130,8 +130,8 @@
       const host = $('mn-pager');
       host.replaceChildren();
       if (pg.totalPages <= 1) return;
-      const prev = el('button', t('rankings.prev'), 'pz-tbtn pz-tbtn--quiet');
-      const next = el('button', t('rankings.next'), 'pz-tbtn pz-tbtn--quiet');
+      const prev = el('button', t('rankings.prev'), 'mtbtn mtbtn--quiet');
+      const next = el('button', t('rankings.next'), 'mtbtn mtbtn--quiet');
       prev.type = next.type = 'button';
       prev.disabled = pg.page <= 1;
       next.disabled = pg.page >= pg.totalPages;

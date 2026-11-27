@@ -1,5 +1,5 @@
 # B505 — Evaluate promoting shared Modern control tokens into platform.css
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-27 (branch ui/modern-controls, uncommitted)
 **Area:** client/css/platform.css, client/css/replay.css, client/css/puzzles.css
 **From:** user instruction in #504 (`features/puzzle-modern/planning.md`), 2026-11-27   **Depends:** B504
 
@@ -22,3 +22,9 @@ Recorded as a separate architectural decision per #502 (`features/replay-redesig
 
 ## Done when
 - Shared Modern tokens live in one place in `platform.css`, duplicated page-local definitions in `replay.css` / `puzzles.css` are removed, `npm test` + `cache-bust` pass, and audited consumer pages show zero visual regressions.
+
+## Outcome (2026-11-27)
+- User picked "tokens + shared classes". `platform.css` §#505: `--m-r/r-lg/ease/ring/elev` on `.pl` + opt-in `.mbtn(--primary)`, `.mtbtn(--danger|--quiet|--sm|--icon)`, `.mback`, `.mseg/__opt`, focus ring, 44px touch, reduced motion. Block sits before the Settings bento section (settings-page test slices from there to EOF).
+- Not `--ctl-*`: `.pset` already owns `--ctl-r: 14px` / `--ctl-h`. `.pbtn/.pchip/.pseg` untouched; `.pz-chip` and Replay's sliding `.rp-speed.pseg` stay page-local.
+- Renamed `pz-btn/pz-tbtn/pz-seg/pz-backbtn/rp-tbtn/rp-backbtn` in 4 puzzle pages, replay.html, puzzles*.js, puzzle-editor.js, 2 tests. `.pl` prefix on hover/active-state/focus rules beats the `(0,2,1)` `.pl a.m*` link resets.
+- Verified: npm test 5400/5400, cache-bust OK; real Chromium, dev vs branch computed styles (bg, color, border, radius, size, padding, weight, shadow, icon) on /puzzles, /puzzle/p1, /puzzles/mine, /puzzles/new × 1280/390 × dark/light: 53 controls each, 0 diffs, 0 page errors. Replay changes as chosen: back/share/delete/report pills get the Puzzle bordered tonal look, 44px on phone. Hover/focus states not screenshotted.

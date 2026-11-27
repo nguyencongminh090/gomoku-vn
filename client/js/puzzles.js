@@ -50,7 +50,7 @@
   function renderChips(host, key, values, labelKey) {
     host.replaceChildren();
     for (const v of values) {
-      const b = el('button', t(labelKey + v), 'pz-seg__opt');
+      const b = el('button', t(labelKey + v), 'mseg__opt');
       b.type = 'button';
       b.setAttribute('aria-pressed', String(state[key] === v));
       b.addEventListener('click', () => {
@@ -102,7 +102,7 @@
     titles.append(h, el('p', solved === null ? t('puzzles.total', { n: count }) : t('puzzles.shelf_progress', { n: solved, m: count }), 'pz-help'));
     head.appendChild(titles);
     if (withAll) {
-      const all = el('button', t('puzzles.shelf_all'), 'pz-tbtn pz-tbtn--quiet pz-tbtn--sm');
+      const all = el('button', t('puzzles.shelf_all'), 'mtbtn mtbtn--quiet mtbtn--sm');
       all.type = 'button';
       all.addEventListener('click', () => { state.level = level; state.page = 1; load(); window.scrollTo && window.scrollTo(0, 0); });
       head.appendChild(all);
@@ -139,8 +139,8 @@
   function renderPager(pg) {
     pagerEl.replaceChildren();
     if (!pg || pg.totalPages <= 1) return;
-    const prev = el('button', t('rankings.prev'), 'pz-tbtn pz-tbtn--quiet');
-    const next = el('button', t('rankings.next'), 'pz-tbtn pz-tbtn--quiet');
+    const prev = el('button', t('rankings.prev'), 'mtbtn mtbtn--quiet');
+    const next = el('button', t('rankings.next'), 'mtbtn mtbtn--quiet');
     prev.type = next.type = 'button';
     prev.disabled = pg.page <= 1;
     next.disabled = pg.page >= pg.totalPages;
