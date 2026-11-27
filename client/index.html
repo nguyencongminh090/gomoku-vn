@@ -44,8 +44,8 @@
   <link rel="stylesheet" href="css/rules-guide.css?v=d385a4ef" />
   <link rel="stylesheet" href="css/rooms-hall.css?v=3aa2d39f" />
   <link rel="stylesheet" href="css/rooms-h.css?v=47987faf" />
-  <link rel="stylesheet" href="css/home-hero.css?v=ea8e5925" />
-  <link rel="stylesheet" href="css/home-lamp.css?v=3d83c4c7" />
+  <link rel="stylesheet" href="css/home-hero.css?v=4a2e636f" />
+  <link rel="stylesheet" href="css/home-lamp.css?v=f79c03d0" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
 
@@ -138,6 +138,13 @@
       </div>
       <!-- ui/home-phone-create-room: phone-only secondary button under Chơi nhanh; opens the create-room modal (lobby.js delegates [data-create-room]). -->
       <button type="button" class="hh-create" id="hh-create" data-create-room><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-plus-circle"></use></svg><span data-i18n="home.create_room">Tạo phòng</span></button>
+      <!-- #360/#503: phones only (≤860px) — Puzzle & Clubs secondary pill row under Tạo phòng; desktop keeps .hub-more. -->
+      <nav class="hq-tiles" aria-label="Khám phá" data-i18n-aria="home.more_aria">
+        <a class="hq-tile" href="/puzzles"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-target"></use></svg><span data-i18n="shell.learn">Học</span></a>
+        <a class="hq-tile" href="/forum"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-chat-circle"></use></svg><span data-i18n="home.forum">Diễn đàn</span></a>
+        <a class="hq-tile" href="/index.html#tournaments"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-trophy"></use></svg><span data-i18n="tabs.tournaments">Giải đấu</span></a>
+        <a class="hq-tile" href="/clubs.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-users-three"></use></svg><span data-i18n="lobby.clubs">Hội nhóm</span></a>
+      </nav>
       <dl class="hh-stats" id="home-stats-phone">
         <div><dt data-i18n="home.s_online">đang online</dt><dd id="home-s-online">–</dd></div>
         <div><dt data-i18n="home.s_search">đang tìm trận</dt><dd id="home-s-search">–</dd></div>
@@ -161,13 +168,6 @@
         <a class="hq-list" id="hub-rooms" href="#rooms"><span class="hq-list__t" data-i18n="home.open_rooms">Xem phòng đang mở</span><span class="hl-rooms"><b data-i18n="home.rooms_title">Phòng chơi</b><small><i aria-hidden="true"></i><b id="home-lamp-live">–</b> <span data-i18n="home.s_playing">ván đang chơi</span></small></span><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-caret-right"></use></svg></a>
         <p class="hq-code__err" id="home-code-error" role="alert" hidden></p>
       </form>
-      <!-- #360 N2: phones only (≤860px) — the greeting-row icons become 4 labelled tiles here; desktop keeps .hub-more. -->
-      <nav class="hq-tiles" aria-label="Khám phá" data-i18n-aria="home.more_aria">
-        <a class="hq-tile" href="/puzzles"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-target"></use></svg><span data-i18n="shell.learn">Học</span></a>
-        <a class="hq-tile" href="/forum"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-chat-circle"></use></svg><span data-i18n="home.forum">Diễn đàn</span></a>
-        <a class="hq-tile" href="/index.html#tournaments"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-trophy"></use></svg><span data-i18n="tabs.tournaments">Giải đấu</span></a>
-        <a class="hq-tile" href="/clubs.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-users-three"></use></svg><span data-i18n="lobby.clubs">Hội nhóm</span></a>
-      </nav>
     </div>
     <!-- #418 phone cards: live games (GET /api/home `live`, push home:live) + the news line (#home-news) restyled as a card. -->
     <section class="hh-card hh-livecard" id="home-live-card" aria-labelledby="home-live-h">

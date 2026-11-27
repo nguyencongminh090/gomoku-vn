@@ -102,7 +102,7 @@
   body.zen-lobby #screen-home .hnews__line { background: transparent; }
 
   /* The two actions, on one line across the table */
-  body.zen-lobby #screen-home :is(.hq-main) { position: static; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; padding-right: 130px; }
+  body.zen-lobby #screen-home :is(.hq-main) { position: static; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; padding-right: 356px; }
   body.zen-lobby #screen-home :is(.hq-q, .hq-or, .hq-code__hash, .hq-code__box, .hq-enter, .hq-code__err, .hq-list__t, .hq-play__t, .hq-board) { display: none; }
   body.zen-lobby #screen-home :is(.hq-go, .hq-code, .hq-side) { display: contents; }
   body.zen-lobby #screen-home :is(#qm-play, #qm-search) { position: absolute; z-index: 2; left: var(--hl-pad); top: var(--hl-axis); translate: 0 -50%; box-sizing: border-box; min-width: var(--hl-play-w); min-height: clamp(104px, 11vw, 158px); border: 0; border-radius: 999px; background: linear-gradient(170deg, var(--hl-coal), var(--hl-coal-2)); color: var(--hl-ink); box-shadow: inset 0 1px 0 rgba(255, 240, 215, .22), 0 0 0 1px rgba(255, 240, 215, .14), 0 22px 44px rgba(14, 7, 2, .55); }
@@ -142,15 +142,15 @@
   body.zen-lobby #screen-home #qm-line .rtag { padding: 0; border: 0; background: none; color: inherit; }
   body.zen-lobby #screen-home #qm-line a { color: var(--hl-ink); }
 
-  /* The forum has no shell-nav entry: its link stays, quietly, at the far end of the table. */
-  body.zen-lobby #screen-home .hub-more { position: absolute; z-index: 1; right: var(--hl-pad); bottom: var(--hl-foot); display: block; }
+  /* #503: Puzzle, Forum and Clubs sit quietly along the far end of the table edge as lamp-palette pills. */
+  body.zen-lobby #screen-home .hub-more { position: absolute; z-index: 1; right: var(--hl-pad); bottom: var(--hl-foot); display: flex; align-items: center; gap: 8px; }
   body.zen-lobby #screen-home .hub-more .hq-chip { display: none; }
-  body.zen-lobby #screen-home .hub-more .hq-chip[href="/forum"] { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 4px; border: 0; background: none; box-shadow: none; color: var(--hl-ink-2); font-size: 14px; font-weight: 700; }
-  body.zen-lobby #screen-home .hub-more .hq-chip[href="/forum"]:hover { color: var(--hl-ink); }
-  body.zen-lobby #screen-home .hub-more .icon { width: 16px; height: 16px; }
+  body.zen-lobby #screen-home .hub-more .hq-chip:is([href="/puzzles"], [href="/forum"], [href="/clubs.html"]) { display: inline-flex; align-items: center; gap: 7px; box-sizing: border-box; min-height: 44px; padding: 0 14px; border: 1px solid var(--hl-line); border-radius: 999px; background: var(--hl-card); box-shadow: none; color: var(--hl-ink-2); font: 700 14px/1 Nunito, sans-serif; text-decoration: none; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: color var(--hl-fast) var(--hl-ease), border-color var(--hl-fast) var(--hl-ease); }
+  body.zen-lobby #screen-home .hub-more .hq-chip:is([href="/puzzles"], [href="/forum"], [href="/clubs.html"]):hover { border-color: var(--hl-ink); background: var(--hl-card); color: var(--hl-ink); }
+  body.zen-lobby #screen-home .hub-more .icon { width: 16px; height: 16px; color: currentColor; }
 
   @media (prefers-reduced-motion: reduce) {
-    body.zen-lobby #screen-home :is(#qm-play, #hub-rooms, .hh-chip) { transition: none; }
+    body.zen-lobby #screen-home :is(#qm-play, #hub-rooms, .hh-chip, .hub-more .hq-chip) { transition: none; }
     body.zen-lobby #screen-home :is(#qm-play, #hub-rooms):hover { scale: none; }
   }
 }

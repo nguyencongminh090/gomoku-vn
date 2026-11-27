@@ -213,9 +213,22 @@ describe('page contract', () => {
     expect(desktop).toMatch(/home-lamp-oak-1600\.webp/);
   });
 
-  it('desktop hides the room-code entry and keeps the forum link', () => {
+  it('desktop hides the room-code entry and surfaces Puzzle, Forum and Clubs in .hub-more', () => {
     expect(desktop).toMatch(/:is\(\.hq-q, \.hq-or, \.hq-code__hash, \.hq-code__box, \.hq-enter, \.hq-code__err/);
-    expect(desktop).toMatch(/\.hq-chip\[href="\/forum"\] \{ display: inline-flex/);
+    expect(desktop).toMatch(/\.hub-more \.hq-chip \{ display: none; \}/);
+    expect(desktop).toMatch(/\.hub-more \.hq-chip:is\(\[href="\/puzzles"\], \[href="\/forum"\], \[href="\/clubs\.html"\]\) \{ display: inline-flex/);
+  });
+
+  it('#503 desktop .hub-more carries Puzzle and Clubs anchors with aria-hidden icons and bilingual labels', () => {
+    document.body.innerHTML = BODY;
+    const puzzle = document.querySelector('#screen-home .hub-more a.hq-chip[href="/puzzles"]');
+    const clubs = document.querySelector('#screen-home .hub-more a.hq-chip[href="/clubs.html"]');
+    expect(puzzle).not.toBeNull();
+    expect(clubs).not.toBeNull();
+    expect(puzzle.querySelector('svg').getAttribute('aria-hidden')).toBe('true');
+    expect(clubs.querySelector('svg').getAttribute('aria-hidden')).toBe('true');
+    expect([puzzle.querySelector('span').dataset.i18n, puzzle.textContent.trim()]).toEqual(['shell.learn', 'Học']);
+    expect([clubs.querySelector('span').dataset.i18n, clubs.textContent.trim()]).toEqual(['lobby.clubs', 'Hội nhóm']);
   });
 
   it('the shell only changes while Home is on screen', () => {
