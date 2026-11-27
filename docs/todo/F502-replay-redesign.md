@@ -34,7 +34,7 @@
   Duration chip uses the existing `timer` icon (no `clock` added). Board click keeps board.js's 2-tap confirm.
 - Member view: open report form fits the desktop frame (foot row scrolls; list hidden while open), checked 4 sizes.
 - Shots: `features/replay-redesign/shots/impl-*.png`, `measure-impl.json`.
-- Now unused: `client/css/history.css`, `client/js/tree-view.js` (removal = user call).
+- Deleted after merge (user decision 2026-11-27): `client/css/history.css`, `client/js/tree-view.js`.
 - User answers 2026-11-27: (a) share without a this-move/start toggle is OK; (b) #499: do not skip "I"
   (list follows the board) — whether it lands before the merge is not stated; (c) deleting `history.css` /
   `tree-view.js`: needs more discussion, do not delete. Uncommitted on `ui/replay-panel`.
