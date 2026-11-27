@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="UTF-8"><base href="/"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mockup C — Bảng tab</title>
+<link rel="stylesheet" href="css/main.css"><link rel="stylesheet" href="css/tokens.css"><link rel="stylesheet" href="css/history.css">
+<link rel="stylesheet" href="css/platform.css"><link rel="stylesheet" href="css/platform-shell.css"><link rel="stylesheet" href="css/settings-panel.css">
+<link rel="stylesheet" href="vendor/fonts/nunito/style.css"><link rel="stylesheet" href="features/replay-redesign/mockups/mock.css">
+<script src="js/skin-preload.js"></script></head>
+<body class="pl rp-page vc" data-variant="c">
+<script src="features/replay-redesign/mockups/extra-icons.js"></script>
+<div id="pl-shell"></div>
+<main class="rp" role="main">
+  <div id="rp-board" class="rp-board"><canvas id="rp-canvas"></canvas></div>
+  <section class="rp-panel ppanel" aria-label="Phát lại">
+    <div class="rp-desk-only"><a href="#" class="pback muted small"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-arrow-left"></use></svg><span>Quay lại</span></a></div>
+    <div class="rp-players"><div id="rp-black" class="rp-player"></div><div id="rp-white" class="rp-player"></div></div>
+    <div class="rp-ctrl"><div class="rp-range"><div class="rp-track"><input id="rp-slider" type="range" min="0" value="0" aria-label="Dòng thời gian ván"><div id="rp-ticks" class="rp-ticks" aria-hidden="true"></div></div><span id="rp-counter" class="rp-counter" aria-live="off"></span></div><div class="rp-btns rp-dock" role="group" aria-label="Điều khiển phát lại">
+  <button id="rp-first" class="rp-ib" type="button" aria-label="Nước đầu (Home)"><svg class="icon" aria-hidden="true"><use href="#ph-regular-skip-back"></use></svg></button>
+  <button id="rp-prev" class="rp-ib" type="button" aria-label="Lùi 1 nước (←)"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-caret-left"></use></svg></button>
+  <button id="rp-play" class="rp-ib rp-ib--play" type="button" aria-label="Tự động phát (Space)"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-play"></use></svg></button>
+  <button id="rp-next" class="rp-ib" type="button" aria-label="Tiến 1 nước (→)"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-caret-right"></use></svg></button>
+  <button id="rp-last" class="rp-ib" type="button" aria-label="Nước cuối (End)"><svg class="icon" aria-hidden="true"><use href="#ph-regular-skip-forward"></use></svg></button></div><div class="rp-opts"><div class="pseg rp-speed" role="group" aria-label="Tốc độ phát"><button type="button" class="pseg__opt" data-speed="1200" aria-pressed="false">0.5×</button><button type="button" class="pseg__opt is-active" data-speed="600" aria-pressed="true">1×</button><button type="button" class="pseg__opt" data-speed="300" aria-pressed="false">2×</button></div><button type="button" class="rp-tbtn rp-share" title="Sao chép liên kết tới nước này"><svg class="icon" aria-hidden="true"><use href="#ph-regular-link"></use></svg><span>Chia sẻ</span></button></div></div>
+    <div class="ptabs" role="tablist" aria-label="Bảng">
+      <button class="ptab" role="tab" aria-selected="true" aria-controls="rp-tab-moves" id="t1">Nước đi</button>
+      <button class="ptab" role="tab" aria-selected="false" aria-controls="rp-tab-tree" id="t2">Cây biến thể</button>
+      <button class="ptab" role="tab" aria-selected="false" aria-controls="rp-tab-info" id="t3">Ván đấu</button>
+    </div>
+    <div id="rp-tab-moves" class="rp-tabpanel" role="tabpanel" aria-labelledby="t1"><div id="rp-moves" class="rp-moves rp-grid"></div></div>
+    <div id="rp-tab-tree" class="rp-tabpanel" role="tabpanel" aria-labelledby="t2" hidden><div class="rp-opts"><button type="button" class="rp-switch" role="switch" aria-checked="true" title="Phân tích (A)"><span class="rp-switch__track" aria-hidden="true"><span class="rp-switch__thumb"></span></span><span>Phân tích</span></button><button id="rp-del" type="button" class="rp-tbtn rp-tbtn--danger" title="Xoá nhánh (Delete)"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-trash"></use></svg><span>Xoá nhánh</span></button></div><div id="rp-tree"></div></div>
+    <div id="rp-tab-info" class="rp-tabpanel" role="tabpanel" aria-labelledby="t3" hidden><p id="rp-result" class="rp-result"></p><div id="rp-meta" class="rp-meta"></div><details class="rp-report"><summary><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-flag"></use></svg><span>Báo gian lận</span></summary><p class="muted small">(form hiện tại giữ nguyên: chọn người, lý do, Gửi)</p></details></div>
+  </section>
+</main><p id="rp-toast" class="rp-toast" role="status" hidden></p>
+<span class="mock-tag">Mockup C · Bảng tab</span>
+<script src="js/i18n.js"></script><script src="js/ui-mode.js"></script><script src="js/audio-manager.js"></script><script src="js/settings-panel.js"></script>
+<script src="js/session.js"></script><script src="js/platform-shell.js"></script><script src="js/board.js"></script><script src="js/move-tree.js"></script>
+<script src="js/escape-utils.js"></script><script src="js/tree-view.js"></script>
+<script src="features/replay-redesign/mockups/fixture.js"></script><script src="features/replay-redesign/mockups/mock.js"></script>
+</body></html>

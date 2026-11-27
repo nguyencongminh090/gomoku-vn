@@ -9,6 +9,11 @@
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
   const $ = (id) => document.getElementById(id);
+  const seatName = (id) => {
+    const host = $(id);
+    const name = host && host.querySelector('.rp-name');
+    return name ? name.textContent : ((host && host.textContent) || '').replace(/^[✕○]\s*/, '');
+  };
 
   function init() {
     const user = window.GvnSession && window.GvnSession.getUser();
@@ -22,9 +27,9 @@
       const form = $('rr-form');
       form.hidden = !form.hidden;
       if (!form.hidden) {
-        // Names are on the page once the replay loaded; fall back to the seat label.
-        $('rr-black').textContent = t('replay.report_black', { name: ($('replay-black').textContent || '').replace(/^✕\s*/, '') });
-        $('rr-white').textContent = t('replay.report_white', { name: ($('replay-white').textContent || '').replace(/^○\s*/, '') });
+        // Names are on the page once the replay loaded (#502: the seat row also holds a stone and a "won" pill).
+        $('rr-black').textContent = t('replay.report_black', { name: seatName('replay-black') });
+        $('rr-white').textContent = t('replay.report_white', { name: seatName('replay-white') });
       }
     });
     $('rr-form').addEventListener('submit', async (e) => {

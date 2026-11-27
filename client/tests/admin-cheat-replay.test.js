@@ -52,6 +52,10 @@ describe('replay report form', () => {
     $('rr-open').click();
     expect($('rr-form').hidden).toBe(false);
     expect($('rr-white').textContent).toBe('replay.report_white{"name":"Wanda"}');
+    // #502 seat row: stone + name + "won" pill — only the name goes into the option.
+    $('replay-black').innerHTML = '<span class="rp-stone">✕</span><span class="rp-name">Bao</span><span class="rp-win">Thắng</span>';
+    $('rr-open').click(); $('rr-open').click();
+    expect($('rr-black').textContent).toBe('replay.report_black{"name":"Bao"}');
     $('rr-side').value = 'WHITE';
     $('rr-reason').value = 'engine';
     $('rr-form').dispatchEvent(new Event('submit', { cancelable: true }));

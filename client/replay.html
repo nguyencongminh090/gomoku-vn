@@ -9,100 +9,124 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="stylesheet" href="css/main.css?v=93220240" />
   <link rel="stylesheet" href="css/tokens.css?v=bd768e32" />
-  <link rel="stylesheet" href="css/history.css?v=b6248ab4" />
-  <link rel="stylesheet" href="css/shell.css?v=7cd3d780" />
   <link rel="stylesheet" href="css/platform-shell.css?v=174b5103" />
+  <link rel="stylesheet" href="css/platform.css?v=f4b4f520" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
+  <link rel="stylesheet" href="css/replay.css?v=1a64b889" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
-
   <script src="js/skin-preload.js?v=399486e6"></script>
-  <!-- Phosphor Icons -->
-
 </head>
-<body>
+<body class="pl rp-page">
 
 <!-- ── Top Nav: Arena shell, built by js/platform-shell.js (B193) ───────── -->
 <div id="pl-shell"></div>
 
-<!-- ── Main Content ────────────────────────────────────────────────────── -->
-<main class="history" role="main">
+<!-- ── Replay (#502, mockup A) ─────────────────────────────────────────────
+     DOM order = phone reading order: players → board → timeline + transport → move strip → info → options
+     → move list → delete + report. The desktop places the same children with grid areas (board | panel);
+     the two aria-hidden divs only paint the panel and the player card behind them. -->
+<main id="view-replay" class="rp" role="main" aria-labelledby="rp-title">
+  <div class="rp-bg rp-bg--panel" aria-hidden="true"></div>
+  <div class="rp-bg rp-bg--card" aria-hidden="true"></div>
+  <h1 id="rp-title" class="rp-sr" data-i18n="replay.info">Thông tin ván</h1>
 
-  <!-- Replay View (hidden by default) -->
-  <div id="view-replay" class="replay" style="display:none;">
-    <div class="replay__top-bar">
-      <button id="replay-back" class="replay__back-btn" type="button">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d5b63760#ph-bold-arrow-left"></use></svg>
-        <span data-i18n="history.btn_back">Quay lại</span>
-      </button>
-      <button id="btn-analysis" class="replay__analysis-btn" type="button" data-i18n-title="history.btn_analysis_title" title="Bật/tắt chế độ phân tích">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d5b63760#ph-bold-flow-arrow"></use></svg>
-        <span data-i18n="history.btn_analysis">Phân tích</span>
-      </button>
+  <div class="rp-back">
+    <button id="replay-back" class="rp-backbtn" type="button">
+      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-arrow-left"></use></svg>
+      <span data-i18n="replay.back">Quay lại</span>
+    </button>
+  </div>
+
+  <div class="rp-players">
+    <div id="replay-black" class="rp-player"></div>
+    <div id="replay-white" class="rp-player"></div>
+  </div>
+
+  <div id="rp-board" class="rp-board"><canvas id="replay-canvas"></canvas></div>
+
+  <div class="rp-ctrl">
+    <div class="rp-range">
+      <div class="rp-track">
+        <input id="rp-slider" type="range" min="0" max="0" value="0" step="1" data-i18n-aria="replay.timeline" aria-label="Dòng thời gian ván" />
+        <div id="rp-ticks" class="rp-ticks" aria-hidden="true"></div>
+      </div>
+      <span id="move-counter" class="rp-counter">0 / 0</span>
     </div>
-
-    <div class="replay__info">
-      <div class="replay__players">
-        <span id="replay-black" class="replay__player replay__player--black"></span>
-        <span class="replay__vs">vs</span>
-        <span id="replay-white" class="replay__player replay__player--white"></span>
-      </div>
-      <div id="replay-result" class="replay__result"></div>
-      <div id="replay-meta" class="replay__meta"></div>
-      <div id="replay-report" class="replay__report" hidden>
-        <button type="button" id="rr-open" class="pbtn pbtn--ghost pbtn--sm" data-i18n="replay.report_open">Báo gian lận</button>
-        <form id="rr-form" class="pform" hidden>
-          <label for="rr-side" data-i18n="replay.report_who">Người chơi bị báo cáo</label>
-          <select id="rr-side"><option id="rr-black" value="BLACK"></option><option id="rr-white" value="WHITE"></option></select>
-          <label for="rr-reason" data-i18n="replay.report_reason">Lý do</label>
-          <input id="rr-reason" type="text" maxlength="200" required />
-          <p id="rr-msg" class="pnote" role="status" hidden></p>
-          <div class="pactions"><button type="submit" id="rr-submit" class="pbtn pbtn--primary pbtn--sm" data-i18n="replay.report_send">Gửi báo cáo</button></div>
-        </form>
-      </div>
-    </div>
-
-    <div class="replay__body">
-      <!-- Board column -->
-      <div class="replay__board-col">
-        <div class="replay__board-area">
-          <canvas id="replay-canvas"></canvas>
-        </div>
-        <div class="replay__controls">
-          <button id="btn-first" class="replay__btn" type="button" data-i18n-title="history.btn_first_title" title="Đầu tiên"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d5b63760#ph-bold-skip-back"></use></svg></button>
-          <button id="btn-prev" class="replay__btn" type="button" data-i18n-title="history.btn_prev_title" title="Lùi 1 nước"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d5b63760#ph-bold-caret-left"></use></svg></button>
-          <span id="move-counter" class="replay__counter">0 / 0</span>
-          <button id="btn-next" class="replay__btn" type="button" data-i18n-title="history.btn_next_title" title="Tiến 1 nước"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d5b63760#ph-bold-caret-right"></use></svg></button>
-          <button id="btn-last" class="replay__btn" type="button" data-i18n-title="history.btn_last_title" title="Cuối cùng"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d5b63760#ph-bold-skip-forward"></use></svg></button>
-          <button id="btn-play" class="replay__btn" type="button" data-i18n-title="history.btn_play_title" title="Tự động phát"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d5b63760#ph-bold-play"></use></svg></button>
-        </div>
-      </div>
-
-      <!-- Tree panel (visible in analysis mode) -->
-      <div id="tree-panel" class="replay__tree-panel" style="display:none;">
-        <div class="tree-panel__header">
-          <span class="tree-panel__title" data-i18n="history.tree_title">Cây nước đi</span>
-          <button id="btn-delete-branch" class="tree-panel__action" type="button" data-i18n-title="history.btn_delete_branch_title" title="Xoá nhánh hiện tại"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d5b63760#ph-bold-trash"></use></svg></button>
-        </div>
-        <div id="tree-container" class="tree-panel__body"></div>
-      </div>
+    <div class="rp-dock" role="group" data-i18n-aria="replay.transport" aria-label="Điều khiển phát lại">
+      <button id="btn-first" class="rp-ib" type="button" data-i18n-aria="replay.first" aria-label="Nước đầu (Home)"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-skip-back"></use></svg></button>
+      <button id="btn-prev" class="rp-ib" type="button" data-i18n-aria="replay.prev" aria-label="Lùi 1 nước (←)"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-caret-left"></use></svg></button>
+      <button id="btn-play" class="rp-ib rp-ib--play" type="button" aria-label="Tự động phát (Space)"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-play"></use></svg></button>
+      <button id="btn-next" class="rp-ib" type="button" data-i18n-aria="replay.next" aria-label="Tiến 1 nước (→)"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-caret-right"></use></svg></button>
+      <button id="btn-last" class="rp-ib" type="button" data-i18n-aria="replay.last" aria-label="Nước cuối (End)"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-skip-forward"></use></svg></button>
     </div>
   </div>
 
+  <div id="rp-strip" class="rp-strip" role="group" data-i18n-aria="replay.moves" aria-label="Nước đi"></div>
+
+  <div class="rp-info">
+    <p id="replay-result" class="rp-result"></p>
+    <div id="replay-meta" class="rp-meta"></div>
+  </div>
+
+  <div class="rp-opts">
+    <div id="rp-speed" class="pseg rp-speed" role="group" data-i18n-aria="replay.speed" aria-label="Tốc độ phát">
+      <button type="button" class="pseg__opt" data-speed="1200" aria-pressed="false">0.5×</button>
+      <button type="button" class="pseg__opt is-active" data-speed="600" aria-pressed="true">1×</button>
+      <button type="button" class="pseg__opt" data-speed="300" aria-pressed="false">2×</button>
+    </div>
+    <button id="rp-share" type="button" class="rp-tbtn" data-i18n-title="replay.share_title" title="Sao chép liên kết tới nước đang xem">
+      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-link"></use></svg>
+      <span data-i18n="replay.share">Chia sẻ</span>
+    </button>
+  </div>
+
+  <div class="rp-listhead">
+    <h2 class="rp-h" data-i18n="replay.moves">Nước đi</h2>
+    <button id="btn-analysis" type="button" class="rp-switch" role="switch" aria-checked="false" data-i18n-title="replay.analysis_title" title="Phân tích: bấm lên bàn để thử nước (A)">
+      <span class="rp-switch__track" aria-hidden="true"><span class="rp-switch__thumb"></span></span>
+      <span data-i18n="replay.analysis">Phân tích</span>
+    </button>
+  </div>
+
+  <div id="rp-moves" class="rp-moves" role="group" data-i18n-aria="replay.moves_list" aria-label="Danh sách nước đi"></div>
+
+  <div class="rp-foot">
+    <button id="btn-delete-branch" type="button" class="rp-tbtn rp-tbtn--danger" data-i18n-title="replay.delete_branch_title" title="Xoá nhánh đang xem (Delete)" disabled>
+      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-trash"></use></svg>
+      <span data-i18n="replay.delete_branch">Xoá nhánh</span>
+    </button>
+    <div id="replay-report" class="rp-report" hidden>
+      <button type="button" id="rr-open" class="rp-tbtn rp-tbtn--quiet">
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-flag"></use></svg>
+        <span data-i18n="replay.report_open">Báo gian lận</span>
+      </button>
+      <form id="rr-form" class="pform" hidden>
+        <label for="rr-side" data-i18n="replay.report_who">Người chơi bị báo cáo</label>
+        <select id="rr-side"><option id="rr-black" value="BLACK"></option><option id="rr-white" value="WHITE"></option></select>
+        <label for="rr-reason" data-i18n="replay.report_reason">Lý do</label>
+        <input id="rr-reason" type="text" maxlength="200" required />
+        <p id="rr-msg" class="pnote" role="status" hidden></p>
+        <div class="pactions"><button type="submit" id="rr-submit" class="pbtn pbtn--primary pbtn--sm" data-i18n="replay.report_send">Gửi báo cáo</button></div>
+      </form>
+    </div>
+  </div>
+
+  <p id="rp-error" class="pnote rp-error" role="alert" hidden></p>
 </main>
+<p id="rp-toast" class="rp-toast" role="status" aria-live="polite" hidden></p>
 
 <!-- Scripts -->
-<script src="js/i18n.js?v=6b114a08"></script>
+<script src="js/i18n.js?v=8b61fee7"></script>
 <script src="js/ui-mode.js?v=3e1ff171"></script>
 <script src="js/audio-manager.js?v=05f3d9fe"></script>
-<script src="js/settings-panel.js?v=c8c81c60"></script>
+<script src="js/settings-panel.js?v=4f7ecd46"></script>
 <script src="js/session.js?v=7d763f30"></script>
-<script src="js/platform-shell.js?v=71e3d3cb"></script>
+<script src="js/platform-shell.js?v=ee86dad9"></script>
 <script src="js/board.js?v=91667397"></script>
 <script src="js/move-tree.js?v=6eb3f7f2"></script>
-<script src="js/escape-utils.js?v=05dffe1e"></script>
-<script src="js/tree-view.js?v=6a3fe13c"></script>
-<script src="js/replay.js?v=ab211c92"></script>
-<script src="js/replay-report.js?v=946270a7"></script>
+<script src="js/replay-core.js?v=9a09d8cb"></script>
+<script src="js/replay.js?v=d5f04042"></script>
+<script src="js/replay-report.js?v=9224829f"></script>
 </body>
 </html>
