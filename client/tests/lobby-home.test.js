@@ -785,8 +785,8 @@ describe('#361 Thách đấu on Home', () => {
   });
 });
 
-describe('#360 phone links → labelled tiles after the room code', () => {
-  it('4 tiles (same hrefs as the desktop chips) sit after #home-code inside .hq-main; same hrefs as the desktop chips', async () => {
+describe('#360/#503 phone links → secondary pill row after Tạo phòng', () => {
+  it('4 tiles (same hrefs as the desktop chips) sit right after #hh-create inside .hq-main', async () => {
     await boot('/index.html');
     const tiles = [...document.querySelectorAll('.hq-tiles a.hq-tile')];
     const icons = [...document.querySelectorAll('#home-stats .hub-more a')];
@@ -794,7 +794,34 @@ describe('#360 phone links → labelled tiles after the room code', () => {
     expect(tiles.map((a) => a.querySelector('span').dataset.i18n)).toEqual(['shell.learn', 'home.forum', 'tabs.tournaments', 'lobby.clubs']);
     const tilesNav = document.querySelector('.hq-tiles');
     expect(tilesNav.parentElement.classList.contains('hq-main')).toBe(true);
-    expect(tilesNav.previousElementSibling.id).toBe('home-code');
+    expect(tilesNav.previousElementSibling.id).toBe('hh-create');
+    expect(tilesNav.nextElementSibling.id).toBe('home-stats-phone');
+  });
+
+  it('#503 Puzzle (/puzzles) and Clubs (/clubs.html) links exist in both desktop .hub-more and phone .hq-tiles with correct href, label and aria-hidden icon', async () => {
+    await boot('/index.html');
+    for (const scope of ['#home-stats .hub-more', '.hq-main .hq-tiles']) {
+      const puzzle = document.querySelector(`${scope} a[href="/puzzles"]`);
+      const clubs = document.querySelector(`${scope} a[href="/clubs.html"]`);
+      expect(puzzle).not.toBeNull();
+      expect(clubs).not.toBeNull();
+      expect(puzzle.tagName).toBe('A');
+      expect(clubs.tagName).toBe('A');
+      expect(puzzle.querySelector('svg').getAttribute('aria-hidden')).toBe('true');
+      expect(clubs.querySelector('svg').getAttribute('aria-hidden')).toBe('true');
+      expect(puzzle.querySelector('span').dataset.i18n).toBe('shell.learn');
+      expect(clubs.querySelector('span').dataset.i18n).toBe('lobby.clubs');
+      expect(puzzle.textContent.trim()).toBe('Học');
+      expect(clubs.textContent.trim()).toBe('Hội nhóm');
+      expect(puzzle.textContent).not.toContain('·');
+      expect(clubs.textContent).not.toContain('·');
+    }
+    const heroCss = read('css/home-hero.css');
+    const phoneHero = heroCss.slice(heroCss.indexOf('@media (max-width: 860px)'));
+    expect(phoneHero).not.toMatch(/\.hq-tiles[^{]*\{[^}]*display:\s*none/);
+    expect(phoneHero).toMatch(/#screen-home \.hq-tiles \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+    expect(phoneHero).toMatch(/#screen-home \.hq-tile \{ display: none; \}/);
+    expect(phoneHero).toMatch(/#screen-home \.hq-tile:is\(\[href="\/puzzles"\], \[href="\/clubs\.html"\]\) \{ display: flex;/);
   });
 
   it('CSS: tiles hidden by default (desktop) and shown ≤860px (desktop chips live in #home-stats, hidden there)', () => {

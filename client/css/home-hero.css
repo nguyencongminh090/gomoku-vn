@@ -64,7 +64,7 @@
   body.zen-lobby #screen-home > .hq-main { order: 0; }
   body.zen-lobby #screen-home > .hh-livecard { order: 1; }
   body.zen-lobby #screen-home > .hnews { order: 2; }
-  body.zen-lobby #screen-home :is(.hq-hello, #home-mine-card, .hq-q, .hq-chal, .hq-pulse, .hq-or, .hq-code, .hq-tiles, .hq-side) { display: none; }
+  body.zen-lobby #screen-home :is(.hq-hello, #home-mine-card, .hq-q, .hq-chal, .hq-pulse, .hq-or, .hq-code, .hq-side) { display: none; }
 
   /* ── hero ── */
   body.zen-lobby #screen-home > .hq-main { position: relative; isolation: isolate; overflow: hidden; padding: 128px 20px 26px; color: var(--hh-on-photo); }
@@ -95,6 +95,14 @@
   .hh-create .icon { flex: none; width: 22px; height: 22px; }
   .hh-create:focus-visible { outline: 3px solid var(--hh-on-photo); outline-offset: 3px; }
   .hh-create:disabled { opacity: .55; cursor: default; }
+  body.zen-lobby #screen-home .hq-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  body.zen-lobby #screen-home .hq-tile { display: none; }
+  body.zen-lobby #screen-home .hq-tile + .hq-tile::before { content: none; }
+  body.zen-lobby #screen-home .hq-tile:is([href="/puzzles"], [href="/clubs.html"]) { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; min-height: 52px; box-sizing: border-box; padding: 0 14px; border: 1.5px solid var(--hh-on-photo-2); border-radius: 999px; background: rgba(255, 255, 255, .12); color: var(--hh-on-photo); font: inherit; font-size: 16px; font-weight: 800; text-decoration: none; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  body.zen-lobby #screen-home .hq-tile .icon { flex: none; width: 20px; height: 20px; color: currentColor; }
+  body.zen-lobby #screen-home .hq-tile span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  body.zen-lobby #screen-home .hq-tile:active { background: rgba(255, 255, 255, .12); }
+  body.zen-lobby #screen-home .hq-tile:focus-visible { outline: 3px solid var(--hh-on-photo) !important; outline-offset: 3px !important; }
   .hh-chip { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; min-height: 44px; padding: 0 6px; border: 0; border-radius: 999px; background: var(--hh-chip-bg); color: var(--hh-amber-ink); font: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); cursor: pointer; }
   .hh-chip .icon { flex: none; width: 18px; height: 18px; }
   .hh-chip .icon:last-child:not(:first-child) { width: 14px; height: 14px; opacity: .75; }
