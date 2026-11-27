@@ -369,3 +369,4 @@
 | 2026-11-18 16:10 | #419 follow-up round 2: mini board drawn as one SVG like the room board (lines + stones on shared cell-centre coordinates); grid/stone drift gone; 1 new + 2 updated tests | [detail](docs/fix-log/2026-11-18-home-live-thumb-stones.md) |
 | 2026-11-18 16:50 | #422 Back mid-game: lobby page no longer resumes the game; gets room:joined and returns to the room; page bounce keeps the running grace; 14 tests | [detail](docs/fix-log/2026-11-18-422-back-returns-to-room.md) |
 | 2026-11-26 22:18 | #485 room chat input under iPhone keyboard bars: lift dock by visualViewport (+96px iOS 26), real iPhone not verified | [detail](docs/fix-log/2026-11-26-485-ios-keyboard-chat-bar.md) |
+| 2026-11-27 13:20 | #499 move-list coords use board.js letters (with "I"); O9 no longer listed as P9, 20×20 col T no longer "?"; 3 tests | [detail](docs/fix-log/2026-11-27-499-move-list-coords-skip-i.md) |
