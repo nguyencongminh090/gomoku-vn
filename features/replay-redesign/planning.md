@@ -62,3 +62,5 @@ The style is flat 2.0, following `vpick-trends-longevity` (flat 2.0 as a durable
 - Move list: soft rows. The current move gets a brand tint and a 3 px brand bar. Think times sit in small pills. Variation rows get an accent tint and an accent bar.
 - Page-local tokens in `replay.css` (`--rp-r`, `--rp-r-lg`, `--rp-elev`, `--rp-ring`) built on tokens.css. Moving them into platform.css is a later, separate decision.
 Shots: `shots/A-modern-panel-before-after.png` (v1 dark → new dark → v1 light → new light), `shots/A-modern-phone-before-after.png`.
+
+Note 2026-11-27: `client/css/history.css` and `client/js/tree-view.js` were deleted after #502. The mockups here need them; restore from commit `6dad6f7a` to re-render.
