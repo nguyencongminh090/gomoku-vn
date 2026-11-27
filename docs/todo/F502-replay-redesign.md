@@ -1,5 +1,5 @@
 # F502 — Replay page redesign (mockup A, modern widgets)
-**Status:** DONE 2026-11-27 — merged to `dev` from `ui/replay-panel`
+**Status:** ✅ DONE 2026-11-27 — merged to `dev` from `ui/replay-panel`
 **Area:** client/replay.html, client/js/replay.js, new client/js/replay-core.js, new client/css/replay.css, phosphor sprite, i18n
 **From:** features/replay-redesign (planning §1–§5, mockups/a.html, shots/A-*)   **Depends:** — (#499 coords: fix separately or first)
 

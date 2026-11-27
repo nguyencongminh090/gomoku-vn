@@ -1,3 +1,4 @@
+- ✅ **#502.** Replay page redesign — mockup A, modern widgets `[Model: Opus]` — [detail](docs/todo/F502-replay-redesign.md)
 - ✅ **#501.** Store winning rule per game (replay shows no win line without it) `[Model: Sonnet 5]` — [detail](docs/todo/F501-store-winning-rule.md)
 - ✅ **#500.** Replay: player avatar + rating (payload lacks ids) `[Model: Sonnet 5]` — [detail](docs/todo/F500-replay-player-avatar-rating.md)
 - ✅ **#499.** Move list coordinates skip "I" (board shows it) `[Model: Haiku]` — [detail](docs/todo/B499-move-list-coords-skip-i.md)
