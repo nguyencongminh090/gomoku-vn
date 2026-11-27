@@ -1,5 +1,5 @@
 # B509 — Profanity filter masks the clean word "dụ" (lure) as "**"
-**Status:** OPEN
+**Status:** ✅ CLOSED 2026-11-27 — closed by user, not fixed (bug still reproduces)
 **Area:** client/js/profanity-filter.js (shared: chat, DM, puzzle title/prompt via server/managers/DmText.js)
 **From:** #508 real-browser pass, 2026-11-27 (seed prompt "Dụ Trắng vào góc…" stored as "** Trắng vào góc…")   **Depends:** —
 

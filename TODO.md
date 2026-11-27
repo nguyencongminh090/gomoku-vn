@@ -15,5 +15,4 @@ in the detail file / fix-log).
 
 ## Open
 - **#505.** Evaluate promoting shared Modern control tokens from replay.css / puzzles.css into platform.css `[Model: Sonnet]` — [detail](docs/todo/B505-promote-modern-control-tokens.md)
-- **#509.** Profanity filter masks the clean word "dụ" (lure) as "**" `[Model: Sonnet]` — [detail](docs/todo/B509-profanity-masks-du-lure.md)
 
