@@ -432,7 +432,7 @@ const scoreHeroEl = document.getElementById('score-hero');
 const cardTop = document.getElementById('seatcard-top');
 const cardBottom = document.getElementById('seatcard-bottom');
 
-const sprite = (name) => `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d5b63760#ph-regular-${name}"></use></svg>`;
+const sprite = (name) => `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-${name}"></use></svg>`;
 
 function initials(name) {
   const parts = String(name || '?').trim().split(/\s+/).filter(Boolean);
@@ -561,7 +561,7 @@ function renderSwap2Banner() {
   if ((openingPhase === 'p2choice' || openingPhase === 'p1choice') && mine) {
     swap2BannerSlot.innerHTML = `
       <div class="swap2-banner">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d5b63760#ph-regular-shuffle"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-shuffle"></use></svg>
         <span>${t('tmatch.swap2_choice_prompt')}</span>
         <div class="swap2-banner__actions">
           <button class="btn-secondary" type="button" id="swap2-choose-black">${t('tmatch.swap2_choose_black')}</button>
@@ -578,7 +578,7 @@ function renderSwap2Banner() {
   } else if (openingPhase !== 'play') {
     swap2BannerSlot.innerHTML = `
       <div class="swap2-banner">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=d5b63760#ph-regular-shuffle"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-shuffle"></use></svg>
         <span>${mine ? t('tmatch.swap2_place_prompt') : t('tmatch.swap2_waiting_opponent')}</span>
       </div>
     `;
@@ -791,7 +791,7 @@ function showResultOverlay(result, seriesOverride) {
   else if (result.reason === 'forbidden') sub = t('tmatch.reason_forbidden', { kind: t('tmatch.forbidden_' + result.forbidden) });
   else if (result.reason === 'board_full') sub = t('tmatch.reason_board_full');
 
-  document.getElementById('match-result-icon').querySelector('use').setAttribute('href', `assets/icons/phosphor-sprite.svg?v=d5b63760#ph-bold-${iconClass.slice(3)}`);
+  document.getElementById('match-result-icon').querySelector('use').setAttribute('href', `assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-bold-${iconClass.slice(3)}`);
   document.getElementById('match-result-title').textContent = title;
   document.getElementById('match-result-sub').textContent = sub;
   resultOverlay.classList.add('visible');
@@ -830,7 +830,7 @@ function showSeriesTransition(result) {
     const winnerP = gameState ? gameState.players.find((p) => p.userId === result.winner) : null;
     title = t('tmatch.result_winner', { name: winnerP ? winnerP.displayName : '—' });
   }
-  document.getElementById('series-transition-icon').querySelector('use').setAttribute('href', `assets/icons/phosphor-sprite.svg?v=d5b63760#ph-bold-${iconClass.slice(3)}`);
+  document.getElementById('series-transition-icon').querySelector('use').setAttribute('href', `assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-bold-${iconClass.slice(3)}`);
   document.getElementById('series-transition-title').textContent = title;
 
   const sub = (seriesInfo && seriesInfo.scores)
