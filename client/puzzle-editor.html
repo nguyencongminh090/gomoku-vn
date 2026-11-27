@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="css/tokens.css?v=bd768e32" />
   <link rel="stylesheet" href="css/platform-shell.css?v=174b5103" />
   <link rel="stylesheet" href="css/platform.css?v=f4b4f520" />
-  <link rel="stylesheet" href="css/puzzles.css?v=d75fef19" />
+  <link rel="stylesheet" href="css/puzzles.css?v=1c0bf42e" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
@@ -31,8 +31,9 @@
       <div class="pz-seg" id="ed-tools" role="group" data-i18n-aria="puzzles.tool_group" aria-label="Công cụ"></div>
       <p id="ed-count" class="muted small"></p>
       <label for="ed-import" data-i18n="puzzles.import_label">Nhập thế cờ từ văn bản</label>
-      <textarea id="ed-import" rows="2" maxlength="2000" placeholder="h8 i9 h10 | wall: a1 a2 | portal: b2 c3"></textarea>
-      <button type="button" id="ed-import-btn" class="pz-tbtn pz-tbtn--sm"><span data-i18n="puzzles.import_btn">Áp dụng lên bàn</span></button>
+      <textarea id="ed-import" rows="2" maxlength="2000" spellcheck="false" aria-describedby="ed-import-help ed-import-err" placeholder="h8 i9 h10 | wall: a1 a2 | portal: b2 c3"></textarea>
+      <p id="ed-import-help" class="muted small" data-i18n="puzzles.import_help">Bàn cờ cập nhật ngay khi bạn gõ.</p>
+      <p id="ed-import-err" class="pz-field-err" role="alert" hidden></p>
 
       <label for="ed-title" data-i18n="puzzles.f_title">Tiêu đề</label>
       <input id="ed-title" maxlength="60" required />
@@ -64,7 +65,7 @@
   </div>
 </main>
 
-<script src="js/i18n.js?v=268d5e8a"></script>
+<script src="js/i18n.js?v=e2a65d0e"></script>
 <script src="js/ui-mode.js?v=3e1ff171"></script>
 <script src="js/session.js?v=7d763f30"></script>
 <script src="js/audio-manager.js?v=05f3d9fe"></script>
@@ -73,6 +74,6 @@
 <script src="js/coords.js?v=f2d4e6d0"></script>
 <script src="js/board.js?v=91667397"></script>
 <script src="js/puzzle-board.js?v=8bf7b792"></script>
-<script src="js/puzzle-editor.js?v=5326d6b8"></script>
+<script src="js/puzzle-editor.js?v=8f7ed903"></script>
 </body>
 </html>

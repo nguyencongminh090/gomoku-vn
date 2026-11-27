@@ -45,7 +45,7 @@ function boot(page, script, fetchImpl) {
   document.dispatchEvent(new Event('DOMContentLoaded'));
 }
 const $ = (id) => document.getElementById(id);
-const clickTool = (n) => document.querySelectorAll('#ed-tools .pz-seg__opt')[n].click();
+const clickTool = (id) => document.querySelector('#ed-tools .pz-seg__opt[data-tool="' + id + '"]').click();
 
 describe('editor', () => {
   it('a guest (200 with a guest_ id) gets the login hint, not the editor (#275)', async () => {
@@ -82,14 +82,16 @@ describe('editor', () => {
     expect($('ed-error').textContent).toBe('puzzles.login_to_submit');
   });
 
-  it('tools place black / white / erase stones; the board state mirrors them', async () => {
+  it('the only stone tool is Auto (default); erase removes a stone (#506)', async () => {
     editorBoot(); await settle();
     const r = renderers[0];
-    clickTool(0); r.opts.onCellClick(7, 7);
-    clickTool(1); r.opts.onCellClick(8, 8);
-    expect(r.state.board[7][7]).toBe(1);
-    expect(r.state.board[8][8]).toBe(2);
-    clickTool(5); r.opts.onCellClick(7, 7);
+    const tools = [...document.querySelectorAll('#ed-tools .pz-seg__opt')].map((b) => b.dataset.tool);
+    expect(tools).toEqual(['AUTO', 'WALL', 'PORTAL', 'ERASE', 'ANSWER']);
+    expect(document.querySelector('#ed-tools [aria-pressed="true"]').dataset.tool).toBe('AUTO');
+    expect(document.querySelector('#ed-tools .pz-stone--black, #ed-tools .pz-stone--white')).toBeNull();
+    r.opts.onCellClick(7, 7); r.opts.onCellClick(8, 8);
+    expect([r.state.board[7][7], r.state.board[8][8]]).toEqual([1, 2]);
+    clickTool('ERASE'); r.opts.onCellClick(7, 7);
     expect(r.state.board[7][7]).toBe(0);
     expect(r.opts.clickOccupied).toBe(true); // the renderer must deliver clicks on occupied cells, or Erase never fires
   });
@@ -97,49 +99,134 @@ describe('editor', () => {
   it('auto tool alternates black/white and sets the side to move', async () => {
     editorBoot(); await settle();
     const r = renderers[0];
-    clickTool(2);
+    clickTool('AUTO');
     r.opts.onCellClick(7, 7); r.opts.onCellClick(8, 8); r.opts.onCellClick(6, 6);
     expect([r.state.board[7][7], r.state.board[8][8], r.state.board[6][6]]).toEqual([1, 2, 1]);
     expect($('ed-tomove').value).toBe('WHITE');
   });
 
+  it('auto stays in step after erasing: the next stone takes the colour the counts imply (#506)', async () => {
+    editorBoot(); await settle();
+    const r = renderers[0];
+    r.opts.onCellClick(7, 7); r.opts.onCellClick(8, 8); r.opts.onCellClick(6, 6); // B W B
+    clickTool('ERASE'); r.opts.onCellClick(8, 8);                                     // drop the white → B B
+    clickTool('AUTO'); r.opts.onCellClick(9, 9);
+    expect(r.state.board[9][9]).toBe(2);   // 2 black, 0 white → white
+    r.opts.onCellClick(10, 10);
+    expect(r.state.board[10][10]).toBe(2); // 2 black, 1 white → white again
+    r.opts.onCellClick(11, 11);
+    expect(r.state.board[11][11]).toBe(1);
+    expect(r.state.myColor).toBe('WHITE'); // hover preview follows the next auto colour
+  });
+
+  it('the last placed stone carries the renderer last-move marker; erasing it moves the marker back (#506)', async () => {
+    editorBoot(); await settle();
+    const r = renderers[0];
+    expect(r.state.lastMove).toBeNull();
+    r.opts.onCellClick(7, 7);
+    expect(r.state.lastMove).toEqual({ x: 7, y: 7 });
+    r.opts.onCellClick(8, 8);
+    expect(r.state.lastMove).toEqual({ x: 8, y: 8 });
+    clickTool('ERASE'); r.opts.onCellClick(8, 8);
+    expect(r.state.lastMove).toEqual({ x: 7, y: 7 });
+    clickTool('WALL'); r.opts.onCellClick(7, 7); // a wall over the stone removes it too
+    expect(r.state.lastMove).toBeNull();
+    clickTool('ANSWER'); // the answer tool's own cells keep their marker; with no answer yet: none
+    expect(r.state.lastMove).toBeNull();
+  });
+
   it('wall toggles, portal needs two clicks, erase removes a whole portal', async () => {
     editorBoot(); await settle();
     const r = renderers[0];
-    clickTool(3); r.opts.onCellClick(1, 1);
+    clickTool('WALL'); r.opts.onCellClick(1, 1);
     expect(r.state.board[1][1]).toBe(-1);
     r.opts.onCellClick(1, 1);
     expect(r.state.board[1][1]).toBe(0);
-    clickTool(4); r.opts.onCellClick(2, 2);
+    clickTool('PORTAL'); r.opts.onCellClick(2, 2);
     expect(r.state.portals).toHaveLength(0);
     r.opts.onCellClick(5, 5);
     expect(r.state.portals).toEqual([{ a: { x: 2, y: 2 }, b: { x: 5, y: 5 } }]);
     expect([r.state.board[2][2], r.state.board[5][5]]).toEqual([-2, -2]);
-    clickTool(5); r.opts.onCellClick(5, 5);
+    clickTool('ERASE'); r.opts.onCellClick(5, 5);
     expect(r.state.portals).toHaveLength(0);
     expect(r.state.board[2][2]).toBe(0);
   });
 
-  it('pasted text fills the board; coordinates off the board are rejected', async () => {
+  const typeImport = (text) => {
+    $('ed-import').value = text;
+    $('ed-import').dispatchEvent(new Event('input', { bubbles: true }));
+  };
+
+  it('typing setup text updates the board live after a ~300 ms debounce; no apply button (#506)', async () => {
     editorBoot(); await settle();
     const r = renderers[0];
-    $('ed-import').value = 'h8 i9 h10 wall: a1 portal: b2 c3';
-    $('ed-import-btn').click();
-    expect(r.state.board[7][7]).toBe(1);
-    expect(r.state.board[6][8]).toBe(2);
-    expect(r.state.board[14][0]).toBe(-1);
-    expect(r.state.portals).toHaveLength(1);
-    $('ed-import').value = 'h8 z30';
-    $('ed-import-btn').click();
-    expect($('ed-result').textContent).toContain('puzzles.import_bad');
-    expect(r.state.board[7][7]).toBe(1); // unchanged
+    expect($('ed-import-btn')).toBeNull();
+    jest.useFakeTimers();
+    try {
+      typeImport('h8 i9 h10 wall: a1 portal: b2 c3');
+      jest.advanceTimersByTime(200);
+      expect(r.state.board[7][7]).toBe(0); // still debouncing
+      jest.advanceTimersByTime(150);
+      expect(r.state.board[7][7]).toBe(1);
+      expect(r.state.board[6][8]).toBe(2);
+      expect(r.state.board[14][0]).toBe(-1);
+      expect(r.state.portals).toHaveLength(1);
+      expect(r.state.lastMove).toEqual({ x: 7, y: 5 }); // h10 = last stone in the text
+      expect($('ed-tomove').value).toBe('WHITE');
+      // Rapid typing parses once, with the final text.
+      typeImport('h8'); jest.advanceTimersByTime(100);
+      typeImport('h8 j9'); jest.advanceTimersByTime(300);
+      expect(r.state.board[7][7]).toBe(1);
+      expect(r.state.board[6][9]).toBe(2);
+      expect(r.state.board[14][0]).toBe(0);
+    } finally { jest.useRealTimers(); }
+  });
+
+  it('malformed text shows an inline alert naming the bad token and keeps the last valid board; no window.alert (#506)', async () => {
+    editorBoot(); await settle();
+    const r = renderers[0];
+    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+    jest.useFakeTimers();
+    try {
+      typeImport('h8 i9'); jest.advanceTimersByTime(300);
+      expect($('ed-import-err').hidden).toBe(true);
+      expect($('ed-import').getAttribute('aria-invalid')).not.toBe('true');
+      typeImport('h8 i99 z30'); jest.advanceTimersByTime(300);
+      const err = $('ed-import-err');
+      expect(err.hidden).toBe(false);
+      expect(err.getAttribute('role')).toBe('alert');
+      expect(err.textContent).toBe('puzzles.import_bad_token{"token":"I99, Z30","size":15}');
+      expect($('ed-import').getAttribute('aria-invalid')).toBe('true');
+      expect($('ed-import').getAttribute('aria-describedby')).toContain('ed-import-err');
+      expect(r.state.board[7][7]).toBe(1); // last valid board kept
+      expect(r.state.board[6][8]).toBe(2);
+      expect($('ed-result').hidden).toBe(true); // the notice sits by the field, not the form footer
+      typeImport('h8 i9 j10'); jest.advanceTimersByTime(300);
+      expect(err.hidden).toBe(true);
+      expect($('ed-import').getAttribute('aria-invalid')).not.toBe('true');
+      expect(r.state.board[5][9]).toBe(1);
+      expect(alertSpy).not.toHaveBeenCalled();
+    } finally { jest.useRealTimers(); alertSpy.mockRestore(); }
+  });
+
+  it('empty or coordinate-free text leaves the stones placed by hand alone (#506)', async () => {
+    editorBoot(); await settle();
+    const r = renderers[0];
+    r.opts.onCellClick(3, 3);
+    jest.useFakeTimers();
+    try {
+      typeImport('wall:'); jest.advanceTimersByTime(300);
+      typeImport(''); jest.advanceTimersByTime(300);
+    } finally { jest.useRealTimers(); }
+    expect(r.state.board[3][3]).toBe(1);
+    expect($('ed-import-err').hidden).toBe(true);
   });
 
   it('the answer tool appends labels to the active answer line (final_move keeps one)', async () => {
     editorBoot(); await settle();
     const r = renderers[0];
-    clickTool(0); r.opts.onCellClick(7, 7); // a stone: answers cannot land on it
-    clickTool(6);
+    clickTool('AUTO'); r.opts.onCellClick(7, 7); // a stone: answers cannot land on it
+    clickTool('ANSWER');
     r.opts.onCellClick(1, 6); r.opts.onCellClick(2, 6); r.opts.onCellClick(7, 7);
     expect(document.querySelector('.pz-answer').value).toBe('B9, C9');
     $('ed-mode').value = 'final_move'; $('ed-mode').dispatchEvent(new Event('change'));
@@ -155,7 +242,7 @@ describe('editor', () => {
 
   it('shrinking the board drops stones that no longer fit', async () => {
     editorBoot(); await settle();
-    clickTool(0); renderers[0].opts.onCellClick(16, 16); // only possible once size > 15
+    clickTool('AUTO'); renderers[0].opts.onCellClick(16, 16); // only possible once size > 15
     // a 15-board cannot be clicked at 16,16, but a stone placed on a 17-board must vanish when going back
     $('ed-size').value = '17'; $('ed-size').dispatchEvent(new Event('change'));
     renderers[0].opts.onCellClick(16, 16);
@@ -166,8 +253,8 @@ describe('editor', () => {
 
   it('submits the body (coords parsed against the board size) and maps server errors', async () => {
     editorBoot((u, o) => (o && o.method === 'POST' ? fail(400, { code: 'PUZZLE_STONES_INVALID' }) : null)); await settle();
-    clickTool(0); renderers[0].opts.onCellClick(7, 7);
-    clickTool(1); renderers[0].opts.onCellClick(6, 6);
+    clickTool('AUTO'); renderers[0].opts.onCellClick(7, 7);
+    clickTool('AUTO'); renderers[0].opts.onCellClick(6, 6);
     $('ed-title').value = 'T';
     document.querySelector('.pz-answer').value = '122';
     document.querySelector('.pz-answer').dispatchEvent(new Event('input'));
@@ -476,7 +563,7 @@ describe('Modern control hierarchy on mine & editor (#504)', () => {
     expect(document.querySelectorAll('.pbtn, .pchip, .ptab')).toHaveLength(0);
     expect([...document.querySelectorAll('.pz-btn--primary')].map((n) => n.id)).toEqual(['ed-submit']);
     expect(document.querySelectorAll('#ed-answers .pz-tbtn--danger.pz-tbtn--icon')).toHaveLength(2);
-    expect(document.querySelectorAll('#ed-tools .pz-seg__opt')).toHaveLength(7);
+    expect(document.querySelectorAll('#ed-tools .pz-seg__opt')).toHaveLength(5);
     expect(document.querySelectorAll('#ed-tags .pz-chip')).toHaveLength(5);
   });
 });

@@ -1,10 +1,12 @@
 /**
  * puzzle-editor.js — author a puzzle (#203 7a-3), pages /puzzles/new and /puzzles/new?id=<id> (edit).
  *
- * Tools place black / white / auto-alternating stones, walls, portals (two clicks = a pair) or erase, or "answer" (a click appends a cell to the
+ * Tools place auto-alternating stones (#506: the only stone tool), walls, portals (two clicks = a pair) or erase, or "answer" (a click appends a cell to the
  * active answer line). Answers are the solver's moves only (several accepted lines); each line
  * is a text field parsed by Coords.parseList (`H8` or sequence numbers). Submit → POST/PUT
  * /api/puzzles; all validation is the server's, the client only maps error codes to messages.
+ * The setup textarea parses live (debounced); bad tokens show an inline alert by the field and the
+ * last valid board stays (#506). The last placed stone carries the renderer's last-move marker.
  * Member-only: guests see a login hint. BoardRenderer via setState/onCellClick only.
  */
 
@@ -20,8 +22,9 @@
   const MODES = ['sequence', 'final_move'];
   const MAX_TAGS = 3;
   const MAX_PORTALS = 8;
+  const IMPORT_DEBOUNCE_MS = 300;
 
-  const st = { size: 15, stones: new Map(), tool: 'BLACK', walls: new Map(), portals: [], pendingPortal: null, tags: new Set(), answers: [''], active: 0, editId: null };
+  const st = { size: 15, stones: new Map(), tool: 'AUTO', placed: [], walls: new Map(), portals: [], pendingPortal: null, tags: new Set(), answers: [''], active: 0, editId: null };
   let renderer = null;
 
   function withIcon(node, name) { if (window.PlatformShell && window.PlatformShell.icon) node.prepend(window.PlatformShell.icon(name)); return node; }
@@ -80,14 +83,26 @@
     return window.Coords.parseList(st.answers[st.active] || '', st.size) || [];
   }
 
+  /** Last placed stone still on the board (placement order, so erasing the top one steps back), or null. */
+  function lastPlaced() {
+    st.placed = st.placed.filter((k) => st.stones.has(k));
+    const k = st.placed[st.placed.length - 1];
+    if (!k) return null;
+    const [x, y] = k.split(',').map(Number);
+    return { x, y };
+  }
+
   function draw() {
     const answerTool = st.tool === 'ANSWER';
-    renderer.setState(window.PuzzleBoard.state(st.size, stoneList(), toMove(), answerTool ? activeCells() : [], {
+    const state = window.PuzzleBoard.state(st.size, stoneList(), toMove(), answerTool ? activeCells() : [], {
       interactive: true,
       walls: wallList(),
       portals: st.portals,
-      myColor: st.tool === 'WHITE' ? 'WHITE' : st.tool === 'BLACK' ? 'BLACK' : st.tool === 'AUTO' ? autoColor() : toMove(),
-    }));
+      myColor: st.tool === 'AUTO' ? autoColor() : toMove(),
+    });
+    // The answer tool marks its own last cell; otherwise the marker sits on the last placed stone (#506).
+    if (!answerTool) state.lastMove = lastPlaced();
+    renderer.setState(state);
     const b = stoneList().filter((s) => s.color === 'BLACK').length;
     const w = stoneList().length - b;
     $('ed-count').textContent = t('puzzles.counts', { b, w, need: toMove() === 'BLACK' ? t('puzzles.counts_equal') : t('puzzles.counts_black_more') });
@@ -118,11 +133,12 @@
         clearCell(x, y);
         st.pendingPortal = { x, y };
       }
-    } else {
-      const color = st.tool === 'AUTO' ? autoColor() : st.tool;
-      clearCell(x, y);
-      st.stones.set(cellKey(x, y), color);
-      if (st.tool === 'AUTO' && impliedToMove()) $('ed-tomove').value = impliedToMove();
+    } else if (st.tool === 'AUTO') {
+      const k = cellKey(x, y);
+      clearCell(x, y); // first, so a stone clicked again is not counted by autoColor()
+      st.stones.set(k, autoColor());
+      st.placed = st.placed.filter((p) => p !== k).concat([k]);
+      if (impliedToMove()) $('ed-tomove').value = impliedToMove();
     }
     draw();
   }
@@ -130,12 +146,11 @@
   function renderTools() {
     const host = $('ed-tools');
     host.replaceChildren();
-    // Stones as stones, eraser, target = mark the answer move (#214).
-    for (const [id, key, ic] of [['BLACK', 'puzzles.tool_black', 'ph-fill-circle'], ['WHITE', 'puzzles.tool_white', 'ph-fill-circle'], ['AUTO', 'puzzles.tool_auto', 'ph-regular-shuffle'], ['WALL', 'puzzles.tool_wall', 'ph-regular-circle-half'], ['PORTAL', 'puzzles.tool_portal', 'ph-regular-door-open'], ['ERASE', 'puzzles.tool_erase', 'ph-regular-eraser'], ['ANSWER', 'puzzles.tool_answer', 'ph-regular-target']]) {
+    // Auto stones (#506: single-colour tools dropped), eraser, target = mark the answer move (#214).
+    for (const [id, key, ic] of [['AUTO', 'puzzles.tool_auto', 'ph-regular-shuffle'], ['WALL', 'puzzles.tool_wall', 'ph-regular-circle-half'], ['PORTAL', 'puzzles.tool_portal', 'ph-regular-door-open'], ['ERASE', 'puzzles.tool_erase', 'ph-regular-eraser'], ['ANSWER', 'puzzles.tool_answer', 'ph-regular-target']]) {
       const b = withIcon(el('button', t(key), 'pz-seg__opt'), ic);
-      // Stone icons keep the stone colour in every chip state (a currentColor disc read as white on the active chip).
-      if (id === 'BLACK' || id === 'WHITE') { const svg = b.querySelector('svg'); if (svg) svg.classList.add('pz-stone', 'pz-stone--' + id.toLowerCase()); }
       b.type = 'button';
+      b.dataset.tool = id;
       b.setAttribute('aria-pressed', String(st.tool === id));
       b.addEventListener('click', () => { st.tool = id; st.pendingPortal = null; renderTools(); draw(); });
       host.appendChild(b);
@@ -189,19 +204,34 @@
     });
   }
 
-  /** Paste-in setup: replaces stones, walls and portals with what the text's coordinates describe. */
+  /** Inline notice by the setup field (role="alert"); '' clears it. */
+  function importNotice(msg) {
+    const n = $('ed-import-err');
+    n.hidden = !msg;
+    n.textContent = msg || '';
+    if (msg) $('ed-import').setAttribute('aria-invalid', 'true');
+    else $('ed-import').removeAttribute('aria-invalid');
+  }
+
+  /** Live setup text: replaces stones, walls and portals; bad tokens keep the last valid board. */
   function importText() {
     const out = window.Coords.parseSetup($('ed-import').value, st.size);
-    if (out.bad.length) { say(t('puzzles.import_bad', { cells: out.bad.slice(0, 6).join(', '), size: st.size })); return; }
-    if (!out.stones.length && !out.walls.length && !out.portals.length) { say(t('puzzles.import_none')); return; }
-    say('');
+    if (out.bad.length) { importNotice(t('puzzles.import_bad_token', { token: out.bad.slice(0, 6).join(', '), size: st.size })); return; }
+    importNotice('');
+    if (!out.stones.length && !out.walls.length && !out.portals.length) return; // empty / no coordinates yet: keep hand-placed stones
     st.stones = new Map(out.stones.map((c) => [cellKey(c.x, c.y), c.color]));
+    st.placed = out.stones.map((c) => cellKey(c.x, c.y));
     st.walls = new Map(out.walls.map((c) => [cellKey(c.x, c.y), c]));
     st.portals = out.portals;
     st.pendingPortal = null;
     if (impliedToMove()) $('ed-tomove').value = impliedToMove();
     draw();
-    say(t('puzzles.import_ok', { n: out.stones.length + out.walls.length + out.portals.length * 2 }), true);
+  }
+
+  let importTimer = null;
+  function onImportInput() {
+    clearTimeout(importTimer);
+    importTimer = setTimeout(importText, IMPORT_DEBOUNCE_MS);
   }
 
   function say(msg, good) {
@@ -324,7 +354,7 @@
     $('ed-tomove').addEventListener('change', draw);
     $('ed-mode').addEventListener('change', () => { renderAnswers(); draw(); });
     $('ed-add-answer').addEventListener('click', () => { st.answers.push(''); st.active = st.answers.length - 1; renderAnswers(); draw(); });
-    $('ed-import-btn').addEventListener('click', importText);
+    $('ed-import').addEventListener('input', onImportInput);
     $('ed-form').addEventListener('submit', submit);
     requestAnimationFrame(() => { renderer.resize(); draw(); });
     window.addEventListener('resize', () => { renderer.resize(); draw(); });
