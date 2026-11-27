@@ -1,5 +1,5 @@
 # B499 — Move list coordinates skip "I" but the board shows it
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-27 — move-tree uses board.js letters A…Z (with I). [fix-log](../fix-log/2026-11-27-499-move-list-coords-skip-i.md)
 **Area:** client/js/move-tree.js (`COL_LABELS`, `coordToLabel`), anything printing `node.label`/`shortLabel`
 **From:** features/replay-redesign (mockup review), 2026-11-27   **Depends:** —
 

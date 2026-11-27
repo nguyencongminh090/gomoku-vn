@@ -17,7 +17,8 @@
 // ---------------------------------------------------------------------------
 // Coordinate notation helpers
 // ---------------------------------------------------------------------------
-const COL_LABELS = 'ABCDEFGHJKLMNOPQRST'; // Skip 'I' (Gomoku convention)
+// Same letters as board.js LETTERS (includes 'I') so the move list names the cell the board shows (#499).
+const COL_LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 function coordToLabel(x, y, boardSize) {
   const col = x < COL_LABELS.length ? COL_LABELS[x] : '?';

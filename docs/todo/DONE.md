@@ -1,3 +1,4 @@
+- ✅ **#499.** Move list coordinates skip "I" (board shows it) `[Model: Haiku]` — [detail](docs/todo/B499-move-list-coords-skip-i.md)
 - ✅ **#498.** Presence: remove deprecated wire fields `[Model: Haiku]` — [detail](docs/todo/B498-presence-remove-legacy-fields.md)
 - ✅ **#497.** Presence: real-browser pass, 2 players + 1 spectator `[Model: Sonnet]` — [detail](docs/todo/B497-presence-real-browser-pass.md)
 - ✅ **#496.** Fair-play: per-game presence summary for staff `[Model: Sonnet]` — [detail](docs/todo/B496-fairplay-presence-summary.md)
