@@ -16,6 +16,8 @@
   'use strict';
 
   const t = (key, vars) => (typeof root.t === 'function' ? root.t(key, vars) : key);
+  // #498 friend rows carry only the wire `st`: online = connected and not away (presence-view isOnline).
+  const onlineOf = (p) => (root.PresenceView ? root.PresenceView.isOnline(p) : !!(p && p.st && p.st.c === 'on' && !p.st.a));
   const SHEET_MQ = '(max-width: 860px)';
   const POPOVER_MIN_H = 460; // px under the button for the desktop popover; less → bottom sheet
 
@@ -41,7 +43,7 @@
     /** Friends first (online before offline), then online non-friends; one row per username; `q` on name/username. */
     merge(friends, online) {
       const byName = new Map();
-      for (const f of friends) byName.set(f.username, { ...f, friend: true, online: f.online === true });
+      for (const f of friends) byName.set(f.username, { ...f, friend: true, online: onlineOf(f) });
       for (const o of online) {
         const had = byName.get(o.username);
         if (had) had.online = true; else byName.set(o.username, { ...o, friend: false, online: true });

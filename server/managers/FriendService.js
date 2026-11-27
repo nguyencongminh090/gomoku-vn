@@ -17,7 +17,6 @@ const privacyGate = require('./PrivacyGate');
 const userSearch = require('../db/user-search');
 const { resolveWinnerSeat } = require('../db/games');
 const { PROVISIONAL_RD } = require('./RatingService');
-const presenceCore = require('../presence/presence-core');
 
 const MAX_FRIENDS = 500;
 const MAX_OUTGOING = 50;
@@ -153,31 +152,15 @@ const person = (r) => ({
   avatarUrl: r.avatar_v ? `/api/profile/avatar/${r.id}.webp?v=${r.avatar_v}` : null,
 });
 
-let isOnline = () => false;
-let activityOf = () => null;
-let statusOf = () => undefined;
+const OFFLINE_ST = Object.freeze({ c: 'off' });
+let statusOf = () => OFFLINE_ST;
 /**
- * @param {{isOnline?: (userId: string) => boolean, activityOf?: (userId: string) => object|null}} h
- *   visible presence (#222 picker) and what an online friend is doing (#370), for friends only
+ * @param {{statusOf?: (userId: string) => object}} h
+ *   a friend's wire `st` (friend audience, #488): hidden-online reads as offline (#370). The legacy
+ *   `online` / `activity` / `startedAt` / `roomId` row fields were removed in #498 (PS-13).
  */
 function setHooks(h = {}) {
-  isOnline = h.isOnline || (() => false);
-  activityOf = h.activityOf || (() => null);
-  statusOf = h.statusOf || (() => undefined); // #488 wire `st` (friend audience), additive
-}
-
-/**
- * What `userId` is doing in `room` (#370): seated in a running game → playing (+ startedAt),
- * in a room without a seat → watching, otherwise free. roomId lets a friend open "Xem ván".
- */
-function activityFromRoom(room, userId) {
-  // #489: the legacy fields come from the one derivation (presence-core), so they agree with `st`: a seat whose
-  // game is interrupted (someone in grace) is still playing (problem 3). Search/tournament stay 'free' here —
-  // the old vocabulary has no word for them; `st` carries them.
-  const a = presenceCore.activityOf(userId, { room });
-  if (a.kind === 'playing') return { activity: 'playing', startedAt: a.since || null, roomId: a.roomId };
-  if (a.kind === 'watching') return { activity: 'watching', roomId: a.roomId };
-  return { activity: 'free' };
+  statusOf = h.statusOf || (() => OFFLINE_ST);
 }
 
 function list(me) {
@@ -190,10 +173,7 @@ function list(me) {
   const out = { friends: [], incoming: [], outgoing: [] };
   for (const r of rows) {
     if (r.status === 'accepted') {
-      const online = !!isOnline(r.id);
-      // Activity only for visibly-online friends: hidden presence stays hidden (#370).
-      const st = statusOf(r.id);
-      out.friends.push({ ...person(r), online, ...(online ? (activityOf(r.id) || { activity: 'free' }) : { activity: null }), ...(st ? { st } : {}) });
+      out.friends.push({ ...person(r), st: statusOf(r.id) || OFFLINE_ST });
     }
     else (r.requested_by === me ? out.outgoing : out.incoming).push(person(r));
   }
@@ -297,5 +277,5 @@ function summary(me, username) {
 module.exports = {
   FriendError, MAX_FRIENDS, MAX_OUTGOING,
   statusBetween, request, acceptRequest, remove, friendIds, list, search, myCode, setHooks,
-  activityFromRoom, summary, friendIdsAmong,
+  summary, friendIdsAmong,
 };

@@ -89,16 +89,16 @@ describe('request / accept / remove', () => {
     expect((await call('GET', '/api/friends', 'bob')).body.friends.map((p) => p.username)).toEqual(['ann']);
   });
 
-  it('#222: friends carry visible presence from the hook (default offline); pending rows do not', async () => {
+  it('#222/#498: friends carry wire `st` from the hook (default offline); pending rows do not', async () => {
     await call('POST', '/api/friends/bob', 'ann');
     await call('POST', '/api/friends/ann/accept', 'bob');
     await call('POST', '/api/friends/cat', 'ann');
-    expect((await call('GET', '/api/friends', 'ann')).body.friends).toEqual([expect.objectContaining({ username: 'bob', online: false })]);
-    svc.setHooks({ isOnline: (id) => id === 'bob-id' });
+    expect((await call('GET', '/api/friends', 'ann')).body.friends).toEqual([expect.objectContaining({ username: 'bob', st: { c: 'off' } })]);
+    svc.setHooks({ statusOf: (id) => (id === 'bob-id' ? { c: 'on', k: 'idle' } : { c: 'off' }) });
     try {
       const d = (await call('GET', '/api/friends', 'ann')).body;
-      expect(d.friends[0].online).toBe(true);
-      expect(d.outgoing[0]).not.toHaveProperty('online');
+      expect(d.friends[0].st).toEqual({ c: 'on', k: 'idle' });
+      expect(d.outgoing[0]).not.toHaveProperty('st');
     } finally { svc.setHooks({}); }
   });
 
@@ -292,35 +292,19 @@ describe('user-search result cache follows the users table', () => {
   });
 });
 
-describe('#370 presence activity', () => {
-  const room = (state, status, users) => ({ roomId: 'r1', state, gameState: status ? { status, startedAt: 1234 } : null, users: new Map(users) });
-
-  it('activityFromRoom: seated in a running game → playing; spectator → watching; seated before start / no room → free', () => {
-    const { activityFromRoom } = svc;
-    expect(activityFromRoom(room('playing', 'ongoing', [['u', { slot: 1 }]]), 'u')).toEqual({ activity: 'playing', startedAt: 1234, roomId: 'r1' });
-    expect(activityFromRoom(room('playing', 'ongoing', [['u', { slot: 2 }]]), 'u').activity).toBe('playing');
-    expect(activityFromRoom(room('playing', 'ongoing', [['u', { slot: null }]]), 'u')).toEqual({ activity: 'watching', roomId: 'r1' });
-    expect(activityFromRoom(room('waiting', null, [['u', { slot: 1 }]]), 'u')).toEqual({ activity: 'free' });
-    expect(activityFromRoom(room('playing', 'finished', [['u', { slot: 1 }]]), 'u')).toEqual({ activity: 'free' });
-    expect(activityFromRoom(null, 'u')).toEqual({ activity: 'free' });
-    expect(activityFromRoom(room('playing', 'ongoing', []), 'u')).toEqual({ activity: 'free' });
-    // #489 problem 3: the seat whose game is interrupted (the other player in grace) is still playing.
-    expect(activityFromRoom(room('interrupted', 'ongoing', [['u', { slot: 1 }]]), 'u')).toEqual({ activity: 'playing', startedAt: 1234, roomId: 'r1' });
-  });
-
-  it('friends list: online friends carry the hook activity; offline / hidden ones get null and the hook is not asked', async () => {
+describe('#370/#498 presence activity', () => {
+  // The activity derivation itself is covered in presence-core.test.js (activityOf, incl. #489 problem 3).
+  it('friends list: each friend carries only `st` — no legacy online/activity/startedAt/roomId fields', async () => {
     await call('POST', '/api/friends/bob', 'ann'); await call('POST', '/api/friends/ann/accept', 'bob');
     await call('POST', '/api/friends/cat', 'ann'); await call('POST', '/api/friends/ann/accept', 'cat');
     const asked = [];
-    svc.setHooks({ isOnline: (id) => id === 'bob-id', activityOf: (id) => { asked.push(id); return { activity: 'playing', startedAt: 99, roomId: 'r9' }; } });
+    svc.setHooks({ statusOf: (id) => { asked.push(id); return id === 'bob-id' ? { c: 'on', k: 'play', r: 'r9', t: 99 } : { c: 'off' }; } });
     try {
       const { friends } = (await call('GET', '/api/friends', 'ann')).body;
-      expect(friends.find((f) => f.username === 'bob')).toMatchObject({ online: true, activity: 'playing', startedAt: 99, roomId: 'r9' });
-      expect(friends.find((f) => f.username === 'cat')).toMatchObject({ online: false, activity: null });
-      expect(friends.find((f) => f.username === 'cat')).not.toHaveProperty('roomId');
-      expect(asked).toEqual(['bob-id']);
-      svc.setHooks({ isOnline: () => true }); // no activity hook wired → free
-      expect((await call('GET', '/api/friends', 'ann')).body.friends[0].activity).toBe('free');
+      expect(friends.find((f) => f.username === 'bob').st).toEqual({ c: 'on', k: 'play', r: 'r9', t: 99 });
+      expect(friends.find((f) => f.username === 'cat').st).toEqual({ c: 'off' });
+      for (const f of friends) for (const k of ['online', 'activity', 'startedAt', 'roomId']) expect(f).not.toHaveProperty(k);
+      expect(asked.sort()).toEqual(['bob-id', 'cat-id']);
     } finally { svc.setHooks({}); }
   });
 });

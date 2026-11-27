@@ -45,7 +45,6 @@ const {
   broadcastLobbyUpdate,
   broadcastOnlineUsers,
   setHideOnline,
-  isVisiblyOnline,
   awayUsers,
   getOnlineUsersSorted,
   broadcastRoomUpdate,
@@ -123,13 +122,10 @@ function init(io) {
   });
   require('../managers/RoomInviteService').purgeStale(); // invites are in-memory: rows from before this boot can never be answered
 
-  // Friend list presence (#222 picker): online friends first; hidden-online stays hidden.
-  // + what they are doing (#370 chat page: playing / watching / free, with the room for "Xem ván").
+  // Friend list presence (#222 picker, #370 activity): one wire `st` per friend, friend audience (#488/#498).
   const friendService = require('../managers/FriendService');
   friendService.setHooks({
-    isOnline: (userId) => isVisiblyOnline(userId),
-    activityOf: (userId) => friendService.activityFromRoom(roomManager.getRoomByUser(userId), userId),
-    statusOf: (userId) => presence.statusOf(userId, 'friend'), // #488
+    statusOf: (userId) => presence.statusOf(userId, 'friend'),
   });
 
   // A series player left the room → close the challenge series on what was played (#222).
