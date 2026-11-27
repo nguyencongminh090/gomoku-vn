@@ -14,6 +14,8 @@
   'use strict';
 
   const t = (key, vars) => (typeof root.t === 'function' ? root.t(key, vars) : key);
+  // #498 friend rows carry only the wire `st`: online = connected and not away (presence-view isOnline).
+  const onlineOf = (p) => (root.PresenceView ? root.PresenceView.isOnline(p) : !!(p && p.st && p.st.c === 'on' && !p.st.a));
   const BOARD_SIZES = [15, 17, 19, 20];
   const RULES = ['freestyle', 'standard', 'caro', 'renju'];
   const TIMER_MODES = [['per_move', 'modal.per_move'], ['per_game', 'modal.per_game'], ['blitz', 'modal.blitz']];
@@ -31,7 +33,7 @@
       const needle = String(q || '').trim().toLowerCase();
       return friends
         .filter((f) => !needle || f.displayName.toLowerCase().includes(needle) || f.username.toLowerCase().includes(needle))
-        .sort((a, b) => (b.online === true) - (a.online === true) || a.displayName.localeCompare(b.displayName));
+        .sort((a, b) => onlineOf(b) - onlineOf(a) || a.displayName.localeCompare(b.displayName));
     },
     /** Same rules as the room-create form: Swap2 plays on a plain board; increment only in blitz. */
     normalize(s) {
@@ -85,7 +87,7 @@
   function statusOf(p) {
     const PV = root.PresenceView;
     const desc = PV ? PV.describe(PV.stOfRow(p))
-      : (p.online ? { state: 'online', key: 'challenge.online', tone: 'ok', glyph: 'fill' } : { state: 'offline', key: 'challenge.offline', tone: 'off', glyph: 'hollow' });
+      : (onlineOf(p) ? { state: 'online', key: 'challenge.online', tone: 'ok', glyph: 'fill' } : { state: 'offline', key: 'challenge.offline', tone: 'off', glyph: 'hollow' });
     return { desc, label: desc.state === 'offline' ? t('challenge.offline') : t(desc.key) };
   }
   function presDot(desc, cls) {

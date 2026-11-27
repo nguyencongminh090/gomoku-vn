@@ -137,7 +137,7 @@ describe('bell', () => {
 
 describe('social page (#370 chat-first)', () => {
   const P = (u, extra) => ({ username: u, displayName: u.toUpperCase(), avatarUrl: null, ...extra });
-  const friends = { friends: [P('bob', { online: false, activity: null })], incoming: [P('cat')], outgoing: [P('dan')] };
+  const friends = { friends: [P('bob', { st: { c: 'off' } })], incoming: [P('cat')], outgoing: [P('dan')] };
   const EMPTY = { friends: [], incoming: [], outgoing: [] };
   const NOCH = { incoming: [], outgoing: [] };
   const SUM = (extra) => ({ with: P('bob'), rating: { category: 'caro', rating: 1702, provisional: true }, h2h: { wins: 7, losses: 5, draws: 0, winPct: 58 },
@@ -204,8 +204,8 @@ describe('social page (#370 chat-first)', () => {
 
     it('story strip: online first (playing before free before watching), presence on the dot, offline greyed, + Thêm focuses search', async () => {
       await bootPage({ 'GET /api/friends': () => json({ ...EMPTY, friends: [
-        P('off', { online: false, activity: null }), P('wat', { online: true, activity: 'watching', roomId: 'r2' }),
-        P('fre', { online: true, activity: 'free' }), P('pla', { online: true, activity: 'playing', startedAt: Date.now(), roomId: 'r1' })] }) });
+        P('off', { st: { c: 'off' } }), P('wat', { st: { c: 'on', k: 'watch', r: 'r2' } }),
+        P('fre', { st: { c: 'on', k: 'idle' } }), P('pla', { st: { c: 'on', k: 'play', r: 'r1', t: Date.now() } })] }) });
       const items = [...document.querySelectorAll('#sc-story [data-user]')];
       expect(items.map((b) => b.dataset.user)).toEqual(['pla', 'fre', 'wat', 'off']);
       expect(items.map((b) => b.querySelector('.sc-av').dataset.st)).toEqual(['play', 'online', 'watch', undefined]); // #489 presence-view states
@@ -556,7 +556,7 @@ describe('social page (#370 chat-first)', () => {
     // #497 browser pass: the profile pane's badge stayed on the state it opened with while the header moved on.
     it('profile pane badge follows the 10 s friends poll', async () => {
       let st = { c: 'on', k: 'play', r: 'r1' };
-      await bootPage({ 'GET /api/friends': () => json({ ...EMPTY, friends: [P('bob', { online: true, activity: 'playing', st })] }),
+      await bootPage({ 'GET /api/friends': () => json({ ...EMPTY, friends: [P('bob', { st })] }),
         'GET /api/dm/bob': () => json(THREAD) });
       await fire('#dm=bob');
       expect(document.querySelector('#sc-who > .sc-av').dataset.st).toBe('play');
@@ -569,13 +569,13 @@ describe('social page (#370 chat-first)', () => {
 
     // #489: the server's `st` (one derivation) wins over the legacy fields, which said 'free' / offline here.
     it.each([
-      ['problem 3: waiting opponent of an interrupted game', { online: true, activity: 'free', st: { c: 'on', k: 'play', r: 'r1', t: Date.now() - 5000 } },
+      ['problem 3: waiting opponent of an interrupted game', { st: { c: 'on', k: 'play', r: 'r1', t: Date.now() - 5000 } },
         /^presence\.playing · \d+:\d\d$/, 'play', false],
-      ['playing but the tab is hidden (Q4 A)', { online: false, activity: null, st: { c: 'on', a: 1, k: 'play', r: 'r1' } },
+      ['playing but the tab is hidden (Q4 A)', { st: { c: 'on', a: 1, k: 'play', r: 'r1' } },
         /^presence\.playing_away$/, 'away', false],
-      ['dropped mid-game, inside the grace', { online: false, activity: null, st: { c: 're', k: 'play', r: 'r1' } },
+      ['dropped mid-game, inside the grace', { st: { c: 're', k: 'play', r: 'r1' } },
         /^presence\.reconnecting$/, 'reconnecting', true],
-      ['hidden-online / offline', { online: false, activity: null, st: { c: 'off' } }, /^presence\.offline$/, undefined, true],
+      ['hidden-online / offline', { st: { c: 'off' } }, /^presence\.offline$/, undefined, true],
     ])('%s', async (_c, row, text, st, watchHidden) => {
       await bootPage({ 'GET /api/friends': () => json({ ...EMPTY, friends: [P('bob', row)] }), 'GET /api/dm/bob': () => json(THREAD) });
       await fire('#dm=bob');
@@ -587,7 +587,7 @@ describe('social page (#370 chat-first)', () => {
     });
 
     it('a playing friend shows "Đang chơi · m:ss" and a Xem ván link to the room; offline shows no watch link', async () => {
-      await bootPage({ 'GET /api/friends': () => json({ ...EMPTY, friends: [P('bob', { online: true, activity: 'playing', startedAt: Date.now() - 65000, roomId: 'r 9' })] }),
+      await bootPage({ 'GET /api/friends': () => json({ ...EMPTY, friends: [P('bob', { st: { c: 'on', k: 'play', r: 'r 9', t: Date.now() - 65000 } })] }),
         'GET /api/dm/bob': () => json(THREAD) });
       await fire('#dm=bob');
       expect(document.getElementById('dm-st').textContent).toMatch(/^presence\.playing · 1:0[5-6]$/);
@@ -596,7 +596,7 @@ describe('social page (#370 chat-first)', () => {
       const watch = document.getElementById('dm-watch');
       expect(watch.hidden).toBe(false);
       expect(watch.getAttribute('href')).toBe('/room.html?id=r%209');
-      await bootPage({ 'GET /api/friends': () => json({ ...EMPTY, friends: [P('bob', { online: false, activity: null })] }), 'GET /api/dm/bob': () => json(THREAD) });
+      await bootPage({ 'GET /api/friends': () => json({ ...EMPTY, friends: [P('bob', { st: { c: 'off' } })] }), 'GET /api/dm/bob': () => json(THREAD) });
       expect(document.getElementById('dm-st').textContent).toBe('presence.offline');
       expect(document.getElementById('dm-watch').hidden).toBe(true);
     });

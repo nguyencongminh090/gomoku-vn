@@ -640,7 +640,7 @@ describe('#361 Thách đấu on Home', () => {
   const MEMBER = { userId: 'u1', isGuest: false, displayName: 'Me' };
   const $ = (id) => document.getElementById(id);
   const ok = (body, status = 200) => ({ ok: status < 400, status, json: () => Promise.resolve(body) });
-  const FRIENDS = [{ username: 'lan', displayName: 'Lan Anh', avatarUrl: null, online: true }, { username: 'quang', displayName: 'Quang', avatarUrl: null, online: false }];
+  const FRIENDS = [{ username: 'lan', displayName: 'Lan Anh', avatarUrl: null, st: { c: 'on', k: 'idle' } }, { username: 'quang', displayName: 'Quang', avatarUrl: null, st: { c: 'off' } }];
   const ONLINE = [{ userId: 'k', username: 'khanh', displayName: 'Khánh', avatarUrl: null }, { userId: 'l', username: 'lan', displayName: 'Lan Anh', avatarUrl: null }];
   let posts;
   const api = (postReply = ok({ id: 'c1', rule: 'caro', games: 1, stake: 'none' }, 201)) => (u, init) => { // real reply shape: no `to`

@@ -74,3 +74,23 @@ test('every key presence-view can return exists in vi and en', () => {
     'room.status_disconnected', 'room.status_away', 'room.status_active', 'room.status_waiting'];
   for (const k of keys) expect(src.split(`'${k}':`).length - 1).toBe(2);
 });
+
+describe('#498 stOfRow / isOnline — friend rows carry only `st`', () => {
+  test.each([
+    ['friend online, active', { st: { c: 'on', k: 'idle' } }, true],
+    ['friend playing', { st: { c: 'on', k: 'play', r: 'r1', t: 5 } }, true],
+    ['friend away (tab hidden) is not "online" for lists', { st: { c: 'on', a: 1, k: 'play' } }, false],
+    ['friend reconnecting', { st: { c: 're', k: 'play' } }, false],
+    ['friend offline / hidden', { st: { c: 'off' } }, false],
+    ['online-list row the page marked online', { online: true }, true],
+    ['row with nothing', {}, false],
+    ['null row', null, false],
+  ])('%s', (_name, row, online) => {
+    expect(PV.isOnline(row)).toBe(online);
+  });
+
+  test('legacy activity/roomId/startedAt are no longer read', () => {
+    expect(PV.stOfRow({ online: true, activity: 'playing', roomId: 'r1', startedAt: 9 })).toEqual({ c: 'on', k: 'idle' });
+    expect(PV.stOfRow({ st: { c: 'on', k: 'watch', r: 'r2' } })).toEqual({ c: 'on', k: 'watch', r: 'r2' });
+  });
+});

@@ -417,3 +417,4 @@
 | 2026-11-27 01:33 | #493 follow-up 2: outage void counts members only, needs both seats to drop within 15 s, window capped at 5 min | [detail](docs/fix-log/2026-11-27-493-outage-void-hardening-2.md) |
 | 2026-11-27 01:53 | #497 browser pass: a player back mid-game read 'away' — the resume path never marked the new socket as the room page (#373) | [detail](docs/fix-log/2026-11-27-497-resume-marks-room-page.md) |
 | 2026-11-27 01:59 | #497 follow-ups: social profile pane badge stale on poll; DM window showed an away friend offline (friend audience now); abort text said 'before the game began' | [detail](docs/fix-log/2026-11-27-497-browser-pass-followups.md) |
+| 2026-11-27 13:50 | #498 friend rows send only `st` (dropped online/activity/startedAt/roomId + hooks); client isOnline from st; room `presence` kept (no room `st`); 5340 tests | [detail](docs/fix-log/2026-11-27-498-presence-remove-legacy-fields.md) |
