@@ -250,6 +250,60 @@ describe('solve page — attempts, solvers, number (#333/#335/#336)', () => {
   });
 });
 
+describe('solve page — #508 three steps, position, next puzzle', () => {
+  const POSD = { ...PUZZLE, number: 12, attemptsLeft: 3, attemptsUsed: 1, maxAttempts: 3, position: { index: 3, total: 19, nextId: 'p7' } };
+  const fetchFor = (over) => (url) => {
+    if (over) { const r = over(url); if (r) return r; }
+    if (/\/solve$/.test(url)) return ok({ correct: true, attemptsUsed: 2, attemptsLeft: null });
+    if (/\/solvers$/.test(url)) return ok({ total: 15, solvers: [] });
+    if (/\/attempts$/.test(url)) return ok({ attempts: [{ moves: [{ x: 1, y: 6 }, { x: 2, y: 6 }], correct: false, createdAt: 't' }], attemptsLeft: 2, attemptsUsed: 1 });
+    if (url.includes('/rankings/me')) return ok({ userId: 'u1' });
+    return ok({ puzzle: POSD });
+  };
+  const cls = (id) => document.getElementById(id).className;
+
+  it('live: answer step on, explore step locked, form and lock note shown; eyebrow "puzzle N of M"', async () => {
+    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: fetchFor() }); await settle();
+    expect(cls('pz-step-read')).toContain('is-done');
+    expect(cls('pz-step-answer')).toContain('is-on');
+    expect(cls('pz-step-explore')).not.toContain('is-on');
+    expect(document.getElementById('pz-form').hidden).toBe(false);
+    expect(document.getElementById('pz-lock').hidden).toBe(false);
+    expect(document.getElementById('pz-explore-locked').hidden).toBe(false);
+    expect(document.getElementById('pz-position').textContent).toBe('puzzles.position{"n":3,"m":19,"level":"puzzles.level_easy"}');
+    expect(document.getElementById('pz-tries-n').textContent).toBe('1');
+    expect(document.getElementById('pz-solvers-n').textContent).toBe('15');
+  });
+
+  it('solved: answer step done, explore step on, form gone, board unlocked; next link goes to the next unsolved puzzle', async () => {
+    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: fetchFor() }); await settle();
+    typeAnswer('B9'); submitForm(); await settle();
+    expect(cls('pz-step-answer')).toContain('is-done');
+    expect(cls('pz-step-explore')).toContain('is-on');
+    expect(document.getElementById('pz-form').hidden).toBe(true);
+    expect(document.getElementById('pz-lock').hidden).toBe(true);
+    expect(document.getElementById('pz-view').classList.contains('is-open')).toBe(true);
+    expect(renderers[0].state.interactive).toBe(true);
+    const next = document.getElementById('pz-next-link');
+    expect([next.getAttribute('href'), next.textContent]).toEqual(['/puzzle/p7', 'puzzles.next']);
+  });
+
+  it('no position (old payload) → no eyebrow and the next link stays on the list', async () => {
+    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: fetchFor((u) => (u.endsWith('/p1') ? ok({ puzzle: PUZZLE }) : null)) }); await settle();
+    expect(document.getElementById('pz-position').hidden).toBe(true);
+    expect(document.getElementById('pz-next-link').getAttribute('href')).toBe('/puzzles');
+  });
+
+  it('facts are separate chips and history shows each try as a chip with its verdict word (no " · ")', async () => {
+    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: fetchFor() }); await settle();
+    expect([...document.querySelectorAll('#pz-meta .pz-tag')].map((n) => n.textContent))
+      .toEqual(['puzzles.level_easy', 'puzzles.rule_freestyle', '15×15', 'puzzles.tag_vcf']);
+    const chip = document.querySelector('#pz-history-list .pz-tag');
+    expect(chip.textContent).toBe('B9, C9 puzzles.attempt_wrong');
+    expect(document.getElementById('pz-view').textContent).not.toContain(' · ');
+  });
+});
+
 describe('list page', () => {
   const PAGE = {
     puzzles: [{ id: 'p1', title: '<i>T</i>', rule: 'caro', boardSize: 19, level: 'hard', tags: ['trap'], solved: true, author: { displayName: 'Bob' } }],
@@ -271,8 +325,85 @@ describe('list page', () => {
     const chip = [...document.querySelectorAll('#pz-levels .pz-seg__opt')].find((b) => b.textContent === 'puzzles.level_hard');
     chip.click(); await settle();
     expect(global.fetch.mock.calls.pop()[0]).toBe('/api/puzzles?level=hard');
-    chip.click(); await settle();
-    expect(global.fetch.mock.calls.pop()[0]).toBe('/api/puzzles?');
+    chip.click(); await settle(); // cleared → back to one shelf per level
+    expect(global.fetch.mock.calls.slice(-5).map(([u]) => u)).toEqual([
+      '/api/puzzles/progress?', '/api/puzzles?level=easy', '/api/puzzles?level=medium', '/api/puzzles?level=hard', '/api/puzzles?level=expert',
+    ]);
+  });
+});
+
+describe('list page — #508 training path (shelves, progress, continue)', () => {
+  const P = (id, level, solved, extra) => ({ id, number: id.length, title: 'T-' + id, prompt: 'Đề ' + id, rule: 'caro', boardSize: 15, level, toMove: 'WHITE', tags: ['vcf'], solved, ...extra });
+  const LISTS = { easy: [P('e1', 'easy', true), P('e2', 'easy', false)], medium: [], hard: [P('h1', 'hard', false)], expert: [] };
+  const PROG = { total: 3, solved: 1, levels: {
+    easy: { total: 2, solved: 1, nextId: 'e2' }, medium: { total: 0, solved: 0, nextId: null },
+    hard: { total: 1, solved: 0, nextId: 'h1' }, expert: { total: 0, solved: 0, nextId: null } } };
+  const fetchFor = (prog) => (u) => {
+    if (u.startsWith('/api/puzzles/progress')) return prog ? ok(prog) : fail(500, {});
+    const lv = (u.match(/level=(\w+)/) || [])[1];
+    const list = lv ? LISTS[lv] : [];
+    return ok({ puzzles: list, pagination: { page: 1, limit: 20, total: list.length, totalPages: list.length ? 1 : 0 } });
+  };
+  const shelfBoot = (prog) => boot({ html: LIST_HTML, scripts: ['../js/puzzles.js'], fetchImpl: fetchFor(prog) });
+
+  it('one shelf per non-empty level, in level order, with "n / m solved" and a progress bar', async () => {
+    shelfBoot(PROG); await settle();
+    const shelves = [...document.querySelectorAll('#pz-shelves .pz-shelf')];
+    expect(shelves.map((s) => s.querySelector('h2').textContent)).toEqual(['puzzles.level_easy', 'puzzles.level_hard']);
+    expect(shelves[0].textContent).toContain('puzzles.shelf_progress{"n":1,"m":2}');
+    const bar = shelves[0].querySelector('[role=progressbar]');
+    expect([bar.getAttribute('aria-valuenow'), bar.getAttribute('aria-valuemax')]).toEqual(['1', '2']);
+    expect(shelves[0].querySelectorAll('.pz-strip .pz-card')).toHaveLength(2);
+    expect(document.getElementById('pz-list').children).toHaveLength(0);
+    expect(document.getElementById('pz-pager').children).toHaveLength(0);
+    expect(document.getElementById('pz-total').textContent).toBe('puzzles.path_solved{"n":1,"m":3}');
+  });
+
+  it('the hero continue link is the single primary and points at the first unsolved puzzle, easiest level first', async () => {
+    shelfBoot(PROG); await settle();
+    const c = document.getElementById('pz-continue');
+    expect(c.hidden).toBe(false);
+    expect(c.getAttribute('href')).toBe('/puzzle/e2');
+    expect(c.textContent).toBe('puzzles.continue{"title":"T-e2"}');
+    expect([...document.querySelectorAll('.pz-btn--primary')].filter((n) => !n.hidden)).toHaveLength(1);
+  });
+
+  it('cards give each fact its own chip (no " · " join) and keep title text as text', async () => {
+    shelfBoot(PROG); await settle();
+    const card = document.querySelector('.pz-card[href="/puzzle/e1"]');
+    expect(card.querySelector('b').textContent).toBe('T-e1');
+    expect(card.querySelector('.pz-num').textContent).toBe('#2');
+    expect([...card.querySelectorAll('.pz-card__meta .pz-tag')].map((n) => n.textContent))
+      .toEqual(['puzzles.level_easy', 'puzzles.rule_caro', '15×15', 'puzzles.side_white_short', 'puzzles.tag_vcf']);
+    expect(document.getElementById('pz-shelves').textContent).not.toContain(' · ');
+  });
+
+  it('"See all" opens that level as a paged grid with its progress head', async () => {
+    shelfBoot(PROG); await settle();
+    document.querySelector('#pz-shelves .pz-shelf button').click(); await settle();
+    expect(global.fetch.mock.calls.slice(-2).map(([u]) => u)).toEqual(['/api/puzzles/progress?', '/api/puzzles?level=easy']);
+    expect(window.location.search).toBe('?level=easy');
+    expect(document.getElementById('pz-shelves').children).toHaveLength(0);
+    expect(document.querySelectorAll('#pz-list .pz-card')).toHaveLength(2);
+    expect(document.getElementById('pz-level-head').hidden).toBe(false);
+    expect(document.getElementById('pz-level-head').textContent).toContain('puzzles.shelf_progress{"n":1,"m":2}');
+    window.history.replaceState(null, '', '/puzzles');
+  });
+
+  it('guests: counts without bars; a failed progress call still shows the shelves and no continue link', async () => {
+    shelfBoot({ total: 3, solved: null, levels: { easy: { total: 2, solved: null, nextId: 'e1' } } }); await settle();
+    expect(document.querySelector('#pz-shelves .pz-shelf').textContent).toContain('puzzles.total{"n":2}');
+    expect(document.querySelector('[role=progressbar]')).toBeNull();
+    expect(document.getElementById('pz-total').textContent).toBe('puzzles.total{"n":3}');
+    shelfBoot(null); await settle();
+    expect(document.querySelectorAll('#pz-shelves .pz-shelf')).toHaveLength(2);
+    expect(document.getElementById('pz-continue').hidden).toBe(true);
+  });
+
+  it('nothing in any level → the empty state', async () => {
+    boot({ html: LIST_HTML, scripts: ['../js/puzzles.js'], fetchImpl: () => ok({ puzzles: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } }) }); await settle();
+    expect(document.getElementById('pz-empty').hidden).toBe(false);
+    expect(document.getElementById('pz-empty').textContent).toBe('puzzles.empty');
   });
 });
 
@@ -377,10 +508,13 @@ describe('Modern control hierarchy & tokens (#504)', () => {
     boot({
       html: LIST_HTML,
       scripts: ['../js/puzzles.js'],
-      fetchImpl: () => ok({ puzzles: [], pagination: { page: 1, limit: 20, total: 45, totalPages: 3 } }),
+      fetchImpl: (u) => ok(u.startsWith('/api/puzzles/progress')
+        ? { total: 45, solved: 0, levels: { easy: { total: 45, solved: 0, nextId: 'p9' } } }
+        : { puzzles: [], pagination: { page: 1, limit: 20, total: 45, totalPages: 3 } }),
     });
     await settle();
     delete window.GvnSession;
+    [...document.querySelectorAll('#pz-levels .pz-seg__opt')][0].click(); await settle(); // the pager belongs to one level's grid (#508)
     expect(document.querySelectorAll('.pbtn, .pchip, .ptab')).toHaveLength(0);
     expect(document.querySelectorAll('.pz-btn--primary:not([hidden])')).toHaveLength(1);
     expect(document.querySelectorAll('.pz-tabs .pz-seg__opt')).toHaveLength(2);

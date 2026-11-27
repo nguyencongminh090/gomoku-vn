@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="UTF-8"><base href="/"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mockup A — Bộ thẻ puzzle</title>
+<link rel="stylesheet" href="css/main.css"><link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/platform-shell.css"><link rel="stylesheet" href="css/platform.css"><link rel="stylesheet" href="css/settings-panel.css">
+<link rel="stylesheet" href="vendor/fonts/nunito/style.css"><link rel="stylesheet" href="features/puzzle-modern/mockups/mock.css">
+<script src="js/skin-preload.js"></script></head>
+<body class="pl mz mz-a">
+<div id="pl-shell"></div>
+<main role="main">
+<section data-view="list" class="mz-stack">
+<div class="ca-head"><div><p class="mz-eyebrow">Học</p><h1 class="mz-h1">Puzzle</h1><p class="mz-lead">Chọn một thế cờ và tìm nước thắng.</p></div>
+<div class="mz-row"><a class="mz-btn mz-btn--quiet" href="#mine">Puzzle của tôi</a><a class="mz-btn mz-btn--primary" href="#editor"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-plus-circle"></use></svg>Đăng puzzle mới</a></div></div>
+<div class="mz-stats" style="max-width:520px"><div class="mz-stat"><b>94</b><span>Puzzle</span></div><div class="mz-stat"><b>27</b><span>Bạn đã giải</span></div><div class="mz-stat"><b>Vừa</b><span>Trình độ của bạn</span></div></div>
+<div class="mz-card ca-filters">
+  <div class="mz-row"><span class="mz-eyebrow">Level</span><div class="mz-seg" role="group" aria-label="Level"><button type="button" aria-pressed="true">Tất cả</button><button type="button" aria-pressed="false">Dễ</button><button type="button" aria-pressed="false">Vừa</button><button type="button" aria-pressed="false">Khó</button><button type="button" aria-pressed="false">Cao thủ</button></div></div>
+  <div class="mz-row"><span class="mz-eyebrow">Luật</span><div class="mz-seg" role="group" aria-label="Luật"><button type="button" aria-pressed="true">Tất cả</button><button type="button" aria-pressed="false">Luật 1</button><button type="button" aria-pressed="false">Standard</button><button type="button" aria-pressed="false">Luật 2</button><button type="button" aria-pressed="false">Renju</button></div></div>
+  <div class="mz-row"><span class="mz-eyebrow">Chủ đề</span><button class="mz-chip" type="button" aria-pressed="true">Tấn công</button><button class="mz-chip" type="button" aria-pressed="false">Phòng thủ</button><button class="mz-chip" type="button" aria-pressed="false">Bẫy</button><button class="mz-chip" type="button" aria-pressed="false">VCT</button><button class="mz-chip" type="button" aria-pressed="false">VCF</button></div>
+</div>
+<div class="ca-deck"><a class="mz-card ca-tile" href="#solve" style="--lv:var(--c-success)">
+  <div class="mz-row" style="justify-content:space-between"><span class="ca-num">Puzzle #12</span><span class="mz-chip mz-chip--ok"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-check-circle"></use></svg>Đã giải</span></div>
+  <h2 class="ca-title">Bốn quân mở</h2><p class="ca-prompt">Đen đi trước, tìm nước thắng ngay.</p>
+  <div class="mz-row"><span class="mz-chip mz-chip--lv-easy">Dễ</span><span class="mz-chip">Luật 1</span><span class="mz-chip">15×15</span><span class="mz-chip"><span class="mz-stone mz-stone--b" aria-hidden="true"></span>Đen đi</span><span class="mz-chip">Tấn công</span><span class="mz-chip">VCF</span></div>
+  <div class="ca-foot"><span>Tác giả: Minh Anh</span><span><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-users-three"></use></svg> 15 người giải</span></div></a><a class="mz-card ca-tile" href="#solve" style="--lv:var(--c-time)">
+  <div class="mz-row" style="justify-content:space-between"><span class="ca-num">Puzzle #11</span></div>
+  <h2 class="ca-title">Chặn hay thắng</h2><p class="ca-prompt">Trắng vừa tạo ba mở. Đen chặn hay tấn công trước?</p>
+  <div class="mz-row"><span class="mz-chip mz-chip--lv-medium">Vừa</span><span class="mz-chip">Luật 2</span><span class="mz-chip">15×15</span><span class="mz-chip"><span class="mz-stone mz-stone--b" aria-hidden="true"></span>Đen đi</span><span class="mz-chip">Phòng thủ</span></div>
+  <div class="ca-foot"><span>Tác giả: Hải Đăng</span><span><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-users-three"></use></svg> 14 người giải</span></div></a><a class="mz-card ca-tile" href="#solve" style="--lv:var(--c-warning)">
+  <div class="mz-row" style="justify-content:space-between"><span class="ca-num">Puzzle #10</span></div>
+  <h2 class="ca-title">Bẫy góc</h2><p class="ca-prompt">Dụ Trắng vào góc rồi kết thúc bằng chuỗi bốn.</p>
+  <div class="mz-row"><span class="mz-chip mz-chip--lv-hard">Khó</span><span class="mz-chip">Standard</span><span class="mz-chip">15×15</span><span class="mz-chip"><span class="mz-stone mz-stone--w" aria-hidden="true"></span>Trắng đi</span><span class="mz-chip">Bẫy</span><span class="mz-chip">VCT</span></div>
+  <div class="ca-foot"><span>Tác giả: Thu Trang</span><span><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-users-three"></use></svg> 13 người giải</span></div></a><a class="mz-card ca-tile" href="#solve" style="--lv:var(--c-error)">
+  <div class="mz-row" style="justify-content:space-between"><span class="ca-num">Puzzle #9</span></div>
+  <h2 class="ca-title">Cổng dịch chuyển</h2><p class="ca-prompt">Dùng cổng để nối hai đường ba.</p>
+  <div class="mz-row"><span class="mz-chip mz-chip--lv-expert">Cao thủ</span><span class="mz-chip">Renju</span><span class="mz-chip">17×17</span><span class="mz-chip"><span class="mz-stone mz-stone--b" aria-hidden="true"></span>Đen đi</span><span class="mz-chip">VCF</span></div>
+  <div class="ca-foot"><span>Tác giả: Quốc Bảo</span><span><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-users-three"></use></svg> 12 người giải</span></div></a><a class="mz-card ca-tile" href="#solve" style="--lv:var(--c-time)">
+  <div class="mz-row" style="justify-content:space-between"><span class="ca-num">Puzzle #8</span><span class="mz-chip mz-chip--ok"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-check-circle"></use></svg>Đã giải</span></div>
+  <h2 class="ca-title">Đường chéo kép</h2><p class="ca-prompt">Tạo hai đường bốn cùng lúc.</p>
+  <div class="mz-row"><span class="mz-chip mz-chip--lv-medium">Vừa</span><span class="mz-chip">Luật 1</span><span class="mz-chip">15×15</span><span class="mz-chip"><span class="mz-stone mz-stone--b" aria-hidden="true"></span>Đen đi</span><span class="mz-chip">Tấn công</span></div>
+  <div class="ca-foot"><span>Tác giả: Minh Anh</span><span><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-users-three"></use></svg> 11 người giải</span></div></a><a class="mz-card ca-tile" href="#solve" style="--lv:var(--c-success)">
+  <div class="mz-row" style="justify-content:space-between"><span class="ca-num">Puzzle #7</span></div>
+  <h2 class="ca-title">Phòng thủ sớm</h2><p class="ca-prompt">Trắng đi. Tìm nước chặn duy nhất.</p>
+  <div class="mz-row"><span class="mz-chip mz-chip--lv-easy">Dễ</span><span class="mz-chip">Luật 1</span><span class="mz-chip">15×15</span><span class="mz-chip"><span class="mz-stone mz-stone--w" aria-hidden="true"></span>Trắng đi</span><span class="mz-chip">Phòng thủ</span></div>
+  <div class="ca-foot"><span>Tác giả: Lan Chi</span><span><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-users-three"></use></svg> 10 người giải</span></div></a></div>
+<div class="mz-row" style="justify-content:center"><button class="mz-btn mz-btn--quiet mz-btn--sm" type="button" disabled>Trước</button><span class="mz-chip">Trang 1 / 5</span><button class="mz-btn mz-btn--quiet mz-btn--sm" type="button">Sau</button></div>
+</section>
+
+<section data-view="solve" data-state="live">
+<div class="mz-row" style="justify-content:space-between;margin-bottom:12px"><a class="mz-back" href="#list"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-arrow-left"></use></svg>Tất cả puzzle</a><div class="mz-seg" role="group" aria-label="Trạng thái mẫu"><button type="button" data-demo-state="live" aria-pressed="true">Đang giải</button><button type="button" data-demo-state="solved" aria-pressed="false">Đã giải</button></div></div>
+<div class="ca-split">
+  <div class="mz-card mz-board"><canvas id="solve-canvas"></canvas></div>
+  <div class="mz-card mz-pad mz-stack">
+    <div><p class="mz-eyebrow">Puzzle #12</p><h1 class="mz-h1">Bốn quân mở</h1></div>
+    <div class="mz-row"><span class="mz-chip mz-chip--lv-easy">Dễ</span><span class="mz-chip">Luật 1</span><span class="mz-chip">15×15</span><span class="mz-chip"><span class="mz-stone mz-stone--b" aria-hidden="true"></span>Đen đi</span><span class="mz-chip">Tấn công</span><span class="mz-chip">VCF</span></div>
+    <div class="mz-well"><p style="margin:0">Đen đi trước, tìm nước thắng ngay.</p></div>
+    <div class="mz-stats"><div class="mz-stat"><b>2</b><span>Lượt còn lại</span></div><div class="mz-stat"><b>15</b><span>Người đã giải</span></div></div>
+    <p class="mz-lock when-live"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-lock"></use></svg>Bàn cờ chỉ để xem cho tới khi bạn giải xong hoặc hết lượt.</p>
+    <form class="mz-stack when-live" onsubmit="return false">
+  <div><label class="mz-label" for="ans">Nước đi quyết định</label>
+  <input id="ans" class="mz-field mz-mono" placeholder="H8 hoặc 122" value="G8" spellcheck="false" aria-describedby="ans-help">
+  <p class="mz-help" id="ans-help">Gõ toạ độ chữ-số (H8) hoặc số thứ tự ô (122).</p></div>
+  <div class="mz-row"><button class="mz-btn mz-btn--primary" type="submit"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-check-circle"></use></svg>Kiểm tra</button><button class="mz-btn mz-btn--danger mz-btn--sm" type="button"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-trash"></use></svg>Xoá</button></div>
+  <div class="mz-alert mz-alert--err" role="status"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-info"></use></svg><span>Chưa đúng. Còn 2 lượt thử.</span></div>
+</form>
+<div class="mz-stack when-solved">
+  <div class="mz-alert mz-alert--ok" role="status"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-check-circle"></use></svg><span>Chính xác! Bàn cờ đã mở để bạn nghiên cứu.</span></div>
+  <p class="mz-help">Đặt quân tự do trên bàn. Nước đi ở đây không tính là lượt thử.</p>
+  <div class="mz-row"><a class="mz-btn mz-btn--primary" href="#list">Puzzle tiếp theo</a><button class="mz-btn mz-btn--tonal" type="button"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-arrow-counter-clockwise"></use></svg>Về thế ban đầu</button></div>
+</div>
+    <hr class="mz-sep"><details><summary class="mz-h2">Lượt thử của bạn (1)</summary><div class="mz-row" style="margin-top:8px"><span class="mz-chip mz-chip--bad">H9: sai</span></div></details>
+  </div>
+</div></section>
+
+<section data-view="mine" class="mz-stack">
+<a class="mz-back" href="#list"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-arrow-left"></use></svg>Tất cả puzzle</a>
+<div class="ca-head" style="margin:0"><div><h1 class="mz-h1">Puzzle của tôi</h1><p class="mz-lead">Theo dõi các thế cờ bạn đã gửi.</p></div><a class="mz-btn mz-btn--primary" href="#editor"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-plus-circle"></use></svg>Đăng puzzle mới</a></div>
+<div class="mz-stats" style="max-width:520px"><div class="mz-stat"><b>1</b><span>Chờ duyệt</span></div><div class="mz-stat"><b>2</b><span>Đã duyệt</span></div><div class="mz-stat"><b>1</b><span>Bị từ chối</span></div></div>
+<div class="mz-seg" role="group" aria-label="Trạng thái"><button type="button" aria-pressed="true">Tất cả</button><button type="button" aria-pressed="false">Chờ duyệt</button><button type="button" aria-pressed="false">Đã duyệt</button><button type="button" aria-pressed="false">Bị từ chối</button></div>
+<div class="ca-mine">
+  <div class="mz-card ca-mine-row"><div class="mz-stack" style="gap:6px"><div class="mz-row"><b class="mz-h2">Bốn quân mở #12</b><span class="mz-chip mz-chip--ok">Đã duyệt</span></div><div class="mz-row"><span class="mz-chip mz-chip--lv-easy">Dễ</span><span class="mz-chip">Luật 1</span><span class="mz-chip">15×15</span></div></div><div class="mz-row"><button class="mz-btn mz-btn--quiet mz-btn--sm" type="button"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-pencil-simple"></use></svg>Đổi tên</button><button class="mz-btn mz-btn--danger mz-btn--sm" type="button"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-trash"></use></svg>Xoá</button></div></div>
+  <div class="mz-card ca-mine-row"><div class="mz-stack" style="gap:6px"><div class="mz-row"><b class="mz-h2">Thế chờ duyệt</b><span class="mz-chip mz-chip--wait"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-hourglass"></use></svg>Chờ duyệt</span></div><div class="mz-row"><span class="mz-chip mz-chip--lv-medium">Vừa</span><span class="mz-chip">Luật 2</span><span class="mz-chip">15×15</span></div></div><div class="mz-row"><a class="mz-btn mz-btn--tonal mz-btn--sm" href="#editor"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-pencil-simple"></use></svg>Sửa</a><button class="mz-btn mz-btn--danger mz-btn--sm" type="button"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-trash"></use></svg>Xoá</button></div></div>
+  <div class="mz-card ca-mine-row"><div class="mz-stack" style="gap:6px"><div class="mz-row"><b class="mz-h2">Góc chết</b><span class="mz-chip mz-chip--bad">Bị từ chối</span></div><div class="mz-alert mz-alert--info" style="padding:8px 10px;font-weight:500">Lý do: đáp án thứ hai không thắng.</div></div><div class="mz-row"><a class="mz-btn mz-btn--tonal mz-btn--sm" href="#editor"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-pencil-simple"></use></svg>Sửa</a><button class="mz-btn mz-btn--danger mz-btn--sm" type="button"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-trash"></use></svg>Xoá</button></div></div>
+</div>
+<div class="mz-empty"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-magnifying-glass"></use></svg><b>Không có puzzle bị từ chối</b><span>Mẫu trạng thái rỗng của bộ lọc.</span></div>
+</section>
+
+<section data-view="editor" class="mz-stack">
+<a class="mz-back" href="#mine"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-arrow-left"></use></svg>Puzzle của tôi</a>
+<div><h1 class="mz-h1">Đăng puzzle</h1><p class="mz-lead">Dựng thế cờ, viết đề bài, rồi ghi các đáp án chấp nhận.</p></div>
+<div class="ca-split">
+  <div class="mz-stack"><div class="mz-card mz-board"><canvas id="edit-canvas"></canvas></div>
+    <div class="mz-row"><span class="mz-chip"><span class="mz-stone mz-stone--b"></span>Đen 3</span><span class="mz-chip"><span class="mz-stone mz-stone--w"></span>Trắng 2</span><span class="mz-chip">Lượt kế: Trắng</span></div></div>
+  <form class="mz-stack" onsubmit="return false">
+    <div class="mz-card mz-pad mz-stack"><h2 class="mz-h2">1. Thế cờ</h2><div class="mz-seg" role="group" aria-label="Công cụ"><button type="button" aria-pressed="true"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-shuffle"></use></svg>Đặt quân</button><button type="button" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-circle-half"></use></svg>Tường</button><button type="button" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-door-open"></use></svg>Cổng</button><button type="button" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-eraser"></use></svg>Xoá</button><button type="button" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-target"></use></svg>Đáp án</button></div><div><label class="mz-label" for="imp">Nhập thế cờ từ văn bản</label>
+<textarea id="imp" class="mz-area" aria-invalid="true" aria-describedby="imp-err">h8 i9 g7 j10 i99</textarea>
+<p class="mz-inline-err" id="imp-err" role="alert"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-info"></use></svg>I99 không hợp lệ trên bàn 15×15</p></div></div>
+    <div class="mz-card mz-pad mz-stack"><h2 class="mz-h2">2. Thông tin</h2><div><label class="mz-label" for="ti">Tiêu đề</label><input id="ti" class="mz-field" value="Đường chéo kép"></div>
+<div><label class="mz-label" for="pr">Đề bài</label><textarea id="pr" class="mz-area" style="font-family:inherit">Tạo hai đường bốn cùng lúc.</textarea></div>
+<div class="mz-grid2"><div><label class="mz-label" for="ru">Luật</label><select id="ru" class="mz-select"><option>Luật 1</option></select></div>
+<div><label class="mz-label" for="sz">Cỡ bàn</label><select id="sz" class="mz-select"><option>15×15</option></select></div>
+<div><label class="mz-label" for="lv">Level đề xuất</label><select id="lv" class="mz-select"><option>Vừa</option></select></div>
+<div><label class="mz-label" for="tm">Bên đi</label><select id="tm" class="mz-select"><option>Đen</option></select></div></div>
+<div><span class="mz-label">Chủ đề (tối đa 3)</span><div class="mz-row"><button class="mz-chip" type="button" aria-pressed="true">Tấn công</button><button class="mz-chip" type="button" aria-pressed="false">Phòng thủ</button><button class="mz-chip" type="button" aria-pressed="false">Bẫy</button><button class="mz-chip" type="button" aria-pressed="true">VCT</button><button class="mz-chip" type="button" aria-pressed="false">VCF</button></div></div></div>
+    <div class="mz-card mz-pad mz-stack"><h2 class="mz-h2">3. Đáp án</h2><div><span class="mz-label">Kiểu đáp án</span><div class="mz-seg" role="group" aria-label="Kiểu đáp án"><button type="button" aria-pressed="true">Chuỗi nước đi</button><button type="button" aria-pressed="false">Nước quyết định</button></div></div>
+<div><label class="mz-label" for="a1">Đáp án 1</label><div class="mz-row" style="flex-wrap:nowrap"><input id="a1" class="mz-field mz-mono" value="J10, K11"><button class="mz-btn mz-btn--danger mz-btn--icon" type="button" aria-label="Xoá đáp án 1"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-trash"></use></svg></button></div></div>
+<button class="mz-btn mz-btn--tonal mz-btn--sm" type="button"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-plus-circle"></use></svg>Thêm đáp án</button></div>
+    <div class="mz-row" style="justify-content:flex-end"><a class="mz-btn mz-btn--quiet" href="#mine">Huỷ</a><button class="mz-btn mz-btn--primary" type="submit"><svg class="icon" aria-hidden="true"><use href="/assets/icons/phosphor-sprite.svg#ph-regular-paper-plane-tilt"></use></svg>Gửi duyệt</button></div>
+  </form>
+</div></section>
+</main>
+<nav class="mock-nav" aria-label="Mockup views"><b>A: Bộ thẻ</b><a href="#list">/puzzles</a><a href="#solve">/puzzle/id</a><a href="#mine">/puzzles/mine</a><a href="#editor">/puzzles/new</a></nav>
+<script src="js/i18n.js"></script><script src="js/ui-mode.js"></script><script src="js/session.js"></script><script src="js/audio-manager.js"></script>
+<script src="js/settings-panel.js"></script><script src="js/platform-shell.js"></script><script src="js/coords.js"></script><script src="js/board.js"></script>
+<script src="js/puzzle-board.js"></script><script src="features/puzzle-modern/mockups/mock.js"></script>
+</body></html>

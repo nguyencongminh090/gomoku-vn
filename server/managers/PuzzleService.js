@@ -325,15 +325,26 @@ function verificationOf(row, answers = JSON.parse(row.answers)) {
 const AUTHOR_JOIN = 'SELECT p.*, u.username AS author_username, u.display_name AS author_name FROM puzzles p JOIN users u ON u.id = p.author_id';
 
 /** Approved puzzles, optionally filtered; `solved` is set for a logged-in viewer. */
-function listApproved(viewerId, { tag, level, rule, page } = {}) {
+/** WHERE clause for approved puzzles under the list filters; unknown values are ignored. */
+function approvedWhere({ tag, level, rule } = {}) {
   const where = ["p.status = 'approved'"];
   const args = [];
   if (LEVELS.includes(level)) { where.push('p.level = ?'); args.push(level); }
   if (RULES.includes(rule)) { where.push('p.rule = ?'); args.push(rule); }
   if (TAGS.includes(tag)) { where.push('EXISTS (SELECT 1 FROM puzzle_tags t WHERE t.puzzle_id = p.id AND t.tag = ?)'); args.push(tag); }
+  return { where, args };
+}
+const LIST_ORDER = 'ORDER BY p.created_at DESC, p.id';
+
+const solvedIdsOf = (viewerId) => new Set(viewerId
+  ? db().prepare('SELECT puzzle_id FROM puzzle_progress WHERE user_id = ? AND solved_at IS NOT NULL').all(viewerId).map((r) => r.puzzle_id)
+  : []);
+
+function listApproved(viewerId, { tag, level, rule, page } = {}) {
+  const { where, args } = approvedWhere({ tag, level, rule });
   const pg = Math.max(1, parseInt(page, 10) || 1);
   const total = db().prepare(`SELECT COUNT(*) AS n FROM puzzles p WHERE ${where.join(' AND ')}`).get(...args).n;
-  const rows = db().prepare(`${AUTHOR_JOIN} WHERE ${where.join(' AND ')} ORDER BY p.created_at DESC, p.id LIMIT ? OFFSET ?`)
+  const rows = db().prepare(`${AUTHOR_JOIN} WHERE ${where.join(' AND ')} ${LIST_ORDER} LIMIT ? OFFSET ?`)
     .all(...args, PAGE, (pg - 1) * PAGE);
   const tags = tagsOf(rows.map((r) => r.id));
   const solvedSet = new Set(viewerId && rows.length
@@ -347,6 +358,38 @@ function listApproved(viewerId, { tag, level, rule, page } = {}) {
     }),
     pagination: { page: pg, limit: PAGE, total, totalPages: Math.ceil(total / PAGE) },
   };
+}
+
+/**
+ * Training-path progress (#508) under the list's rule/tag filters: approved totals per level, the viewer's
+ * solved counts (null for guests) and, per level, the first unsolved puzzle in list order (nextId).
+ */
+function progress(viewerId, { tag, rule } = {}) {
+  const { where, args } = approvedWhere({ tag, rule });
+  const rows = db().prepare(`SELECT p.id, p.level FROM puzzles p WHERE ${where.join(' AND ')} ${LIST_ORDER}`).all(...args);
+  const solvedIds = solvedIdsOf(viewerId);
+  const levels = Object.fromEntries(LEVELS.map((l) => [l, { total: 0, solved: viewerId ? 0 : null, nextId: null }]));
+  for (const r of rows) {
+    const lv = levels[r.level];
+    if (!lv) continue;
+    lv.total += 1;
+    if (solvedIds.has(r.id)) lv.solved += 1;
+    else if (!lv.nextId) lv.nextId = r.id;
+  }
+  return { total: rows.length, solved: viewerId ? rows.filter((r) => solvedIds.has(r.id)).length : null, levels };
+}
+
+/** Where an approved puzzle sits in its level, in list order (1 = newest), and the next unsolved one after it (wrapping). */
+function positionOf(viewerId, row) {
+  const ids = db().prepare(`SELECT p.id FROM puzzles p WHERE p.status = 'approved' AND p.level = ? ${LIST_ORDER}`).all(row.level).map((r) => r.id);
+  const i = ids.indexOf(row.id);
+  const solvedIds = solvedIdsOf(viewerId);
+  let nextId = null;
+  for (let k = 1; k < ids.length; k++) {
+    const id = ids[(i + k) % ids.length];
+    if (!solvedIds.has(id)) { nextId = id; break; }
+  }
+  return { index: i + 1, total: ids.length, nextId };
 }
 
 /** A puzzle row (with author) by UUID, or by its #number when the id is all digits (#333). */
@@ -365,6 +408,7 @@ function getPuzzle(viewerId, id) {
   const prog = viewerId ? db().prepare('SELECT solved_at FROM puzzle_progress WHERE user_id = ? AND puzzle_id = ?').get(viewerId, row.id) : null;
   const out = shape(row, tagsOf([row.id]).get(row.id), { answers: privileged, solved: viewerId ? !!(prog && prog.solved_at) : undefined });
   if (viewerId && row.status === 'approved') Object.assign(out, attemptInfo(viewerId, row.id));
+  if (row.status === 'approved') out.position = positionOf(viewerId, row);
   return out;
 }
 
@@ -446,9 +490,12 @@ function mine(userId, { page } = {}) {
   const total = db().prepare('SELECT COUNT(*) AS n FROM puzzles WHERE author_id = ?').get(userId).n;
   const rows = db().prepare(`${AUTHOR_JOIN} WHERE p.author_id = ? ORDER BY p.created_at DESC, p.id LIMIT ? OFFSET ?`).all(userId, PAGE, (pg - 1) * PAGE);
   const tags = tagsOf(rows.map((r) => r.id));
+  const counts = { pending: 0, approved: 0, rejected: 0 };
+  for (const c of db().prepare('SELECT status, COUNT(*) AS n FROM puzzles WHERE author_id = ? GROUP BY status').all(userId)) counts[c.status] = c.n;
   return {
     puzzles: rows.map((r) => ({ ...shape(r, tags.get(r.id), { answers: true }), reviewNote: r.review_note })),
     pagination: { page: pg, limit: PAGE, total, totalPages: Math.ceil(total / PAGE) },
+    counts, // every status, across pages (#508 stat tiles)
   };
 }
 
@@ -516,5 +563,5 @@ function learnSummary(userId) {
 module.exports = {
   statsFor, learnSummary, LEVEL_THRESHOLD,
   PuzzleError, RULES, LEVELS, TAGS, MODES, BOARD_SIZES, MAX_PENDING_PER_USER, isAdmin,
-  MAX_ATTEMPTS, createPuzzle, updatePuzzle, deletePuzzle, renameLog, renamePuzzle, listApproved, getPuzzle, solve, myAttempts, solvers, mine, reviewQueue, review,
+  MAX_ATTEMPTS, createPuzzle, updatePuzzle, deletePuzzle, renameLog, renamePuzzle, listApproved, progress, getPuzzle, solve, myAttempts, solvers, mine, reviewQueue, review,
 };

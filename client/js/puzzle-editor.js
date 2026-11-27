@@ -8,6 +8,8 @@
  * The setup textarea parses live (debounced); bad tokens show an inline alert by the field and the
  * last valid board stays (#506). The last placed stone carries the renderer's last-move marker.
  * Member-only: guests see a login hint. BoardRenderer via setState/onCellClick only.
+ * #508: the inspector is three tabs (position → details → answers) with one primary per step ("Next", then
+ * "Submit"); the answer tool opens the answers tab; a missing title on submit opens the details tab.
  */
 
 'use strict';
@@ -105,7 +107,48 @@
     renderer.setState(state);
     const b = stoneList().filter((s) => s.color === 'BLACK').length;
     const w = stoneList().length - b;
-    $('ed-count').textContent = t('puzzles.counts', { b, w, need: toMove() === 'BLACK' ? t('puzzles.counts_equal') : t('puzzles.counts_black_more') });
+    // One chip per fact (#508): black count, white count, side to move.
+    const chip = (text, color) => {
+      const n = el('span', undefined, 'pz-tag');
+      if (color) { const dot = el('span', undefined, 'pz-dot pz-dot--' + color); dot.setAttribute('aria-hidden', 'true'); n.appendChild(dot); }
+      n.appendChild(document.createTextNode(text));
+      return n;
+    };
+    $('ed-count').replaceChildren(chip(t('puzzles.counts_black', { n: b }), 'BLACK'), chip(t('puzzles.counts_white', { n: w }), 'WHITE'),
+      chip(t('puzzles.counts_need', { side: t('puzzles.side_' + toMove()) })));
+  }
+
+  let step = 1;
+  const STEP_NEXT = { 1: 'puzzles.step_next_info', 2: 'puzzles.step_next_answers' };
+
+  /** Show one inspector tab; the footer primary is "Next" on 1–2 and "Submit" on 3. */
+  function showStep(n) {
+    step = n;
+    for (const k of [1, 2, 3]) {
+      const tab = $('ed-tab-' + k);
+      tab.setAttribute('aria-selected', String(k === n));
+      tab.tabIndex = k === n ? 0 : -1;
+      $('ed-step-' + k).hidden = k !== n;
+    }
+    $('ed-next').hidden = n === 3;
+    if (STEP_NEXT[n]) $('ed-next').textContent = t(STEP_NEXT[n]);
+    $('ed-submit').hidden = n !== 3;
+  }
+
+  /** Tabs: click, and Left/Right/Home/End move focus + selection (ARIA tabs pattern). */
+  function wireSteps() {
+    for (const k of [1, 2, 3]) {
+      const tab = $('ed-tab-' + k);
+      tab.addEventListener('click', () => showStep(k));
+      tab.addEventListener('keydown', (e) => {
+        const to = { ArrowRight: k % 3 + 1, ArrowLeft: (k + 1) % 3 + 1, Home: 1, End: 3 }[e.key];
+        if (!to) return;
+        e.preventDefault();
+        showStep(to);
+        $('ed-tab-' + to).focus();
+      });
+    }
+    $('ed-next').addEventListener('click', () => showStep(Math.min(3, step + 1)));
   }
 
   function onCell(x, y) {
@@ -152,7 +195,7 @@
       b.type = 'button';
       b.dataset.tool = id;
       b.setAttribute('aria-pressed', String(st.tool === id));
-      b.addEventListener('click', () => { st.tool = id; st.pendingPortal = null; renderTools(); draw(); });
+      b.addEventListener('click', () => { st.tool = id; st.pendingPortal = null; renderTools(); draw(); if (id === 'ANSWER') showStep(3); });
       host.appendChild(b);
     }
   }
@@ -262,6 +305,14 @@
     say('');
     const body = buildBody();
     if (!body) return;
+    if (!body.title.trim()) { // novalidate form: a required field on a hidden tab would block silently (#508)
+      showStep(2);
+      $('ed-title').setAttribute('aria-invalid', 'true');
+      say(t('err.puzzle_title_invalid'));
+      $('ed-title').focus();
+      return;
+    }
+    $('ed-title').removeAttribute('aria-invalid');
     $('ed-submit').disabled = true;
     try {
       const res = await fetch(st.editId ? '/api/puzzles/' + encodeURIComponent(st.editId) : '/api/puzzles', {
@@ -350,6 +401,7 @@
     $('ed-view').hidden = false;
     renderer = new window.BoardRenderer($('ed-canvas'), { boardSize: st.size, clickMode: 'single', clickOccupied: true, onCellClick: onCell });
     renderTools(); renderTags(); renderAnswers();
+    wireSteps(); showStep(1);
     $('ed-size').addEventListener('change', onSize);
     $('ed-tomove').addEventListener('change', draw);
     $('ed-mode').addEventListener('change', () => { renderAnswers(); draw(); });

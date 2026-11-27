@@ -60,6 +60,11 @@ router.get('/', h((req, res) => {
   res.json(svc.listApproved(optionalUserId(req), req.query));
 }));
 
+router.get('/progress', h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(svc.progress(optionalUserId(req), req.query));
+}));
+
 router.get('/mine', ...member, h((req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json({ ...svc.mine(req.user.userId, req.query), canReview: svc.isAdmin(req.user.userId) });

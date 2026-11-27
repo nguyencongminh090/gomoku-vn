@@ -6,7 +6,8 @@
  * view-only meanwhile (#507). POST /api/puzzles/:id/solve {moves} → {correct}. Once solved or out
  * of tries the board unlocks for free study (alternating stones, never submitted, #pz-reset). The answer never reaches
  * this page — the server compares. Guests can look but not check (the API is member-only).
- * BoardRenderer is used through setState/onCellClick only.
+ * BoardRenderer is used through setState/onCellClick only. The panel is three steps (#508): read → answer
+ * (live) → explore (after the end); `position` from the API gives "puzzle N of M" and the next unsolved one.
  */
 
 'use strict';
@@ -30,6 +31,7 @@
   let member = false;
   let attemptsLeft = null; // null = unlimited (solved) or not a member
   let study = [];          // free-study stones after the end (#507), {x, y, color}
+  let attemptsUsed = null; // the member's tries so far (stat tile, #508)
 
   function el(tag, text, cls) {
     const n = document.createElement(tag);
@@ -73,15 +75,27 @@
     $('pz-reset').hidden = !open;
     $('pz-reset').disabled = !study.length && !moves.length;
     $('pz-explore-note').hidden = !open;
+    renderSteps(open);
+  }
+
+  /** Step states: answer is live until the end, then done; explore opens (board unlock pulse once). */
+  function renderSteps(open) {
+    $('pz-step-answer').classList.toggle('is-on', !open);
+    $('pz-step-answer').classList.toggle('is-done', open);
+    $('pz-step-explore').classList.toggle('is-on', open);
+    $('pz-form').hidden = open;
+    $('pz-lock').hidden = open;
+    $('pz-explore-locked').hidden = open;
+    viewEl.classList.toggle('is-open', open);
   }
 
   function renderMoves() {
     movesEl.replaceChildren();
     if (!moves.length) {
-      movesEl.appendChild(el('span', t('puzzles.no_moves'), 'muted small'));
+      movesEl.appendChild(el('span', t('puzzles.no_moves'), 'pz-help'));
     }
     moves.forEach((m, i) => {
-      movesEl.appendChild(el('span', (i + 1) + '. ' + window.Coords.label(m.x, m.y, puzzle.boardSize), 'pbadge'));
+      movesEl.appendChild(el('span', (i + 1) + '. ' + window.Coords.label(m.x, m.y, puzzle.boardSize), 'pz-tag'));
     });
     inputEl.value = moves.map((m) => window.Coords.label(m.x, m.y, puzzle.boardSize)).join(', ');
     renderControls();
@@ -94,6 +108,9 @@
 
   function renderAttempts(info) {
     if (info) attemptsLeft = info.attemptsLeft === undefined ? null : info.attemptsLeft;
+    if (info && typeof info.attemptsUsed === 'number') attemptsUsed = info.attemptsUsed;
+    $('pz-stat-tries').hidden = !member || attemptsUsed === null;
+    $('pz-tries-n').textContent = attemptsUsed === null ? '' : String(attemptsUsed);
     attemptsEl.hidden = !member || solved || attemptsLeft === null;
     if (!attemptsEl.hidden) attemptsEl.textContent = t(attemptsLeft ? 'puzzles.attempts_left' : 'puzzles.attempts_none', { n: attemptsLeft });
     renderControls();
@@ -118,6 +135,8 @@
       const data = await res.json();
       $('pz-solvers').hidden = false;
       $('pz-solvers-h').textContent = t('puzzles.solvers_h', { n: data.total });
+      $('pz-stat-solvers').hidden = false;
+      $('pz-solvers-n').textContent = String(data.total);
       $('pz-solvers-list').replaceChildren(...(data.solvers.length ? data.solvers.map(who) : [el('span', t('puzzles.solvers_none'), 'muted small')]));
     } catch (_) { /* optional panel */ }
   }
@@ -130,8 +149,12 @@
       const data = await res.json();
       renderAttempts(data);
       $('pz-history').hidden = !data.attempts.length;
-      $('pz-history-list').replaceChildren(...data.attempts.map((a) => el('span',
-        a.moves.map((m) => window.Coords.label(m.x, m.y, puzzle.boardSize)).join(', ') + ' · ' + t(a.correct ? 'puzzles.attempt_right' : 'puzzles.attempt_wrong'), 'pbadge')));
+      $('pz-history-list').replaceChildren(...data.attempts.map((a) => {
+        // One chip per try: the moves, then the verdict as its own word (no "A · B" join, #508).
+        const chip = el('span', a.moves.map((m) => window.Coords.label(m.x, m.y, puzzle.boardSize)).join(', ') + ' ', 'pz-tag ' + (a.correct ? 'pz-tag--ok' : 'pz-tag--rejected'));
+        chip.appendChild(el('b', t(a.correct ? 'puzzles.attempt_right' : 'puzzles.attempt_wrong')));
+        return chip;
+      }));
     } catch (_) { /* optional panel */ }
   }
 
@@ -221,15 +244,26 @@
   function renderInfo() {
     $('pz-title').textContent = window.PuzzleBoard.name(puzzle);
     $('pz-prompt').textContent = puzzle.prompt || '';
-    $('pz-turn').textContent = t(puzzle.toMove === 'BLACK' ? 'puzzles.black_to_move' : 'puzzles.white_to_move');
+    const dot = el('span', undefined, 'pz-dot pz-dot--' + puzzle.toMove);
+    dot.setAttribute('aria-hidden', 'true');
+    $('pz-turn').replaceChildren(dot, document.createTextNode(t(puzzle.toMove === 'BLACK' ? 'puzzles.black_to_move' : 'puzzles.white_to_move')));
     $('pz-input-label').textContent = t(puzzle.mode === 'final_move' ? 'puzzles.enter_final' : 'puzzles.enter_sequence');
     const meta = $('pz-meta');
+    // One fact per chip (#508): level, rule, size, topics; the author as plain text after them.
     meta.replaceChildren(
-      el('span', t('puzzles.level_' + puzzle.level), 'pbadge pz-lv pz-lv--' + puzzle.level),
-      el('span', t('puzzles.rule_' + puzzle.rule) + ' · ' + puzzle.boardSize + '×' + puzzle.boardSize, 'muted small'),
+      el('span', t('puzzles.level_' + puzzle.level), 'pz-tag pz-tag--lv-' + puzzle.level),
+      el('span', t('puzzles.rule_' + puzzle.rule), 'pz-tag'),
+      el('span', puzzle.boardSize + '×' + puzzle.boardSize, 'pz-tag'),
     );
-    for (const tg of puzzle.tags || []) meta.appendChild(el('span', t('puzzles.tag_' + tg), 'pbadge'));
-    if (puzzle.author) meta.appendChild(el('small', t('puzzles.by', { name: puzzle.author.displayName }), 'muted'));
+    for (const tg of puzzle.tags || []) meta.appendChild(el('span', t('puzzles.tag_' + tg), 'pz-tag'));
+    if (puzzle.author) meta.appendChild(el('small', t('puzzles.by', { name: puzzle.author.displayName }), 'pz-help'));
+    const pos = puzzle.position;
+    $('pz-position').hidden = !pos;
+    if (pos) $('pz-position').textContent = t('puzzles.position', { n: pos.index, m: pos.total, level: t('puzzles.level_' + puzzle.level) });
+    if (pos && pos.nextId) {
+      $('pz-next-link').href = '/puzzle/' + encodeURIComponent(pos.nextId);
+      $('pz-next-link').textContent = t('puzzles.next');
+    }
     document.title = 'Play3CR — ' + window.PuzzleBoard.name(puzzle);
     loginEl.textContent = t('puzzles.login_needed');
   }
@@ -258,6 +292,7 @@
     } catch (_) { member = false; }
     solved = !!puzzle.solved;
     attemptsLeft = puzzle.attemptsLeft === undefined ? null : puzzle.attemptsLeft;
+    attemptsUsed = typeof puzzle.attemptsUsed === 'number' ? puzzle.attemptsUsed : null;
 
     viewEl.hidden = false;
     renderInfo();

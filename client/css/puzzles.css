@@ -469,3 +469,166 @@
 .adm .ri-mx-hi { fill: var(--c-ink-3); fill-opacity: .18; pointer-events: none; }
 .adm .ri-mx-hit { fill: transparent; cursor: crosshair; }
 .adm .ri-node--bubble { fill-opacity: .4; stroke-dasharray: 3 3; cursor: pointer; }
+
+/* ══ #508 Training path (concept C, features/puzzle-modern/mockups/c.html) ══════════════════════════
+   Hero → filters → one shelf per level (progress + horizontal cards); solve panel as 3 steps
+   (read → answer → explore); mine = needs action, then active; editor = board + tools, inspector with steps.
+   Static chips are .pz-tag (the .pz-chip toggle stays for filters/tags). Motion: --pz-dur, removed under reduce. */
+.pz-page { --pz-dur: .16s; }
+.pz-page .pz-eyebrow { margin: 0 0 4px; font-size: calc(12px * var(--fs-scale, 1)); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c-ink-2); }
+.pz-page .pz-lead { margin: 4px 0 0; color: var(--c-ink-2); }
+.pz-page .pz-help { margin: 4px 0 0; font-size: calc(13px * var(--fs-scale, 1)); color: var(--c-ink-2); }
+.pz-page .pz-h2 { margin: 0; font-size: calc(16px * var(--fs-scale, 1)); font-weight: 700; color: var(--c-strong); }
+.pz-page .pz-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pz-page .pz-stack { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.pz-page .pz-panel { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--pz-r-lg); box-shadow: var(--shadow-card); }
+
+/* static fact chips — one fact per chip, never "A · B" */
+.pz-page .pz-tag { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: 999px; background: var(--c-fill); color: var(--c-ink); font-size: calc(13px * var(--fs-scale, 1)); font-weight: 600; white-space: nowrap; }
+.pz-page .pz-tag .icon { width: 16px; height: 16px; flex: none; }
+.pz-page .pz-tag--lv-easy, .pz-page .pz-tag--ok, .pz-page .pz-tag--approved { background: color-mix(in srgb, var(--c-success) 16%, transparent); color: var(--c-success); }
+.pz-page .pz-tag--lv-medium { background: color-mix(in srgb, var(--c-time) 16%, transparent); color: var(--c-time); }
+.pz-page .pz-tag--lv-hard, .pz-page .pz-tag--pending { background: color-mix(in srgb, var(--c-warning) 16%, transparent); color: var(--c-warning); }
+.pz-page .pz-tag--lv-expert, .pz-page .pz-tag--rejected { background: color-mix(in srgb, var(--c-error) 14%, transparent); color: var(--c-error); }
+.pz-page .pz-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.pz-page .pz-dot--BLACK { background: #161512; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .35); }
+.pz-page .pz-dot--WHITE { background: #f4f3ee; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35); }
+
+/* stat tiles */
+.pz-page .pz-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.pz-page .pz-stat { padding: 10px 12px; border-radius: var(--pz-r); background: var(--c-fill); }
+.pz-page .pz-stat[hidden] { display: none; }
+.pz-page .pz-stat b { display: block; font-size: calc(22px * var(--fs-scale, 1)); line-height: 1.1; color: var(--c-strong); font-variant-numeric: tabular-nums; }
+.pz-page .pz-stat span { font-size: calc(13px * var(--fs-scale, 1)); color: var(--c-ink-2); }
+
+/* empty state */
+.pz-page .pz-empty { display: grid; justify-items: center; gap: 8px; margin: 0; padding: 36px 18px; text-align: center; border: 1px dashed var(--c-border-strong); border-radius: var(--pz-r-lg); color: var(--c-ink-2); }
+.pz-page .pz-empty[hidden] { display: none; }
+
+/* alerts: result + login + field errors */
+.pz-page .pz-result { display: flex; gap: 10px; align-items: flex-start; margin: 0; padding: 12px 14px; border-radius: var(--pz-r); border: 1px solid var(--c-border); background: var(--c-fill); color: var(--c-ink); }
+.pz-page .pz-result[hidden] { display: none; }
+.pz-page .pz-result .icon { margin: 0; flex: none; }
+.pz-page .pz-result.is-right { background: color-mix(in srgb, var(--c-success) 14%, var(--c-surface)); color: var(--c-success); border-color: color-mix(in srgb, var(--c-success) 45%, transparent); animation: pz-pop .32s var(--pz-ease); }
+.pz-page .pz-result.is-wrong { background: color-mix(in srgb, var(--c-error) 12%, var(--c-surface)); color: var(--c-error); border-color: color-mix(in srgb, var(--c-error) 45%, transparent); }
+@keyframes pz-pop { from { transform: translateY(4px) scale(.98); opacity: 0; } }
+.pz-page .pz-field-err { display: flex; align-items: center; gap: 6px; font-size: calc(14px * var(--fs-scale, 1)); }
+
+/* fields */
+.pz-page .pz-field, .pz-page .pz-form input, .pz-page .pform input:not([type="checkbox"]):not([type="file"]), .pz-page .pform textarea, .pz-page .pform select {
+  box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--c-ink) 32%, transparent); border-radius: var(--pz-r);
+  background: var(--c-field, var(--c-fill)); color: var(--c-ink); font: inherit; font-size: calc(15px * var(--fs-scale, 1)); transition: border-color var(--pz-dur), box-shadow var(--pz-dur);
+}
+.pz-page .pform textarea { min-height: 72px; resize: vertical; }
+.pz-page #ed-import, .pz-page #pz-input { font-family: ui-monospace, monospace; letter-spacing: .02em; }
+.pz-page .pz-form input:hover, .pz-page .pform input:hover, .pz-page .pform textarea:hover, .pz-page .pform select:hover { border-color: color-mix(in srgb, var(--c-ink) 55%, transparent); }
+.pz-page .pz-form input:focus-visible, .pz-page .pform input:focus-visible, .pz-page .pform textarea:focus-visible, .pz-page .pform select:focus-visible { border-color: var(--c-brand-text); }
+.pz-page [aria-invalid="true"] { border-color: var(--c-error) !important; }
+.pz-page input:disabled, .pz-page select:disabled, .pz-page textarea:disabled { opacity: .5; cursor: not-allowed; }
+.pz-page .pz-label, .pz-page .pform label { display: block; margin: 0 0 6px; font-size: calc(14px * var(--fs-scale, 1)); font-weight: 700; color: var(--c-ink); }
+
+/* ── /puzzles: hero, filters, shelves, cards ── */
+.pz-page .pz-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 20px; margin-bottom: 18px; }
+.pz-page .pz-hero h1 { margin: 0; font-size: calc(26px * var(--fs-scale, 1)); line-height: 1.2; color: var(--c-strong); }
+.pz-page .pz-hero__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.pz-page .pz-hero__actions [hidden] { display: none; }
+.pz-page .pz-filters { flex-direction: row; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 22px; }
+.pz-page .pz-filter { min-height: 0; align-items: center; gap: 8px; }
+.pz-page .pz-filter__label { min-width: 0; padding-top: 0; }
+.pz-page .pz-shelf { margin-bottom: 26px; }
+.pz-page .pz-shelf__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.pz-page .pz-progress { height: 8px; margin-bottom: 12px; border-radius: 99px; background: var(--c-fill); overflow: hidden; }
+.pz-page .pz-progress i { display: block; height: 100%; border-radius: inherit; background: var(--c-brand); transform-origin: left; animation: pz-grow .5s var(--pz-ease); }
+@keyframes pz-grow { from { transform: scaleX(0); } }
+.pz-page .pz-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 270px); gap: 12px; overflow-x: auto; padding: 2px 2px 10px; scroll-snap-type: x mandatory; }
+.pz-page .pz-strip > * { scroll-snap-align: start; }
+.pz-page .pz-card { display: grid; align-content: start; gap: 8px; padding: 14px; border: 1px solid var(--c-border); border-radius: var(--pz-r-lg); color: inherit; text-decoration: none; transition: transform var(--pz-dur) var(--pz-ease), border-color var(--pz-dur); }
+.pz-page .pz-card:hover { outline: none; border-color: var(--c-border-strong); transform: translateY(-2px); }
+.pz-page .pz-card:focus-visible { outline: none !important; box-shadow: var(--shadow-card), var(--pz-ring); }
+.pz-page .pz-card.is-solved { opacity: 1; }
+.pz-page .pz-card__head { align-items: center; min-height: 28px; }
+.pz-page .pz-num { font-size: calc(13px * var(--fs-scale, 1)); font-weight: 700; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
+.pz-page .pz-card__title { font-size: calc(16px * var(--fs-scale, 1)); color: var(--c-strong); overflow-wrap: anywhere; }
+.pz-page .pz-card__prompt { margin: 0; font-size: calc(14px * var(--fs-scale, 1)); color: var(--c-ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.pz-page .pz-card__by { font-size: calc(13px * var(--fs-scale, 1)); color: var(--c-ink-2); }
+
+/* ── /puzzle/<id>: board + 3-step panel ── */
+.pz-page .pz-solve { grid-template-columns: minmax(0, 1.2fr) minmax(330px, 1fr); }
+.pz-page .pz-solve__board { padding: 10px; border-radius: var(--pz-r-lg); }
+.pz-page .pz-solve__side { display: grid; gap: 16px; padding: 18px; border-radius: var(--pz-r-lg); min-width: 0; }
+.pz-page .pz-solve.is-open .pz-solve__board { animation: pz-unlock .5s var(--pz-ease); }
+@keyframes pz-unlock { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-success) 60%, transparent); } to { box-shadow: 0 0 0 12px transparent; } }
+.pz-page .pz-title { margin: 0; font-size: calc(26px * var(--fs-scale, 1)); line-height: 1.2; color: var(--c-strong); overflow-wrap: anywhere; }
+.pz-page .pz-meta { margin: 8px 0 0; }
+.pz-page .pz-steps { display: grid; margin: 0; padding: 0; list-style: none; counter-reset: pzs; }
+.pz-page .pz-step { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; padding-bottom: 16px; }
+.pz-page .pz-step::before { counter-increment: pzs; content: counter(pzs); display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--c-fill); color: var(--c-ink); font-weight: 800; transition: background-color var(--pz-dur), color var(--pz-dur); }
+.pz-page .pz-step::after { content: ""; position: absolute; left: 15px; top: 36px; bottom: 2px; width: 2px; background: var(--c-border); }
+.pz-page .pz-step:last-child { padding-bottom: 0; }
+.pz-page .pz-step:last-child::after { display: none; }
+.pz-page .pz-step.is-on::before { background: var(--c-brand); color: var(--c-on-brand); }
+.pz-page .pz-step.is-done::before { content: "✓"; background: color-mix(in srgb, var(--c-success) 22%, var(--c-surface)); color: var(--c-success); }
+.pz-page .pz-step__h { margin: 4px 0 0; font-size: calc(16px * var(--fs-scale, 1)); font-weight: 700; color: var(--c-strong); }
+.pz-page .pz-step:not(.is-on):not(.is-done) .pz-step__h { color: var(--c-ink-2); }
+.pz-page .pz-prompt { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--c-ink); }
+.pz-page .pz-turn { margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--c-strong); }
+.pz-page .pz-lock { display: flex; align-items: center; gap: 6px; margin: 0; font-size: calc(13px * var(--fs-scale, 1)); font-weight: 600; color: var(--c-ink-2); }
+.pz-page .pz-lock[hidden] { display: none; }
+.pz-page .pz-lock .icon { width: 16px; height: 16px; flex: none; }
+.pz-page .pz-moves { margin: 0; min-height: 0; }
+.pz-page .pz-moves:empty { display: none; }
+.pz-page .pz-form { gap: 10px; }
+.pz-page .pz-form[hidden] { display: none; }
+.pz-page .pz-form .pactions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.pz-page .pz-solve__side .pactions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.pz-page .pz-solve__side .pactions[hidden], .pz-page .pz-solve__side [hidden] { display: none; }
+.pz-page #pz-history, .pz-page #pz-solvers { margin: 0; }
+.pz-page #pz-history h2, .pz-page #pz-solvers h2 { margin: 0 0 8px; font-size: calc(14px * var(--fs-scale, 1)); color: var(--c-ink-2); }
+
+/* ── /puzzles/mine ── */
+.pz-page .pz-mine-list { display: grid; gap: 22px; }
+.pz-page .pz-mine-sec { display: grid; gap: 10px; }
+.pz-page .pz-mine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.pz-page .pz-mine { display: grid; gap: 10px; align-content: start; padding: 14px 16px; border: 1px solid var(--c-border); border-radius: var(--pz-r-lg); background: var(--c-surface); box-shadow: var(--shadow-card); }
+.pz-page .pz-mine__main b { font-size: calc(16px * var(--fs-scale, 1)); color: var(--c-strong); overflow-wrap: anywhere; }
+.pz-page .pz-mine__note { margin: 0; }
+.pz-page .pz-mine .pactions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+
+/* ── /puzzles/new: board + tools | inspector with step tabs ── */
+.pz-page .pz-ed-board { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.pz-page .pz-ed-board .pz-seg { justify-self: start; }
+.pz-page .pz-editor { display: grid; gap: 14px; padding: 18px; border-radius: var(--pz-r-lg); }
+.pz-page .pz-ed-step { display: grid; gap: 12px; min-width: 0; }
+.pz-page .pz-ed-step[hidden] { display: none; }
+.pz-page .pz-ed-step .pform__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pz-page .pz-answers .pform__row { display: flex; gap: 8px; }
+.pz-page .pz-ed-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-top: 12px; border-top: 1px solid var(--c-border); }
+.pz-page .pz-ed-foot [hidden] { display: none; }
+.pz-page .pz-answer.is-active { outline: none; border-color: var(--c-brand-text); box-shadow: 0 0 0 1px var(--c-brand-text); }
+
+@media (max-width: 860px) {
+  .pz-page .pz-hero { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+  .pz-page .pz-hero__actions { justify-content: flex-start; }
+  .pz-page .pz-solve { grid-template-columns: minmax(0, 1fr); }
+  .pz-page .pz-filters { flex-direction: column; gap: 10px; }
+  .pz-page .pz-filter .pz-seg { display: flex; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+  .pz-page .pz-filter { width: 100%; }
+  .pz-page .pz-strip { grid-auto-columns: minmax(220px, 78%); }
+  .pz-page .pz-ed-step .pform__row { grid-template-columns: minmax(0, 1fr); }
+  .pz-page .pz-ed-board .pz-seg { display: flex; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; justify-self: stretch; }
+  .pz-page .pz-field, .pz-page .pform textarea { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pz-page .pz-card:hover { transform: none; }
+  .pz-page .pz-progress i, .pz-page .pz-result.is-right, .pz-page .pz-solve.is-open .pz-solve__board { animation: none !important; }
+}
+.pz-page .pz-seg__opt[aria-selected="true"] { background: var(--c-surface); color: var(--c-strong); font-weight: 700; border-color: color-mix(in srgb, var(--c-brand-text) 75%, var(--c-surface)); box-shadow: var(--pz-elev); }
+.pz-page #ed-steps { justify-self: start; }
+.pz-page .pform label { text-transform: none; letter-spacing: normal; }
+.pz-page .pz-ed-step .pform__row { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.pz-page #mn-stats { margin-bottom: 22px; }
+@media (max-width: 860px) {
+  .pz-page .pz-filter { align-items: stretch; }
+  .pz-page .pz-filter .pz-seg { align-self: flex-start; }
+  .pz-page .pz-filter .pz-seg__opt, .pz-page .pz-ed-board .pz-seg__opt, .pz-page #ed-steps .pz-seg__opt { flex: none; white-space: nowrap; }
+}

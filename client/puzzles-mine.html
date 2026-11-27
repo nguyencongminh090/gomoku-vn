@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="css/tokens.css?v=bd768e32" />
   <link rel="stylesheet" href="css/platform-shell.css?v=174b5103" />
   <link rel="stylesheet" href="css/platform.css?v=f4b4f520" />
-  <link rel="stylesheet" href="css/puzzles.css?v=1c0bf42e" />
+  <link rel="stylesheet" href="css/puzzles.css?v=5d69de03" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
@@ -20,27 +20,35 @@
 <div id="pl-shell"></div>
 
 <main class="papp" role="main">
-  <div class="pintro">
-    <h1 data-i18n="puzzles.mine_h1">Puzzle của tôi</h1>
-    <p id="mn-count" class="muted small"></p>
+  <section class="pz-hero pz-panel" aria-labelledby="mn-h1">
+    <div>
+      <p class="pz-eyebrow" data-i18n="puzzles.eyebrow">Học</p>
+      <h1 id="mn-h1" data-i18n="puzzles.mine_h1">Puzzle của tôi</h1>
+      <p id="mn-count" class="pz-help"></p>
+    </div>
+    <div id="mn-actions" class="pz-hero__actions">
+      <a id="mn-review" class="pz-tbtn" href="/admin#puzzles" hidden></a>
+      <a class="pz-tbtn pz-tbtn--quiet" href="/puzzles" data-i18n="puzzles.all">Tất cả puzzle</a>
+      <a class="pz-btn pz-btn--primary" href="/puzzles/new"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-plus-circle"></use></svg><span data-i18n="puzzles.new">Đăng puzzle mới</span></a>
+    </div>
+  </section>
+  <div id="mn-stats" class="pz-stats" role="group" data-i18n-aria="puzzles.mine_stats" aria-label="Thống kê puzzle của bạn" hidden>
+    <div class="pz-stat"><b id="mn-n-pending"></b><span data-i18n="puzzles.status_pending">Chờ duyệt</span></div>
+    <div class="pz-stat"><b id="mn-n-approved"></b><span data-i18n="puzzles.status_approved">Đã duyệt</span></div>
+    <div class="pz-stat"><b id="mn-n-rejected"></b><span data-i18n="puzzles.status_rejected">Bị từ chối</span></div>
   </div>
-  <div id="mn-actions" class="pactions" style="margin:0 0 16px">
-    <a class="pz-btn pz-btn--primary" href="/puzzles/new"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-plus-circle"></use></svg><span data-i18n="puzzles.new">Đăng puzzle mới</span></a>
-    <a id="mn-review" class="pz-tbtn" href="/admin#puzzles" hidden></a>
-    <a class="pz-tbtn pz-tbtn--quiet" href="/puzzles" data-i18n="puzzles.all">Tất cả puzzle</a>
-  </div>
-  <div id="mn-list" class="prows prows--tickets" aria-live="polite"></div>
+  <div id="mn-list" class="pz-mine-list" aria-live="polite"></div>
   <div id="mn-pager" class="ppager"></div>
-  <p id="mn-msg" class="pnote" hidden></p>
+  <p id="mn-msg" class="pz-empty" hidden></p>
 </main>
 
-<script src="js/i18n.js?v=a24964df"></script>
+<script src="js/i18n.js?v=872c893a"></script>
 <script src="js/ui-mode.js?v=3e1ff171"></script>
 <script src="js/session.js?v=7d763f30"></script>
 <script src="js/audio-manager.js?v=05f3d9fe"></script>
 <script src="js/settings-panel.js?v=4f7ecd46"></script>
 <script src="js/platform-shell.js?v=ee86dad9"></script>
 <script src="js/puzzle-board.js?v=8bf7b792"></script>
-<script src="js/puzzles-mine.js?v=4b6664b2"></script>
+<script src="js/puzzles-mine.js?v=e0392563"></script>
 </body>
 </html>

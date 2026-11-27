@@ -326,6 +326,84 @@ describe('my puzzles', () => {
   });
 });
 
+describe('editor — #508 step tabs', () => {
+  const edBoot = () => boot('editor', '../js/puzzle-editor.js', (u) => (u.includes('/rankings/me') ? ok({ userId: 'u1' }) : ok({ id: 'n', status: 'pending' })));
+  const visible = () => [1, 2, 3].filter((k) => !$('ed-step-' + k).hidden);
+
+  it('starts on the position tab; Next walks the tabs; aria-selected and roving tabindex follow', async () => {
+    edBoot(); await settle();
+    expect(visible()).toEqual([1]);
+    expect($('ed-tab-1').getAttribute('aria-selected')).toBe('true');
+    $('ed-next').click();
+    expect(visible()).toEqual([2]);
+    expect([1, 2, 3].map((k) => $('ed-tab-' + k).tabIndex)).toEqual([-1, 0, -1]);
+    expect($('ed-next').textContent).toBe('puzzles.step_next_answers');
+    $('ed-next').click();
+    expect(visible()).toEqual([3]);
+    expect([$('ed-next').hidden, $('ed-submit').hidden]).toEqual([true, false]);
+  });
+
+  it('arrow keys move between tabs; the answer tool opens the answers tab', async () => {
+    edBoot(); await settle();
+    $('ed-tab-1').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    expect(visible()).toEqual([3]);
+    expect(document.activeElement).toBe($('ed-tab-3'));
+    $('ed-tab-3').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(visible()).toEqual([1]);
+    clickTool('ANSWER');
+    expect(visible()).toEqual([3]);
+  });
+
+  it('submitting without a title opens the details tab, flags the field and sends nothing', async () => {
+    edBoot(); await settle();
+    $('ed-form').dispatchEvent(new Event('submit', { cancelable: true })); await settle();
+    expect(visible()).toEqual([2]);
+    expect($('ed-title').getAttribute('aria-invalid')).toBe('true');
+    expect($('ed-result').textContent).toBe('err.puzzle_title_invalid');
+    expect(global.fetch.mock.calls.some(([, o]) => o && o.method === 'POST')).toBe(false);
+  });
+
+  it('stone counts are separate chips (no " · " join)', async () => {
+    edBoot(); await settle();
+    renderers[0].opts.onCellClick(7, 7);
+    expect([...$('ed-count').querySelectorAll('.pz-tag')].map((n) => n.textContent))
+      .toEqual(['puzzles.counts_black{"n":1}', 'puzzles.counts_white{"n":0}', 'puzzles.counts_need{"side":"puzzles.side_WHITE"}']);
+  });
+});
+
+describe('my puzzles — #508 needs action first, status tiles, chips', () => {
+  const MINE = [
+    { id: 'a', title: 'A', status: 'approved', level: 'easy', rule: 'caro', boardSize: 15, reviewNote: '' },
+    { id: 'b', title: 'B', status: 'rejected', level: 'hard', rule: 'renju', boardSize: 17, reviewNote: 'sai' },
+    { id: 'c', title: 'C', status: 'pending', level: 'medium', rule: 'freestyle', boardSize: 15, reviewNote: '' },
+  ];
+  const bootMine = (extra) => boot('mine', '../js/puzzles-mine.js', () => ok({ puzzles: MINE, canReview: false, pagination: { page: 1, limit: 20, total: 3, totalPages: 1 }, ...extra }));
+
+  it('rejected puzzles come first under "needs action", the rest under "active"', async () => {
+    bootMine({ counts: { pending: 1, approved: 1, rejected: 1 } }); await settle();
+    const secs = [...document.querySelectorAll('#mn-list .pz-mine-sec')];
+    expect(secs.map((s) => s.querySelector('h2').textContent)).toEqual(['puzzles.mine_needs', 'puzzles.mine_active']);
+    expect([...secs[0].querySelectorAll('.prow b')].map((b) => b.textContent)).toEqual(['B']);
+    expect([...secs[1].querySelectorAll('.prow b')].map((b) => b.textContent)).toEqual(['A', 'C']);
+    expect(secs[0].querySelector('.pz-mine__note').textContent).toBe('puzzles.reject_note{"note":"sai"}');
+  });
+
+  it('status tiles show the counts across pages; facts are separate chips, never joined with " · "', async () => {
+    bootMine({ counts: { pending: 4, approved: 9, rejected: 2 } }); await settle();
+    expect($('mn-stats').hidden).toBe(false);
+    expect(['pending', 'approved', 'rejected'].map((k) => $('mn-n-' + k).textContent)).toEqual(['4', '9', '2']);
+    const a = document.querySelector('#mn-list .prow');
+    expect([...a.querySelectorAll('.pz-tag')].map((n) => n.textContent)).toEqual(['puzzles.status_rejected', 'puzzles.level_hard', 'puzzles.rule_renju', '17×17']);
+    expect($('mn-list').textContent).not.toContain(' · ');
+  });
+
+  it('no counts in the payload (older server) → tiles stay hidden; only active puzzles → one section', async () => {
+    boot('mine', '../js/puzzles-mine.js', () => ok({ puzzles: [MINE[0]], canReview: false, pagination: { page: 1, limit: 20, total: 1, totalPages: 1 } })); await settle();
+    expect($('mn-stats').hidden).toBe(true);
+    expect(document.querySelectorAll('#mn-list .pz-mine-sec')).toHaveLength(1);
+  });
+});
+
 describe('my puzzles — number + rename (#333/#334)', () => {
   const MINE = [{ id: 'a', number: 7, title: 'Cũ', status: 'approved', level: 'easy', rule: 'caro', boardSize: 15, reviewNote: '' }];
   const bootMine = (patch) => boot('mine', '../js/puzzles-mine.js', (u, o) => (o && o.method === 'PATCH' ? patch(u, o)
@@ -561,7 +639,10 @@ describe('Modern control hierarchy on mine & editor (#504)', () => {
     await settle();
     $('ed-add-answer').click();
     expect(document.querySelectorAll('.pbtn, .pchip, .ptab')).toHaveLength(0);
-    expect([...document.querySelectorAll('.pz-btn--primary')].map((n) => n.id)).toEqual(['ed-submit']);
+    const shown = () => [...document.querySelectorAll('.pz-btn--primary')].filter((n) => !n.hidden).map((n) => n.id);
+    expect(shown()).toEqual(['ed-next']); // #508: one primary per step — Next, then Submit on the answers tab
+    $('ed-next').click(); $('ed-next').click();
+    expect(shown()).toEqual(['ed-submit']);
     expect(document.querySelectorAll('#ed-answers .pz-tbtn--danger.pz-tbtn--icon')).toHaveLength(2);
     expect(document.querySelectorAll('#ed-tools .pz-seg__opt')).toHaveLength(5);
     expect(document.querySelectorAll('#ed-tags .pz-chip')).toHaveLength(5);

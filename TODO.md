@@ -18,4 +18,5 @@ in the detail file / fix-log).
 - **#505.** Evaluate promoting shared Modern control tokens from replay.css / puzzles.css into platform.css `[Model: Sonnet]` — [detail](docs/todo/B505-promote-modern-control-tokens.md)
 - **#506.** Puzzle editor: Auto-only stones, live text import, last-stone marker `[Model: Sonnet]` — [detail](docs/todo/F506-puzzle-editor-auto-live-import.md)
 - **#507.** Puzzle solver: text-only answers, no undo, explore board after the end `[Model: Sonnet]` — [detail](docs/todo/F507-puzzle-solver-text-only-explore.md)
+- **#508.** Puzzle area redesign: concept C "Training path" `[Model: Opus]` — [detail](docs/todo/F508-puzzle-redesign-training-path.md)
 

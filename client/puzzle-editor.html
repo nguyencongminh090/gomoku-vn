@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="css/tokens.css?v=bd768e32" />
   <link rel="stylesheet" href="css/platform-shell.css?v=174b5103" />
   <link rel="stylesheet" href="css/platform.css?v=f4b4f520" />
-  <link rel="stylesheet" href="css/puzzles.css?v=1c0bf42e" />
+  <link rel="stylesheet" href="css/puzzles.css?v=5d69de03" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
@@ -21,51 +21,66 @@
 
 <main class="papp" role="main">
   <p class="pz-back"><a href="/puzzles/mine" class="pz-backbtn"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-arrow-left"></use></svg><span data-i18n="puzzles.mine_back">Puzzle của tôi</span></a></p>
-  <div class="pintro"><h1 id="ed-h1" data-i18n="puzzles.editor_h1">Đăng puzzle</h1></div>
+  <div class="pintro"><h1 id="ed-h1" class="pz-title" data-i18n="puzzles.editor_h1">Đăng puzzle</h1></div>
   <p id="ed-error" class="pnote" hidden></p>
 
   <div id="ed-view" class="pz-solve" hidden>
-    <div class="pz-solve__board ppanel"><canvas id="ed-canvas"></canvas></div>
-
-    <form id="ed-form" class="pform ppanel pz-editor" autocomplete="off">
+    <div class="pz-ed-board">
+      <div class="pz-solve__board pz-panel"><canvas id="ed-canvas"></canvas></div>
       <div class="pz-seg" id="ed-tools" role="group" data-i18n-aria="puzzles.tool_group" aria-label="Công cụ"></div>
-      <p id="ed-count" class="muted small"></p>
-      <label for="ed-import" data-i18n="puzzles.import_label">Nhập thế cờ từ văn bản</label>
-      <textarea id="ed-import" rows="2" maxlength="2000" spellcheck="false" aria-describedby="ed-import-help ed-import-err" placeholder="h8 i9 h10 | wall: a1 a2 | portal: b2 c3"></textarea>
-      <p id="ed-import-help" class="muted small" data-i18n="puzzles.import_help">Bàn cờ cập nhật ngay khi bạn gõ.</p>
-      <p id="ed-import-err" class="pz-field-err" role="alert" hidden></p>
+    </div>
 
-      <label for="ed-title" data-i18n="puzzles.f_title">Tiêu đề</label>
-      <input id="ed-title" maxlength="60" required />
-      <label for="ed-prompt" data-i18n="puzzles.f_prompt">Đề bài</label>
-      <textarea id="ed-prompt" rows="2" maxlength="280"></textarea>
-
-      <div class="pform__row">
-        <div><label for="ed-rule" data-i18n="puzzles.filter_rule">Luật</label><br><select id="ed-rule"></select></div>
-        <div><label for="ed-size" data-i18n="puzzles.f_size">Cỡ bàn</label><br><select id="ed-size"></select></div>
-        <div><label for="ed-tomove" data-i18n="puzzles.f_tomove">Bên đi</label><br><select id="ed-tomove"></select></div>
-        <div><label for="ed-level" data-i18n="puzzles.f_level">Level đề xuất</label><br><select id="ed-level"></select></div>
+    <form id="ed-form" class="pform pz-panel pz-editor" autocomplete="off" novalidate>
+      <div id="ed-steps" class="pz-seg" role="tablist" data-i18n-aria="puzzles.step_group" aria-label="Bước">
+        <button type="button" role="tab" id="ed-tab-1" class="pz-seg__opt" data-step="1" aria-controls="ed-step-1" aria-selected="true" data-i18n="puzzles.step_setup">1. Thế cờ</button>
+        <button type="button" role="tab" id="ed-tab-2" class="pz-seg__opt" data-step="2" aria-controls="ed-step-2" aria-selected="false" tabindex="-1" data-i18n="puzzles.step_info">2. Thông tin</button>
+        <button type="button" role="tab" id="ed-tab-3" class="pz-seg__opt" data-step="3" aria-controls="ed-step-3" aria-selected="false" tabindex="-1" data-i18n="puzzles.step_answers">3. Đáp án</button>
       </div>
 
-      <label for="ed-mode" data-i18n="puzzles.f_mode">Kiểu đáp án</label>
-      <select id="ed-mode"></select>
+      <div id="ed-step-1" class="pz-ed-step" role="tabpanel" aria-labelledby="ed-tab-1">
+        <div>
+          <label for="ed-import" data-i18n="puzzles.import_label">Nhập thế cờ từ văn bản</label>
+          <textarea id="ed-import" rows="2" maxlength="2000" spellcheck="false" aria-describedby="ed-import-help ed-import-err" placeholder="h8 i9 h10 | wall: a1 a2 | portal: b2 c3"></textarea>
+          <p id="ed-import-help" class="pz-help" data-i18n="puzzles.import_help">Bàn cờ cập nhật ngay khi bạn gõ.</p>
+          <p id="ed-import-err" class="pz-field-err" role="alert" hidden></p>
+        </div>
+        <div id="ed-count" class="pz-row" aria-live="polite"></div>
+        <div class="pform__row">
+          <div><label for="ed-rule" data-i18n="puzzles.filter_rule">Luật</label><select id="ed-rule"></select></div>
+          <div><label for="ed-size" data-i18n="puzzles.f_size">Cỡ bàn</label><select id="ed-size"></select></div>
+          <div><label for="ed-tomove" data-i18n="puzzles.f_tomove">Bên đi</label><select id="ed-tomove"></select></div>
+        </div>
+      </div>
 
-      <label data-i18n="puzzles.f_tags">Chủ đề (tối đa 3)</label>
-      <div id="ed-tags" class="pz-chips"></div>
+      <div id="ed-step-2" class="pz-ed-step" role="tabpanel" aria-labelledby="ed-tab-2" hidden>
+        <div><label for="ed-title" data-i18n="puzzles.f_title">Tiêu đề</label><input id="ed-title" maxlength="60" required /></div>
+        <div><label for="ed-prompt" data-i18n="puzzles.f_prompt">Đề bài</label><textarea id="ed-prompt" rows="2" maxlength="280"></textarea></div>
+        <div><label for="ed-level" data-i18n="puzzles.f_level">Level đề xuất</label><select id="ed-level"></select></div>
+        <div><label data-i18n="puzzles.f_tags">Chủ đề (tối đa 3)</label><div id="ed-tags" class="pz-chips"></div></div>
+      </div>
 
-      <label data-i18n="puzzles.f_answers">Đáp án chấp nhận</label>
-      <p class="muted small" id="ed-answers-help"></p>
-      <div id="ed-answers" class="pz-answers"></div>
-      <button type="button" id="ed-add-answer" class="pz-tbtn pz-tbtn--sm"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-plus-circle"></use></svg><span data-i18n="puzzles.add_answer">Thêm đáp án</span></button>
+      <div id="ed-step-3" class="pz-ed-step" role="tabpanel" aria-labelledby="ed-tab-3" hidden>
+        <div><label for="ed-mode" data-i18n="puzzles.f_mode">Kiểu đáp án</label><select id="ed-mode"></select></div>
+        <div>
+          <label data-i18n="puzzles.f_answers">Đáp án chấp nhận</label>
+          <p class="pz-help" id="ed-answers-help"></p>
+        </div>
+        <div id="ed-answers" class="pz-answers"></div>
+        <button type="button" id="ed-add-answer" class="pz-tbtn pz-tbtn--sm"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-plus-circle"></use></svg><span data-i18n="puzzles.add_answer">Thêm đáp án</span></button>
+      </div>
 
       <p id="ed-edit-note" class="pnote" hidden data-i18n="puzzles.edit_requeue">Sửa puzzle sẽ đưa nó về trạng thái chờ duyệt.</p>
       <p id="ed-result" class="pz-result" role="status" hidden></p>
-      <div class="pactions"><button type="submit" id="ed-submit" class="pz-btn pz-btn--primary"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-paper-plane-tilt"></use></svg><span data-i18n="puzzles.submit">Gửi duyệt</span></button></div>
+      <div class="pz-ed-foot">
+        <a class="pz-tbtn pz-tbtn--quiet" href="/puzzles/mine" data-i18n="modal.btn_cancel">Huỷ</a>
+        <button type="button" id="ed-next" class="pz-btn pz-btn--primary" data-i18n="puzzles.step_next_info">Tiếp: Thông tin</button>
+        <button type="submit" id="ed-submit" class="pz-btn pz-btn--primary" hidden><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-paper-plane-tilt"></use></svg><span data-i18n="puzzles.submit">Gửi duyệt</span></button>
+      </div>
     </form>
   </div>
 </main>
 
-<script src="js/i18n.js?v=a24964df"></script>
+<script src="js/i18n.js?v=872c893a"></script>
 <script src="js/ui-mode.js?v=3e1ff171"></script>
 <script src="js/session.js?v=7d763f30"></script>
 <script src="js/audio-manager.js?v=05f3d9fe"></script>
@@ -74,6 +89,6 @@
 <script src="js/coords.js?v=f2d4e6d0"></script>
 <script src="js/board.js?v=91667397"></script>
 <script src="js/puzzle-board.js?v=8bf7b792"></script>
-<script src="js/puzzle-editor.js?v=8f7ed903"></script>
+<script src="js/puzzle-editor.js?v=0bc8876f"></script>
 </body>
 </html>
