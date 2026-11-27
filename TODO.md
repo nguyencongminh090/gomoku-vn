@@ -67,6 +67,4 @@ in the detail file / fix-log).
   theo 1 điểm dữ liệu. Việc tiếp theo là *thu thêm mẫu*, không phải viết code. Lệch đồng hồ máy
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
-- **#500.** Replay: player avatar + rating (payload lacks ids) `[Model: Sonnet 5]` — [detail](docs/todo/F500-replay-player-avatar-rating.md)
-- **#501.** Store winning rule per game (replay shows no win line without it) `[Model: Sonnet 5]` — [detail](docs/todo/F501-store-winning-rule.md)
 - **#502.** Replay page redesign — mockup A, modern widgets `[Model: Opus]` — [detail](docs/todo/F502-replay-redesign.md)

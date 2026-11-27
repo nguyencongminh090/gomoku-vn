@@ -1119,6 +1119,7 @@ function handleGameEnd(io, room, opts = {}) {
           : new Date().toISOString(),
         endedAt: new Date().toISOString(),
         ranked: rated,
+        winningRule: engine.settings && engine.settings.winningRule, // #501
       });
       saved = true;
     } catch (err) {

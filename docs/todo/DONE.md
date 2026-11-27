@@ -1,3 +1,5 @@
+- ✅ **#501.** Store winning rule per game (replay shows no win line without it) `[Model: Sonnet 5]` — [detail](docs/todo/F501-store-winning-rule.md)
+- ✅ **#500.** Replay: player avatar + rating (payload lacks ids) `[Model: Sonnet 5]` — [detail](docs/todo/F500-replay-player-avatar-rating.md)
 - ✅ **#499.** Move list coordinates skip "I" (board shows it) `[Model: Haiku]` — [detail](docs/todo/B499-move-list-coords-skip-i.md)
 - ✅ **#498.** Presence: remove deprecated wire fields `[Model: Haiku]` — [detail](docs/todo/B498-presence-remove-legacy-fields.md)
 - ✅ **#497.** Presence: real-browser pass, 2 players + 1 spectator `[Model: Sonnet]` — [detail](docs/todo/B497-presence-real-browser-pass.md)

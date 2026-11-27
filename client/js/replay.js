@@ -72,19 +72,39 @@ function el(tag, cls, text) {
   return n;
 }
 
-function renderPlayer(host, name, seat, winnerSeat) {
-  host.replaceChildren(
-    el('span', 'rp-stone rp-stone--' + (seat === 'BLACK' ? 'x' : 'o'), seat === 'BLACK' ? '✕' : '○'),
-    el('span', 'rp-name', name || t('history.player_generic')),
-  );
-  host.firstChild.setAttribute('aria-hidden', 'true');
+/**
+ * One seat: a member shows the shared avatar (PlatformShell.avatar) with the seat stone as a badge,
+ * a profile link and the rating they had in this game (#500); a guest / deleted account keeps the stone.
+ */
+function renderPlayer(host, name, seat, winnerSeat, info) {
+  const label = name || t('history.player_generic');
+  const stone = el('span', 'rp-stone rp-stone--' + (seat === 'BLACK' ? 'x' : 'o'), seat === 'BLACK' ? '✕' : '○');
+  stone.setAttribute('aria-hidden', 'true');
+  const shell = window.PlatformShell;
+  if (info && info.username && shell && typeof shell.avatar === 'function') {
+    const av = el('span', 'rp-av');
+    stone.classList.add('rp-stone--badge');
+    av.append(shell.avatar(info.avatarUrl, label, 'pav--rp'), stone);
+    const link = el('a', 'rp-name', label);
+    link.href = '/profile/' + encodeURIComponent(info.username);
+    host.replaceChildren(av, link);
+    if (info.rating != null) {
+      const r = el('span', 'rp-rating', String(info.rating));
+      r.title = t('replay.rating_at_game');
+      host.append(r);
+    }
+  } else {
+    host.replaceChildren(stone, el('span', 'rp-name', label));
+  }
   if (winnerSeat === seat) {
     const win = el('span', 'rp-win');
     win.innerHTML = icon('trophy');
-    win.append(t('replay.won'));
+    win.append(el('span', 'rp-win__t', t('replay.won')));
     host.append(win);
   }
 }
+
+const RULE_KEYS = ['freestyle', 'standard', 'caro', 'renju'];
 
 function chip(text, iconId, title) {
   const c = el('span', 'rp-chip');
@@ -96,14 +116,17 @@ function chip(text, iconId, title) {
 
 function renderReplayInfo(game) {
   const winnerSeat = game.winner === 'BLACK' || game.winner === 'WHITE' ? game.winner : null;
-  renderPlayer(replayBlack, game.black_player_name, 'BLACK', winnerSeat);
-  renderPlayer(replayWhite, game.white_player_name, 'WHITE', winnerSeat);
+  const seats = game.seats || {};
+  renderPlayer(replayBlack, game.black_player_name, 'BLACK', winnerSeat, seats.black);
+  renderPlayer(replayWhite, game.white_player_name, 'WHITE', winnerSeat, seats.white);
   replayResult.textContent = getResultTextFull(game);
 
   const chips = [chip(`${game.board_size}×${game.board_size}`)];
   if (game.rule_wall) chips.push(chip(t('room.rule_wall')));
   if (game.rule_portal) chips.push(chip(t('room.rule_portal')));
   if (!game.rule_wall && !game.rule_portal) chips.push(chip(t('lobby.rule_basic')));
+  // Winning rule (#501); legacy games have none stored and get no chip.
+  if (RULE_KEYS.includes(game.winning_rule)) chips.push(chip(t('rule.' + game.winning_rule), null, t('replay.winning_rule')));
   chips.push(chip(t('replay.n_moves', { n: mainLine.length })));
   const dur = ReplayCore.durationMs(game);
   if (times.has && dur != null) chips.push(chip(ReplayCore.formatClock(dur), 'timer', t('replay.duration')));

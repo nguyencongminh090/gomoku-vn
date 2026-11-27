@@ -450,6 +450,7 @@ function _endMatch(io, tournamentId, pairingId, engineResult) {
         ? new Date(match.engine.moveHistory[0].timestamp).toISOString()
         : new Date().toISOString(),
       endedAt: new Date().toISOString(),
+      winningRule: match.engine.settings && match.engine.settings.winningRule, // #501
     });
   }
 

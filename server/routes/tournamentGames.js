@@ -16,6 +16,7 @@ const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
 const database = require('../db/database');
+const { replaySeats } = require('../managers/replay-seats');
 
 const router = express.Router();
 
@@ -67,6 +68,7 @@ router.get('/tournament-games/:id', (req, res, next) => {
     if (!game) {
       return res.status(404).json({ error: 'Không tìm thấy ván đấu.', code: 'GAME_NOT_FOUND' });
     }
+    game.seats = replaySeats(game.id, database.getTournamentGameSeatUserIds(game.id)); // #500
     res.json({ game });
   } catch (err) {
     return next(err);

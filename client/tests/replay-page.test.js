@@ -96,6 +96,68 @@ describe('info + move list', () => {
   });
 });
 
+describe('seats + winning rule (#500, #501)', () => {
+  const shell = () => {
+    window.PlatformShell = {
+      build: () => {},
+      avatar: jest.fn((url, name, cls) => {
+        const a = document.createElement('span');
+        a.className = 'pav ' + cls;
+        if (url) a.style.backgroundImage = 'url("' + url + '")';
+        else a.textContent = name.slice(0, 2);
+        return a;
+      }),
+    };
+  };
+  afterEach(() => { delete window.PlatformShell; });
+
+  it('a member seat renders the shared avatar, a profile link and the rating at game time', async () => {
+    shell();
+    await boot({ game: GAME({ seats: { black: { username: 'lan anh', avatarUrl: '/api/profile/avatar/u1.webp?v=3', rating: 1535 }, white: null } }) });
+    const b = $('replay-black');
+    expect(window.PlatformShell.avatar).toHaveBeenCalledWith('/api/profile/avatar/u1.webp?v=3', 'Lan <b>Anh</b>', 'pav--rp');
+    expect(b.querySelector('.rp-av .pav').style.backgroundImage).toContain('/api/profile/avatar/u1.webp?v=3');
+    expect(b.querySelector('.rp-av .rp-stone--x.rp-stone--badge')).not.toBeNull();
+    const link = b.querySelector('a.rp-name');
+    expect(link.getAttribute('href')).toBe('/profile/lan%20anh');
+    expect(link.textContent).toBe('Lan <b>Anh</b>');
+    expect(b.querySelector('.rp-rating').textContent).toBe('1535');
+    expect(b.querySelector('.rp-win')).not.toBeNull();
+  });
+
+  it('a guest (null seat) keeps the stone and plain name; a member without a rated game shows no rating', async () => {
+    shell();
+    await boot({ game: GAME({ seats: { black: { username: 'lan', avatarUrl: null, rating: null }, white: null } }) });
+    expect($('replay-black').querySelector('.rp-rating')).toBeNull();
+    const w = $('replay-white');
+    expect(w.querySelector('.pav')).toBeNull();
+    expect(w.querySelector('a')).toBeNull();
+    expect(w.querySelector('.rp-stone--o:not(.rp-stone--badge)')).not.toBeNull();
+    expect(w.querySelector('.rp-name').textContent).toBe('Minh');
+  });
+
+  it('no seats in the payload (older server) falls back to stones', async () => {
+    shell();
+    await boot();
+    expect(document.querySelectorAll('.rp-player .pav')).toHaveLength(0);
+    expect(document.querySelectorAll('.rp-player > .rp-stone')).toHaveLength(2);
+  });
+
+  it.each([
+    ['caro', 'rule.caro'],
+    ['renju', 'rule.renju'],
+  ])('winning_rule %s shows its rule chip', async (rule, label) => {
+    await boot({ game: GAME({ winning_rule: rule }) });
+    const chips = [...$('replay-meta').querySelectorAll('.rp-chip')].map((c) => c.textContent);
+    expect(chips).toContain(label);
+  });
+
+  it.each([null, undefined, 'bogus'])('winning_rule %p (legacy / unknown) shows no rule chip', async (rule) => {
+    await boot({ game: GAME({ winning_rule: rule }) });
+    expect($('replay-meta').textContent).not.toMatch(/rule\.(freestyle|standard|caro|renju)/);
+  });
+});
+
 describe('timeline, transport, speed', () => {
   it('slider spans the main line and drives the board, counter, aria-valuetext and URL', async () => {
     await boot();
@@ -199,7 +261,7 @@ describe('deep link ?move=N', () => {
   });
 });
 
-describe('no win line (the winning rule is not stored, #501)', () => {
+describe('no win line (user decision 2026-11-27, still off after #501 stores the rule)', () => {
   it('the final position of a five-in-a-row game is not highlighted', async () => {
     await boot();
     key('End');

@@ -22,6 +22,13 @@
 .rp-stone { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: 14px; flex: none; }
 .rp-stone--x { background: var(--c-ink); color: var(--c-bg); }
 .rp-stone--o { background: var(--c-surface-2); color: var(--c-ink); box-shadow: inset 0 0 0 1px var(--c-border-strong); }
+.rp-av { position: relative; flex: none; display: inline-flex; }
+.rp-av .pav--rp { width: 30px; height: 30px; box-shadow: inset 0 0 0 1px var(--c-border-strong); }
+.rp-stone--badge { position: absolute; right: -4px; bottom: -4px; width: 16px; height: 16px; font-size: 10px; box-shadow: 0 0 0 2px var(--c-bg); }
+.rp-stone--o.rp-stone--badge { box-shadow: inset 0 0 0 1px var(--c-border-strong), 0 0 0 2px var(--c-bg); }
+a.rp-name { color: inherit; text-decoration: none; }
+a.rp-name:hover, a.rp-name:focus-visible { text-decoration: underline; }
+.rp-rating { flex: none; font-weight: 600; font-size: var(--text-sm); color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
 .rp-win { display: inline-flex; flex: none; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--c-brand-light); color: var(--c-brand-text); font-size: var(--text-xs); font-weight: 700; }
 .rp-win .icon { width: 14px; height: 14px; }
 .rp-info { display: grid; gap: 8px; }
@@ -168,6 +175,13 @@
   .rp-players { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
   .rp-players .rp-player { font-size: var(--text-sm); }
   .rp-players .rp-player + .rp-player { justify-content: flex-end; }
+  .rp-players .rp-player { gap: 6px; }
+  .rp-av .pav--rp { width: 24px; height: 24px; font-size: 9px; }
+  .rp-stone--badge { width: 13px; height: 13px; font-size: 8px; right: -3px; bottom: -3px; }
+  .rp-rating { font-size: var(--text-xs); }
+  /* The won pill keeps its trophy; the word moves to the screen reader so the name has room. */
+  .rp-win { padding: 2px 5px; }
+  .rp-win__t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .rp-board { height: min(calc(100vw - 8px), calc(100svh - 310px)); }
   .rp-strip { display: flex; }
   .rp-moves { max-height: 50svh; margin-inline: 8px; padding-inline: 4px; }
