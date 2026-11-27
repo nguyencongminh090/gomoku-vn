@@ -52,6 +52,7 @@ function boot({ html, scripts, fetchImpl }) {
 const settle = async () => { for (let i = 0; i < 5; i++) await flush(); };
 const typeAnswer = (text) => { document.getElementById('pz-input').value = text; };
 const submitForm = () => document.getElementById('pz-form').dispatchEvent(new Event('submit', { cancelable: true }));
+const solveCalls = () => global.fetch.mock.calls.filter(([u]) => /\/solve$/.test(u)).length;
 
 describe('solve page', () => {
   const solveBoot = (over = {}) => boot({
@@ -73,15 +74,43 @@ describe('solve page', () => {
     const { board, interactive } = renderers[0].state;
     expect(board[7][7]).toBe(1);
     expect(board[7][8]).toBe(2);
-    expect(interactive).toBe(true);
+    expect(interactive).toBe(false); // view-only until solved or out of tries (#507)
   });
 
-  it('never asks for answers and clicking the board adds the solver\'s move in their colour', async () => {
+  it('while unsolved the board is view-only: clicks place nothing and the answer comes only from the text field (#507)', async () => {
     solveBoot(); await settle();
     renderers[0].opts.onCellClick(1, 6);
-    renderers[0].opts.onCellClick(7, 7); // occupied → ignored
-    expect(renderers[0].state.board[6][1]).toBe(1);
-    expect(document.getElementById('pz-input').value).toBe('B9');
+    expect(renderers[0].state.board[6][1]).toBe(0);
+    expect(renderers[0].state.interactive).toBe(false);
+    expect(document.getElementById('pz-input').value).toBe('');
+    expect(document.getElementById('pz-reset').hidden).toBe(true);
+    typeAnswer('B9'); submitForm(); await settle();
+    expect(renderers[0].state.board[6][1]).toBe(1); // the typed move is shown in the solver's colour
+    expect(renderers[0].state.interactive).toBe(false); // a wrong try with tries left keeps it locked
+    renderers[0].opts.onCellClick(2, 6);
+    expect(renderers[0].state.board[6][2]).toBe(0);
+  });
+
+  it('has no undo-last button (#507)', async () => {
+    solveBoot(); await settle();
+    expect(document.getElementById('pz-undo')).toBeNull();
+    expect(document.querySelector('[data-i18n="puzzles.undo"]')).toBeNull();
+    expect(fs.readFileSync(path.join(__dirname, '..', 'js', 'i18n.js'), 'utf8')).not.toMatch(/'puzzles\.undo'/);
+    // The empty-moves hint must not tell the solver to click the (view-only) board.
+    const hint = fs.readFileSync(path.join(__dirname, '..', 'js', 'i18n.js'), 'utf8').split('\n').filter((l) => l.includes("'puzzles.no_moves'"));
+    expect(hint).toHaveLength(2);
+    for (const l of hint) expect(l).not.toMatch(/bàn cờ|board/i);
+  });
+
+  it('Clear empties the typed answer; it is enabled as soon as there is text (#507)', async () => {
+    solveBoot(); await settle();
+    const clear = document.getElementById('pz-clear');
+    expect(clear.disabled).toBe(true);
+    typeAnswer('B9'); document.getElementById('pz-input').dispatchEvent(new Event('input'));
+    expect(clear.disabled).toBe(false);
+    clear.click();
+    expect(document.getElementById('pz-input').value).toBe('');
+    expect(clear.disabled).toBe(true);
   });
 
   it('submits typed coordinates (letters or sequence numbers) as labels and shows "wrong"', async () => {
@@ -100,30 +129,59 @@ describe('solve page', () => {
     expect(document.getElementById('pz-result').textContent).toBe('puzzles.wrong');
   });
 
-  it('a correct answer locks the board and offers the next puzzle', async () => {
+  it('a correct answer unlocks the board for free study: alternating stones, nothing submitted, reset to the puzzle (#507)', async () => {
     solveBoot({ fetch: (u) => (/\/solve$/.test(u) ? ok({ correct: true }) : null) }); await settle();
-    renderers[0].opts.onCellClick(1, 6);
-    document.getElementById('pz-form').dispatchEvent(new Event('submit', { cancelable: true }));
-    await settle();
+    typeAnswer('B9'); submitForm(); await settle();
     expect(document.getElementById('pz-result').textContent).toBe('puzzles.correct');
     expect(document.getElementById('pz-next').hidden).toBe(false);
-    expect(renderers[0].state.interactive).toBe(false);
-  });
-
-  it('final_move keeps a single cell', async () => {
-    solveBoot({ fetch: (u) => (u.endsWith('/p1') ? ok({ puzzle: { ...PUZZLE, mode: 'final_move' } }) : null) }); await settle();
-    renderers[0].opts.onCellClick(1, 6);
-    renderers[0].opts.onCellClick(2, 6);
-    expect(document.getElementById('pz-input').value).toBe('C9');
-  });
-
-  it('a guest sees the login hint instead of calling solve', async () => {
-    solveBoot({ fetch: (u) => (u.includes('/rankings/me') ? fail(401, {}) : null) }); await settle();
-    renderers[0].opts.onCellClick(1, 6);
-    document.getElementById('pz-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    const r = renderers[0];
+    expect(r.state.interactive).toBe(true);
+    expect(document.getElementById('pz-explore-note').hidden).toBe(false);
+    const reset = document.getElementById('pz-reset');
+    expect(reset.hidden).toBe(false);
+    expect(reset.classList.contains('pz-btn--primary')).toBe(false); // the single raised primary stays "Puzzle khác"
+    expect(solveCalls()).toBe(1);
+    // board: 2 black (h8 + B9) vs 1 white → white, then black
+    r.opts.onCellClick(3, 3); r.opts.onCellClick(4, 4);
+    r.opts.onCellClick(7, 7); // occupied → ignored
+    expect([r.state.board[3][3], r.state.board[4][4], r.state.board[7][7]]).toEqual([2, 1, 1]);
+    expect(r.state.lastMove).toEqual({ x: 4, y: 4 });
+    expect(r.state.myColor).toBe('WHITE');
     await settle();
+    expect(solveCalls()).toBe(1); // exploring never submits
+    expect(document.getElementById('pz-submit').disabled).toBe(true);
+    reset.click();
+    expect(r.state.board[3][3]).toBe(0);
+    expect(r.state.board[4][4]).toBe(0);
+    expect(r.state.board[6][1]).toBe(0); // back to the puzzle position: the answer stones go too
+    expect(r.state.board[7][7]).toBe(1);
+    expect(r.state.lastMove).toBeNull();
+    expect(r.state.interactive).toBe(true); // still free to explore
+  });
+
+  it('a puzzle already solved opens unlocked (#507)', async () => {
+    solveBoot({ fetch: (u) => (u.endsWith('/p1') ? ok({ puzzle: { ...PUZZLE, solved: true } }) : null) }); await settle();
+    expect(renderers[0].state.interactive).toBe(true);
+    renderers[0].opts.onCellClick(1, 1);
+    expect(renderers[0].state.board[1][1]).toBe(1); // 1 black, 1 white on the puzzle → black
+    expect(document.getElementById('pz-reset').hidden).toBe(false);
+  });
+
+  it('final_move accepts a single typed cell only', async () => {
+    solveBoot({ fetch: (u) => (u.endsWith('/p1') ? ok({ puzzle: { ...PUZZLE, mode: 'final_move' } }) : null) }); await settle();
+    typeAnswer('B9, C9'); submitForm(); await settle();
+    expect(document.getElementById('pz-result').textContent).toBe('err.puzzle_moves_invalid');
+    expect(solveCalls()).toBe(0);
+    typeAnswer('C9'); submitForm(); await settle();
+    expect(JSON.parse(global.fetch.mock.calls.find(([u]) => /\/solve$/.test(u))[1].body)).toEqual({ moves: ['C9'] });
+  });
+
+  it('a guest sees the login hint instead of calling solve; the board stays locked', async () => {
+    solveBoot({ fetch: (u) => (u.includes('/rankings/me') ? fail(401, {}) : null) }); await settle();
+    typeAnswer('B9'); submitForm(); await settle();
     expect(document.getElementById('pz-login').hidden).toBe(false);
-    expect(global.fetch.mock.calls.some(([u]) => /\/solve$/.test(u))).toBe(false);
+    expect(solveCalls()).toBe(0);
+    expect(renderers[0].state.interactive).toBe(false);
   });
 
   it('shows the translated error for an unknown puzzle', async () => {
@@ -143,11 +201,7 @@ describe('solve page — attempts, solvers, number (#333/#335/#336)', () => {
     if (url.includes('/rankings/me')) return ok({ userId: 'u1' });
     return ok({ puzzle: NUMBERED });
   };
-  const submit = async () => {
-    renderers[0].opts.onCellClick(1, 6);
-    document.getElementById('pz-form').dispatchEvent(new Event('submit', { cancelable: true }));
-    await settle();
-  };
+  const submit = async () => { typeAnswer('B9'); submitForm(); await settle(); };
 
   it('title carries "#n"; tries left, solvers (who + tries) and my history render as text', async () => {
     boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: base() }); await settle();
@@ -160,17 +214,33 @@ describe('solve page — attempts, solvers, number (#333/#335/#336)', () => {
   });
 
   it('a wrong try updates the tries left; at 0 the Check button is disabled', async () => {
-    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: base((u) => (/\/solve$/.test(u) ? ok({ correct: false, attemptsLeft: 0 }) : /\/attempts$/.test(u) ? ok({ attempts: [], attemptsLeft: 0 }) : null)) }); await settle();
+    let tried = false;
+    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: base((u) => (/\/solve$/.test(u) ? ((tried = true), ok({ correct: false, attemptsLeft: 0 })) : /\/attempts$/.test(u) ? ok({ attempts: [], attemptsLeft: tried ? 0 : 1 }) : null)) }); await settle();
+    expect(renderers[0].state.interactive).toBe(false); // 1 try left: still locked
     await submit();
     expect(document.getElementById('pz-attempts').textContent).toContain('puzzles.attempts_none');
+    expect(document.getElementById('pz-submit').disabled).toBe(true);
+    expect(renderers[0].state.interactive).toBe(true); // out of tries → free study (#507)
+    expect(document.getElementById('pz-reset').hidden).toBe(false);
+    renderers[0].opts.onCellClick(3, 3);
+    expect(renderers[0].state.board[3][3]).toBe(2); // 2 black (h8 + B9) vs 1 white → white
+    expect(solveCalls()).toBe(1);
+  });
+
+  it('opening a puzzle with no tries left starts unlocked (#507)', async () => {
+    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: base((u) => (u.endsWith('/p1') ? ok({ puzzle: { ...NUMBERED, attemptsLeft: 0 } }) : /\/attempts$/.test(u) ? ok({ attempts: [], attemptsLeft: 0 }) : null)) }); await settle();
+    expect(renderers[0].state.interactive).toBe(true);
     expect(document.getElementById('pz-submit').disabled).toBe(true);
   });
 
   it('a 429 from the server shows the out-of-tries message', async () => {
-    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: base((u) => (/\/solve$/.test(u) ? fail(429, { code: 'PUZZLE_ATTEMPTS_EXCEEDED', attemptsLeft: 0 }) : null)) }); await settle();
+    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: base((u) => (/\/solve$/.test(u) ? fail(429, { code: 'PUZZLE_ATTEMPTS_EXCEEDED' }) : null)) }); await settle();
+    expect(renderers[0].state.interactive).toBe(false); // 2 tries left before the refused one
+    global.fetch.mockImplementation(base((u) => (/\/solve$/.test(u) ? fail(429, { code: 'PUZZLE_ATTEMPTS_EXCEEDED' }) : /\/attempts$/.test(u) ? ok({ attempts: [], attemptsLeft: 0 }) : null)));
     await submit();
     expect(document.getElementById('pz-result').textContent).toBe('puzzles.attempts_none');
     expect(document.getElementById('pz-submit').disabled).toBe(true);
+    expect(renderers[0].state.interactive).toBe(true);
   });
 
   it('a guest still sees who solved it but gets no history request', async () => {

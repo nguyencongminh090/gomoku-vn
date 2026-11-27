@@ -1,9 +1,10 @@
 /**
  * puzzle.js — solve one puzzle (#203 7a-2), page /puzzle/<id>.
  *
- * GET /api/puzzles/:id (no answers) → static board. The solver enters ONLY their own moves,
- * by clicking the board or typing coordinates (`H8` letters or `122` sequence numbers, via
- * Coords.parseList); POST /api/puzzles/:id/solve {moves} → {correct}. The answer never reaches
+ * GET /api/puzzles/:id (no answers) → static board. The solver enters ONLY their own moves, by
+ * typing coordinates (`H8` letters or `122` sequence numbers, via Coords.parseList); the board is
+ * view-only meanwhile (#507). POST /api/puzzles/:id/solve {moves} → {correct}. Once solved or out
+ * of tries the board unlocks for free study (alternating stones, never submitted, #pz-reset). The answer never reaches
  * this page — the server compares. Guests can look but not check (the API is member-only).
  * BoardRenderer is used through setState/onCellClick only.
  */
@@ -28,6 +29,7 @@
   let solved = false;
   let member = false;
   let attemptsLeft = null; // null = unlimited (solved) or not a member
+  let study = [];          // free-study stones after the end (#507), {x, y, color}
 
   function el(tag, text, cls) {
     const n = document.createElement(tag);
@@ -44,8 +46,33 @@
 
   const apiError = (data, fallback) => (data && data.code ? t('err.' + data.code.toLowerCase()) : fallback);
 
+  /** The board is a study board once the puzzle is over (solved, or no tries left); view-only before (#507). */
+  const exploring = () => solved || attemptsLeft === 0;
+
+  /** Solver's moves as stones in their colour, then the study stones. */
+  function boardStones() {
+    return puzzle.stones.concat(moves.map((m) => ({ x: m.x, y: m.y, color: puzzle.toMove })), study);
+  }
+
+  /** Next study colour from the counts (black first when even), like the editor's auto tool. */
+  function studyColor() {
+    const all = boardStones();
+    const b = all.filter((s) => s.color === 'BLACK').length;
+    return b > all.length - b ? 'WHITE' : 'BLACK';
+  }
+
   function drawBoard() {
-    renderer.setState(window.PuzzleBoard.state(puzzle.boardSize, puzzle.stones, puzzle.toMove, moves, { interactive: !solved, walls: puzzle.walls, portals: puzzle.portals }));
+    if (!renderer) return;
+    const open = exploring();
+    const state = window.PuzzleBoard.state(puzzle.boardSize, boardStones(), puzzle.toMove, [], {
+      interactive: open, walls: puzzle.walls, portals: puzzle.portals, myColor: open ? studyColor() : puzzle.toMove,
+    });
+    const last = study.length ? study[study.length - 1] : moves[moves.length - 1];
+    state.lastMove = last ? { x: last.x, y: last.y } : null;
+    renderer.setState(state);
+    $('pz-reset').hidden = !open;
+    $('pz-reset').disabled = !study.length && !moves.length;
+    $('pz-explore-note').hidden = !open;
   }
 
   function renderMoves() {
@@ -57,15 +84,20 @@
       movesEl.appendChild(el('span', (i + 1) + '. ' + window.Coords.label(m.x, m.y, puzzle.boardSize), 'pbadge'));
     });
     inputEl.value = moves.map((m) => window.Coords.label(m.x, m.y, puzzle.boardSize)).join(', ');
-    $('pz-undo').disabled = solved || !moves.length;
-    $('pz-clear').disabled = solved || !moves.length;
-    $('pz-submit').disabled = solved || attemptsLeft === 0; // typed text is only parsed on submit, so it must stay clickable with no moves yet
+    renderControls();
+  }
+
+  function renderControls() {
+    $('pz-clear').disabled = exploring() || (!moves.length && !inputEl.value.trim());
+    $('pz-submit').disabled = exploring(); // typed text is only parsed on submit, so it must stay clickable with no moves yet
   }
 
   function renderAttempts(info) {
     if (info) attemptsLeft = info.attemptsLeft === undefined ? null : info.attemptsLeft;
     attemptsEl.hidden = !member || solved || attemptsLeft === null;
     if (!attemptsEl.hidden) attemptsEl.textContent = t(attemptsLeft ? 'puzzles.attempts_left' : 'puzzles.attempts_none', { n: attemptsLeft });
+    renderControls();
+    drawBoard(); // running out of tries unlocks the board
   }
 
   function who(s) {
@@ -109,16 +141,21 @@
     drawBoard();
   }
 
-  /** Add one cell; final_move keeps a single cell, sequence appends (no duplicates, no stones). */
-  function addMove(c) {
-    if (solved) return;
-    if (puzzle.stones.concat(puzzle.walls || [], ...(puzzle.portals || []).map((p) => [p.a, p.b])).some((s) => s.x === c.x && s.y === c.y)) return;
-    if (puzzle.mode === 'final_move') {
-      moves = [c];
-    } else if (!moves.some((m) => m.x === c.x && m.y === c.y)) {
-      moves = moves.concat([c]);
-    }
-    refresh();
+  /** Board click: ignored while the puzzle is live (answers are typed); after the end, a study stone (#507). */
+  function onBoardClick(c) {
+    if (!exploring()) return;
+    const taken = boardStones().concat(puzzle.walls || [], ...(puzzle.portals || []).map((p) => [p.a, p.b]));
+    if (taken.some((s) => s.x === c.x && s.y === c.y)) return;
+    study = study.concat([{ x: c.x, y: c.y, color: studyColor() }]);
+    drawBoard();
+  }
+
+  /** Study reset: back to the puzzle position (solver's moves and study stones off the board). */
+  function resetBoard() {
+    study = [];
+    moves = [];
+    renderMoves();
+    drawBoard();
   }
 
   /** Typed text replaces the whole list; bad text shows the invalid-coordinates message. */
@@ -142,7 +179,7 @@
 
   async function submit(ev) {
     ev.preventDefault();
-    if (solved || !applyTyped() || !moves.length) return;
+    if (exploring() || !applyTyped() || !moves.length) return;
     if (!member) { loginEl.hidden = false; return; }
     $('pz-submit').disabled = true;
     try {
@@ -155,7 +192,8 @@
       if (!res.ok) {
         resultEl.className = 'pz-result is-wrong';
         resultEl.textContent = data.code === 'PUZZLE_ATTEMPTS_EXCEEDED' ? t('puzzles.attempts_none') : apiError(data, t('puzzles.error'));
-        if (data.attemptsLeft !== undefined) renderAttempts(data);
+        if (data.code === 'PUZZLE_ATTEMPTS_EXCEEDED') renderAttempts({ attemptsLeft: 0 }); // the server refused: no tries left, whatever the body says
+        else if (data.attemptsLeft !== undefined) renderAttempts(data);
       } else if (data.correct) {
         solved = true;
         resultEl.className = 'pz-result is-right';
@@ -227,11 +265,12 @@
     renderer = new window.BoardRenderer($('pz-canvas'), {
       boardSize: puzzle.boardSize,
       clickMode: 'single',
-      onCellClick: (x, y) => addMove({ x, y }),
+      onCellClick: (x, y) => onBoardClick({ x, y }),
     });
     $('pz-form').addEventListener('submit', submit);
-    $('pz-undo').addEventListener('click', () => { moves = moves.slice(0, -1); refresh(); });
     $('pz-clear').addEventListener('click', () => { moves = []; refresh(); });
+    $('pz-reset').addEventListener('click', resetBoard);
+    inputEl.addEventListener('input', renderControls);
     if (solved) {
       resultEl.hidden = false;
       resultEl.className = 'pz-result is-right';
