@@ -14,4 +14,9 @@ line from here to the top of `docs/todo/DONE.md` prefixed `✅` (one-liner, no n
 in the detail file / fix-log).
 
 ## Open
+- **#504.** Redesign Puzzle pages buttons and controls to Modern style `[Model: Sonnet]` — [detail](docs/todo/B504-puzzle-controls-modern.md)
+- **#505.** Evaluate promoting shared Modern control tokens from replay.css / puzzles.css into platform.css `[Model: Sonnet]` — [detail](docs/todo/B505-promote-modern-control-tokens.md)
+- **#506.** Puzzle editor: Auto-only stones, live text import, last-stone marker `[Model: Sonnet]` — [detail](docs/todo/F506-puzzle-editor-auto-live-import.md)
+- **#507.** Puzzle solver: text-only answers, no undo, explore board after the end `[Model: Sonnet]` — [detail](docs/todo/F507-puzzle-solver-text-only-explore.md)
+- **#508.** Puzzle area redesign: concept C "Training path" `[Model: Opus]` — [detail](docs/todo/F508-puzzle-redesign-training-path.md)
 

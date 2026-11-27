@@ -1,7 +1,8 @@
 /**
  * puzzles-mine.js — the author's own puzzles (#203 7a-3), page /puzzles/mine.
  * GET /api/puzzles/mine (member) → { puzzles, canReview }. Admins (canReview) also get a link to the review
- * queue; the server re-checks is_admin on that page's own request.
+ * queue; the server re-checks is_admin on that page's own request. #508: status tiles from `counts`, and the
+ * page's rejected puzzles ("needs your action") come first, then the active ones, each fact in its own chip.
  */
 
 'use strict';
@@ -9,6 +10,17 @@
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
   const $ = (id) => document.getElementById(id);
+
+  function withIcon(node, name) { if (window.PlatformShell && window.PlatformShell.icon) node.prepend(window.PlatformShell.icon(name)); return node; }
+
+  /** A titled group of puzzle cards. */
+  function section(titleKey, rows) {
+    const sec = el('section', undefined, 'pz-mine-sec');
+    const grid = el('div', undefined, 'pz-mine-grid');
+    grid.append(...rows);
+    sec.append(el('h2', t(titleKey), 'pz-h2'), grid);
+    return sec;
+  }
 
   function el(tag, text, cls) {
     const n = document.createElement(tag);
@@ -23,9 +35,9 @@
     input.type = 'text';
     input.maxLength = 60;
     input.value = p.title;
-    const save = el('button', t('puzzles.save'), 'pbtn pbtn--primary pbtn--sm');
+    const save = el('button', t('puzzles.save'), 'pz-tbtn pz-tbtn--sm');
     save.type = 'button';
-    const cancel = el('button', t('modal.btn_cancel'), 'pbtn pbtn--ghost pbtn--sm');
+    const cancel = el('button', t('modal.btn_cancel'), 'pz-tbtn pz-tbtn--quiet pz-tbtn--sm');
     cancel.type = 'button';
     const rowEl = btn.closest('.pz-mine');
     const err = el('small', undefined, 'pz-rename-form__err');
@@ -68,24 +80,26 @@
     const r = el('div', undefined, 'prow pz-mine');
     const main = el('div', undefined, 'pz-mine__main');
     const nameEl = el('b', window.PuzzleBoard.name(p));
-    main.append(nameEl, el('span', t('puzzles.status_' + p.status), 'pbadge pz-st pz-st--' + p.status),
-      el('span', t('puzzles.level_' + p.level) + ' · ' + t('puzzles.rule_' + p.rule) + ' · ' + p.boardSize + '×' + p.boardSize, 'muted small'));
-    r.appendChild(main);
-    if (p.status === 'rejected' && p.reviewNote) r.appendChild(el('p', t('puzzles.reject_note', { note: p.reviewNote }), 'pnote pz-mine__note'));
+    main.append(nameEl, el('span', t('puzzles.status_' + p.status), 'pz-tag pz-tag--' + p.status));
+    const facts = el('div', undefined, 'pz-row');
+    facts.append(el('span', t('puzzles.level_' + p.level), 'pz-tag pz-tag--lv-' + p.level), el('span', t('puzzles.rule_' + p.rule), 'pz-tag'),
+      el('span', p.boardSize + '×' + p.boardSize, 'pz-tag'));
+    r.append(main, facts);
+    if (p.status === 'rejected' && p.reviewNote) r.appendChild(el('p', t('puzzles.reject_note', { note: p.reviewNote }), 'pz-result is-wrong pz-mine__note'));
     const actions = el('div', undefined, 'pactions');
-    const edit = el('a', t('puzzles.edit'), 'pbtn pbtn--ghost pbtn--sm');
+    const edit = withIcon(el('a', t('puzzles.edit'), 'pz-tbtn pz-tbtn--sm'), 'ph-regular-pencil-simple');
     edit.href = '/puzzles/new?id=' + encodeURIComponent(p.id);
     actions.appendChild(edit);
     if (p.status === 'approved') {
-      const view = el('a', t('puzzles.view'), 'pbtn pbtn--ghost pbtn--sm');
+      const view = el('a', t('puzzles.view'), 'pz-tbtn pz-tbtn--quiet pz-tbtn--sm');
       view.href = '/puzzle/' + encodeURIComponent(p.id);
       actions.appendChild(view);
     }
-    const rename = el('button', t('puzzles.rename'), 'pbtn pbtn--ghost pbtn--sm');
+    const rename = el('button', t('puzzles.rename'), 'pz-tbtn pz-tbtn--quiet pz-tbtn--sm');
     rename.type = 'button';
     rename.addEventListener('click', () => startRename(p, nameEl, rename));
     actions.appendChild(rename);
-    const del = el('button', t('puzzles.delete'), 'pbtn pbtn--ghost pbtn--sm');
+    const del = el('button', t('puzzles.delete'), 'pz-tbtn pz-tbtn--danger pz-tbtn--sm');
     del.type = 'button';
     del.addEventListener('click', async () => {
       if (!window.confirm(t('puzzles.delete_confirm', { title: p.title }))) return;
@@ -116,8 +130,8 @@
       const host = $('mn-pager');
       host.replaceChildren();
       if (pg.totalPages <= 1) return;
-      const prev = el('button', t('rankings.prev'), 'pbtn');
-      const next = el('button', t('rankings.next'), 'pbtn');
+      const prev = el('button', t('rankings.prev'), 'pz-tbtn pz-tbtn--quiet');
+      const next = el('button', t('rankings.next'), 'pz-tbtn pz-tbtn--quiet');
       prev.type = next.type = 'button';
       prev.disabled = pg.page <= 1;
       next.disabled = pg.page >= pg.totalPages;
@@ -136,8 +150,14 @@
         const { puzzles, pagination } = data;
         canReview = !!data.canReview;
         const list = $('mn-list');
-        list.replaceChildren(...puzzles.map((p) => row(p, () => loadPage(page > 1 && puzzles.length === 1 ? page - 1 : page, false))));
+        const mk = (p) => row(p, () => loadPage(page > 1 && puzzles.length === 1 ? page - 1 : page, false));
+        const needs = puzzles.filter((p) => p.status === 'rejected');
+        const active = puzzles.filter((p) => p.status !== 'rejected');
+        list.replaceChildren(...[needs.length && section('puzzles.mine_needs', needs.map(mk)), active.length && section('puzzles.mine_active', active.map(mk))].filter(Boolean));
         $('mn-count').textContent = t('puzzles.total', { n: pagination.total });
+        const c = data.counts;
+        $('mn-stats').hidden = !c || !pagination.total;
+        if (c) for (const k of ['pending', 'approved', 'rejected']) $('mn-n-' + k).textContent = String(c[k] || 0);
         renderPager(pagination);
         if (!puzzles.length) { msg.hidden = false; msg.textContent = t('puzzles.mine_empty'); }
         if (toTop && list.scrollIntoView) list.scrollIntoView({ block: 'start' });

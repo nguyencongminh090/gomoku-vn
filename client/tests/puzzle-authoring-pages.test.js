@@ -45,7 +45,7 @@ function boot(page, script, fetchImpl) {
   document.dispatchEvent(new Event('DOMContentLoaded'));
 }
 const $ = (id) => document.getElementById(id);
-const clickTool = (n) => document.querySelectorAll('#ed-tools .pchip')[n].click();
+const clickTool = (id) => document.querySelector('#ed-tools .pz-seg__opt[data-tool="' + id + '"]').click();
 
 describe('editor', () => {
   it('a guest (200 with a guest_ id) gets the login hint, not the editor (#275)', async () => {
@@ -82,14 +82,16 @@ describe('editor', () => {
     expect($('ed-error').textContent).toBe('puzzles.login_to_submit');
   });
 
-  it('tools place black / white / erase stones; the board state mirrors them', async () => {
+  it('the only stone tool is Auto (default); erase removes a stone (#506)', async () => {
     editorBoot(); await settle();
     const r = renderers[0];
-    clickTool(0); r.opts.onCellClick(7, 7);
-    clickTool(1); r.opts.onCellClick(8, 8);
-    expect(r.state.board[7][7]).toBe(1);
-    expect(r.state.board[8][8]).toBe(2);
-    clickTool(5); r.opts.onCellClick(7, 7);
+    const tools = [...document.querySelectorAll('#ed-tools .pz-seg__opt')].map((b) => b.dataset.tool);
+    expect(tools).toEqual(['AUTO', 'WALL', 'PORTAL', 'ERASE', 'ANSWER']);
+    expect(document.querySelector('#ed-tools [aria-pressed="true"]').dataset.tool).toBe('AUTO');
+    expect(document.querySelector('#ed-tools .pz-stone--black, #ed-tools .pz-stone--white')).toBeNull();
+    r.opts.onCellClick(7, 7); r.opts.onCellClick(8, 8);
+    expect([r.state.board[7][7], r.state.board[8][8]]).toEqual([1, 2]);
+    clickTool('ERASE'); r.opts.onCellClick(7, 7);
     expect(r.state.board[7][7]).toBe(0);
     expect(r.opts.clickOccupied).toBe(true); // the renderer must deliver clicks on occupied cells, or Erase never fires
   });
@@ -97,49 +99,134 @@ describe('editor', () => {
   it('auto tool alternates black/white and sets the side to move', async () => {
     editorBoot(); await settle();
     const r = renderers[0];
-    clickTool(2);
+    clickTool('AUTO');
     r.opts.onCellClick(7, 7); r.opts.onCellClick(8, 8); r.opts.onCellClick(6, 6);
     expect([r.state.board[7][7], r.state.board[8][8], r.state.board[6][6]]).toEqual([1, 2, 1]);
     expect($('ed-tomove').value).toBe('WHITE');
   });
 
+  it('auto stays in step after erasing: the next stone takes the colour the counts imply (#506)', async () => {
+    editorBoot(); await settle();
+    const r = renderers[0];
+    r.opts.onCellClick(7, 7); r.opts.onCellClick(8, 8); r.opts.onCellClick(6, 6); // B W B
+    clickTool('ERASE'); r.opts.onCellClick(8, 8);                                     // drop the white → B B
+    clickTool('AUTO'); r.opts.onCellClick(9, 9);
+    expect(r.state.board[9][9]).toBe(2);   // 2 black, 0 white → white
+    r.opts.onCellClick(10, 10);
+    expect(r.state.board[10][10]).toBe(2); // 2 black, 1 white → white again
+    r.opts.onCellClick(11, 11);
+    expect(r.state.board[11][11]).toBe(1);
+    expect(r.state.myColor).toBe('WHITE'); // hover preview follows the next auto colour
+  });
+
+  it('the last placed stone carries the renderer last-move marker; erasing it moves the marker back (#506)', async () => {
+    editorBoot(); await settle();
+    const r = renderers[0];
+    expect(r.state.lastMove).toBeNull();
+    r.opts.onCellClick(7, 7);
+    expect(r.state.lastMove).toEqual({ x: 7, y: 7 });
+    r.opts.onCellClick(8, 8);
+    expect(r.state.lastMove).toEqual({ x: 8, y: 8 });
+    clickTool('ERASE'); r.opts.onCellClick(8, 8);
+    expect(r.state.lastMove).toEqual({ x: 7, y: 7 });
+    clickTool('WALL'); r.opts.onCellClick(7, 7); // a wall over the stone removes it too
+    expect(r.state.lastMove).toBeNull();
+    clickTool('ANSWER'); // the answer tool's own cells keep their marker; with no answer yet: none
+    expect(r.state.lastMove).toBeNull();
+  });
+
   it('wall toggles, portal needs two clicks, erase removes a whole portal', async () => {
     editorBoot(); await settle();
     const r = renderers[0];
-    clickTool(3); r.opts.onCellClick(1, 1);
+    clickTool('WALL'); r.opts.onCellClick(1, 1);
     expect(r.state.board[1][1]).toBe(-1);
     r.opts.onCellClick(1, 1);
     expect(r.state.board[1][1]).toBe(0);
-    clickTool(4); r.opts.onCellClick(2, 2);
+    clickTool('PORTAL'); r.opts.onCellClick(2, 2);
     expect(r.state.portals).toHaveLength(0);
     r.opts.onCellClick(5, 5);
     expect(r.state.portals).toEqual([{ a: { x: 2, y: 2 }, b: { x: 5, y: 5 } }]);
     expect([r.state.board[2][2], r.state.board[5][5]]).toEqual([-2, -2]);
-    clickTool(5); r.opts.onCellClick(5, 5);
+    clickTool('ERASE'); r.opts.onCellClick(5, 5);
     expect(r.state.portals).toHaveLength(0);
     expect(r.state.board[2][2]).toBe(0);
   });
 
-  it('pasted text fills the board; coordinates off the board are rejected', async () => {
+  const typeImport = (text) => {
+    $('ed-import').value = text;
+    $('ed-import').dispatchEvent(new Event('input', { bubbles: true }));
+  };
+
+  it('typing setup text updates the board live after a ~300 ms debounce; no apply button (#506)', async () => {
     editorBoot(); await settle();
     const r = renderers[0];
-    $('ed-import').value = 'h8 i9 h10 wall: a1 portal: b2 c3';
-    $('ed-import-btn').click();
-    expect(r.state.board[7][7]).toBe(1);
-    expect(r.state.board[6][8]).toBe(2);
-    expect(r.state.board[14][0]).toBe(-1);
-    expect(r.state.portals).toHaveLength(1);
-    $('ed-import').value = 'h8 z30';
-    $('ed-import-btn').click();
-    expect($('ed-result').textContent).toContain('puzzles.import_bad');
-    expect(r.state.board[7][7]).toBe(1); // unchanged
+    expect($('ed-import-btn')).toBeNull();
+    jest.useFakeTimers();
+    try {
+      typeImport('h8 i9 h10 wall: a1 portal: b2 c3');
+      jest.advanceTimersByTime(200);
+      expect(r.state.board[7][7]).toBe(0); // still debouncing
+      jest.advanceTimersByTime(150);
+      expect(r.state.board[7][7]).toBe(1);
+      expect(r.state.board[6][8]).toBe(2);
+      expect(r.state.board[14][0]).toBe(-1);
+      expect(r.state.portals).toHaveLength(1);
+      expect(r.state.lastMove).toEqual({ x: 7, y: 5 }); // h10 = last stone in the text
+      expect($('ed-tomove').value).toBe('WHITE');
+      // Rapid typing parses once, with the final text.
+      typeImport('h8'); jest.advanceTimersByTime(100);
+      typeImport('h8 j9'); jest.advanceTimersByTime(300);
+      expect(r.state.board[7][7]).toBe(1);
+      expect(r.state.board[6][9]).toBe(2);
+      expect(r.state.board[14][0]).toBe(0);
+    } finally { jest.useRealTimers(); }
+  });
+
+  it('malformed text shows an inline alert naming the bad token and keeps the last valid board; no window.alert (#506)', async () => {
+    editorBoot(); await settle();
+    const r = renderers[0];
+    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+    jest.useFakeTimers();
+    try {
+      typeImport('h8 i9'); jest.advanceTimersByTime(300);
+      expect($('ed-import-err').hidden).toBe(true);
+      expect($('ed-import').getAttribute('aria-invalid')).not.toBe('true');
+      typeImport('h8 i99 z30'); jest.advanceTimersByTime(300);
+      const err = $('ed-import-err');
+      expect(err.hidden).toBe(false);
+      expect(err.getAttribute('role')).toBe('alert');
+      expect(err.textContent).toBe('puzzles.import_bad_token{"token":"I99, Z30","size":15}');
+      expect($('ed-import').getAttribute('aria-invalid')).toBe('true');
+      expect($('ed-import').getAttribute('aria-describedby')).toContain('ed-import-err');
+      expect(r.state.board[7][7]).toBe(1); // last valid board kept
+      expect(r.state.board[6][8]).toBe(2);
+      expect($('ed-result').hidden).toBe(true); // the notice sits by the field, not the form footer
+      typeImport('h8 i9 j10'); jest.advanceTimersByTime(300);
+      expect(err.hidden).toBe(true);
+      expect($('ed-import').getAttribute('aria-invalid')).not.toBe('true');
+      expect(r.state.board[5][9]).toBe(1);
+      expect(alertSpy).not.toHaveBeenCalled();
+    } finally { jest.useRealTimers(); alertSpy.mockRestore(); }
+  });
+
+  it('empty or coordinate-free text leaves the stones placed by hand alone (#506)', async () => {
+    editorBoot(); await settle();
+    const r = renderers[0];
+    r.opts.onCellClick(3, 3);
+    jest.useFakeTimers();
+    try {
+      typeImport('wall:'); jest.advanceTimersByTime(300);
+      typeImport(''); jest.advanceTimersByTime(300);
+    } finally { jest.useRealTimers(); }
+    expect(r.state.board[3][3]).toBe(1);
+    expect($('ed-import-err').hidden).toBe(true);
   });
 
   it('the answer tool appends labels to the active answer line (final_move keeps one)', async () => {
     editorBoot(); await settle();
     const r = renderers[0];
-    clickTool(0); r.opts.onCellClick(7, 7); // a stone: answers cannot land on it
-    clickTool(6);
+    clickTool('AUTO'); r.opts.onCellClick(7, 7); // a stone: answers cannot land on it
+    clickTool('ANSWER');
     r.opts.onCellClick(1, 6); r.opts.onCellClick(2, 6); r.opts.onCellClick(7, 7);
     expect(document.querySelector('.pz-answer').value).toBe('B9, C9');
     $('ed-mode').value = 'final_move'; $('ed-mode').dispatchEvent(new Event('change'));
@@ -149,13 +236,13 @@ describe('editor', () => {
 
   it('tags are capped at three', async () => {
     editorBoot(); await settle();
-    [...document.querySelectorAll('#ed-tags .pchip')].slice(0, 4).forEach((b) => b.click());
-    expect(document.querySelectorAll('#ed-tags .pchip[aria-pressed="true"]')).toHaveLength(3);
+    [...document.querySelectorAll('#ed-tags .pz-chip')].slice(0, 4).forEach((b) => b.click());
+    expect(document.querySelectorAll('#ed-tags .pz-chip[aria-pressed="true"]')).toHaveLength(3);
   });
 
   it('shrinking the board drops stones that no longer fit', async () => {
     editorBoot(); await settle();
-    clickTool(0); renderers[0].opts.onCellClick(16, 16); // only possible once size > 15
+    clickTool('AUTO'); renderers[0].opts.onCellClick(16, 16); // only possible once size > 15
     // a 15-board cannot be clicked at 16,16, but a stone placed on a 17-board must vanish when going back
     $('ed-size').value = '17'; $('ed-size').dispatchEvent(new Event('change'));
     renderers[0].opts.onCellClick(16, 16);
@@ -166,8 +253,8 @@ describe('editor', () => {
 
   it('submits the body (coords parsed against the board size) and maps server errors', async () => {
     editorBoot((u, o) => (o && o.method === 'POST' ? fail(400, { code: 'PUZZLE_STONES_INVALID' }) : null)); await settle();
-    clickTool(0); renderers[0].opts.onCellClick(7, 7);
-    clickTool(1); renderers[0].opts.onCellClick(6, 6);
+    clickTool('AUTO'); renderers[0].opts.onCellClick(7, 7);
+    clickTool('AUTO'); renderers[0].opts.onCellClick(6, 6);
     $('ed-title').value = 'T';
     document.querySelector('.pz-answer').value = '122';
     document.querySelector('.pz-answer').dispatchEvent(new Event('input'));
@@ -236,6 +323,84 @@ describe('my puzzles', () => {
     expect($('mn-review').hidden).toBe(true);
     expect(errs).toEqual([]); // init() is async: a ReferenceError there would only surface as an unhandled rejection
     expect(global.fetch.mock.calls.some(([u]) => u.includes('/review'))).toBe(false); // no probe → no 403 in the console
+  });
+});
+
+describe('editor — #508 step tabs', () => {
+  const edBoot = () => boot('editor', '../js/puzzle-editor.js', (u) => (u.includes('/rankings/me') ? ok({ userId: 'u1' }) : ok({ id: 'n', status: 'pending' })));
+  const visible = () => [1, 2, 3].filter((k) => !$('ed-step-' + k).hidden);
+
+  it('starts on the position tab; Next walks the tabs; aria-selected and roving tabindex follow', async () => {
+    edBoot(); await settle();
+    expect(visible()).toEqual([1]);
+    expect($('ed-tab-1').getAttribute('aria-selected')).toBe('true');
+    $('ed-next').click();
+    expect(visible()).toEqual([2]);
+    expect([1, 2, 3].map((k) => $('ed-tab-' + k).tabIndex)).toEqual([-1, 0, -1]);
+    expect($('ed-next').textContent).toBe('puzzles.step_next_answers');
+    $('ed-next').click();
+    expect(visible()).toEqual([3]);
+    expect([$('ed-next').hidden, $('ed-submit').hidden]).toEqual([true, false]);
+  });
+
+  it('arrow keys move between tabs; the answer tool opens the answers tab', async () => {
+    edBoot(); await settle();
+    $('ed-tab-1').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    expect(visible()).toEqual([3]);
+    expect(document.activeElement).toBe($('ed-tab-3'));
+    $('ed-tab-3').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(visible()).toEqual([1]);
+    clickTool('ANSWER');
+    expect(visible()).toEqual([3]);
+  });
+
+  it('submitting without a title opens the details tab, flags the field and sends nothing', async () => {
+    edBoot(); await settle();
+    $('ed-form').dispatchEvent(new Event('submit', { cancelable: true })); await settle();
+    expect(visible()).toEqual([2]);
+    expect($('ed-title').getAttribute('aria-invalid')).toBe('true');
+    expect($('ed-result').textContent).toBe('err.puzzle_title_invalid');
+    expect(global.fetch.mock.calls.some(([, o]) => o && o.method === 'POST')).toBe(false);
+  });
+
+  it('stone counts are separate chips (no " · " join)', async () => {
+    edBoot(); await settle();
+    renderers[0].opts.onCellClick(7, 7);
+    expect([...$('ed-count').querySelectorAll('.pz-tag')].map((n) => n.textContent))
+      .toEqual(['puzzles.counts_black{"n":1}', 'puzzles.counts_white{"n":0}', 'puzzles.counts_need{"side":"puzzles.side_WHITE"}']);
+  });
+});
+
+describe('my puzzles — #508 needs action first, status tiles, chips', () => {
+  const MINE = [
+    { id: 'a', title: 'A', status: 'approved', level: 'easy', rule: 'caro', boardSize: 15, reviewNote: '' },
+    { id: 'b', title: 'B', status: 'rejected', level: 'hard', rule: 'renju', boardSize: 17, reviewNote: 'sai' },
+    { id: 'c', title: 'C', status: 'pending', level: 'medium', rule: 'freestyle', boardSize: 15, reviewNote: '' },
+  ];
+  const bootMine = (extra) => boot('mine', '../js/puzzles-mine.js', () => ok({ puzzles: MINE, canReview: false, pagination: { page: 1, limit: 20, total: 3, totalPages: 1 }, ...extra }));
+
+  it('rejected puzzles come first under "needs action", the rest under "active"', async () => {
+    bootMine({ counts: { pending: 1, approved: 1, rejected: 1 } }); await settle();
+    const secs = [...document.querySelectorAll('#mn-list .pz-mine-sec')];
+    expect(secs.map((s) => s.querySelector('h2').textContent)).toEqual(['puzzles.mine_needs', 'puzzles.mine_active']);
+    expect([...secs[0].querySelectorAll('.prow b')].map((b) => b.textContent)).toEqual(['B']);
+    expect([...secs[1].querySelectorAll('.prow b')].map((b) => b.textContent)).toEqual(['A', 'C']);
+    expect(secs[0].querySelector('.pz-mine__note').textContent).toBe('puzzles.reject_note{"note":"sai"}');
+  });
+
+  it('status tiles show the counts across pages; facts are separate chips, never joined with " · "', async () => {
+    bootMine({ counts: { pending: 4, approved: 9, rejected: 2 } }); await settle();
+    expect($('mn-stats').hidden).toBe(false);
+    expect(['pending', 'approved', 'rejected'].map((k) => $('mn-n-' + k).textContent)).toEqual(['4', '9', '2']);
+    const a = document.querySelector('#mn-list .prow');
+    expect([...a.querySelectorAll('.pz-tag')].map((n) => n.textContent)).toEqual(['puzzles.status_rejected', 'puzzles.level_hard', 'puzzles.rule_renju', '17×17']);
+    expect($('mn-list').textContent).not.toContain(' · ');
+  });
+
+  it('no counts in the payload (older server) → tiles stay hidden; only active puzzles → one section', async () => {
+    boot('mine', '../js/puzzles-mine.js', () => ok({ puzzles: [MINE[0]], canReview: false, pagination: { page: 1, limit: 20, total: 1, totalPages: 1 } })); await settle();
+    expect($('mn-stats').hidden).toBe(true);
+    expect(document.querySelectorAll('#mn-list .pz-mine-sec')).toHaveLength(1);
   });
 });
 
@@ -440,5 +605,46 @@ describe('editor — answer lines', () => {
     expect(document.querySelectorAll('.pz-answer')[0]).toBe(first); // same node: not re-rendered
     expect(first.classList.contains('is-active')).toBe(true);
     expect(second.classList.contains('is-active')).toBe(false);
+  });
+});
+
+describe('Modern control hierarchy on mine & editor (#504)', () => {
+  const raw = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+
+  it('mine and editor pages use body.pz-page, zero classic .pbtn/.pchip, danger delete, and 1 raised primary even while renaming', async () => {
+    for (const f of ['puzzles-mine.html', 'puzzle-editor.html']) {
+      expect(raw(f)).toMatch(/<body class="pl pz-page">/);
+    }
+
+    // /puzzles/mine with admin review link, pager, approved row, and open inline rename
+    const rows = Array.from({ length: 20 }, (_, i) => ({
+      id: 'm' + i, number: i + 1, title: 'T' + i, status: 'approved', level: 'easy', rule: 'caro', boardSize: 15, reviewNote: '',
+    }));
+    boot('mine', '../js/puzzles-mine.js', (u) => (u.includes('/review')
+      ? ok({ pagination: { total: 2 } })
+      : ok({ puzzles: rows, canReview: true, pagination: { page: 1, limit: 20, total: 25, totalPages: 2 } })));
+    await settle();
+    const firstRow = document.querySelector('#mn-list .pz-mine');
+    const delBtn = [...firstRow.querySelectorAll('button')].find((b) => b.textContent === 'puzzles.delete');
+    expect(delBtn.classList.contains('pz-tbtn--danger')).toBe(true);
+    [...firstRow.querySelectorAll('button')].find((b) => b.textContent === 'puzzles.rename').click();
+    expect(document.querySelectorAll('.pbtn, .pchip, .ptab')).toHaveLength(0);
+    // Inline Save is a tonal pill, keeping "Đăng puzzle mới" as the sole raised primary on /puzzles/mine
+    expect(document.querySelectorAll('.pz-btn--primary')).toHaveLength(1);
+    expect(firstRow.querySelector('.pz-rename-form .pz-tbtn')).not.toBeNull();
+    expect(document.querySelectorAll('#mn-pager .pz-tbtn--quiet')).toHaveLength(2);
+
+    // /puzzles/new with 2 answers: 1 raised primary (#ed-submit), danger icon trash, segmented tools, tonal tag chips, 0 .pbtn
+    boot('editor', '../js/puzzle-editor.js', (u) => (u.includes('/rankings/me') ? ok({ userId: 'u1' }) : ok({})));
+    await settle();
+    $('ed-add-answer').click();
+    expect(document.querySelectorAll('.pbtn, .pchip, .ptab')).toHaveLength(0);
+    const shown = () => [...document.querySelectorAll('.pz-btn--primary')].filter((n) => !n.hidden).map((n) => n.id);
+    expect(shown()).toEqual(['ed-next']); // #508: one primary per step — Next, then Submit on the answers tab
+    $('ed-next').click(); $('ed-next').click();
+    expect(shown()).toEqual(['ed-submit']);
+    expect(document.querySelectorAll('#ed-answers .pz-tbtn--danger.pz-tbtn--icon')).toHaveLength(2);
+    expect(document.querySelectorAll('#ed-tools .pz-seg__opt')).toHaveLength(5);
+    expect(document.querySelectorAll('#ed-tags .pz-chip')).toHaveLength(5);
   });
 });

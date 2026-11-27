@@ -11,49 +11,76 @@
   <link rel="stylesheet" href="css/tokens.css?v=bd768e32" />
   <link rel="stylesheet" href="css/platform-shell.css?v=174b5103" />
   <link rel="stylesheet" href="css/platform.css?v=f4b4f520" />
-  <link rel="stylesheet" href="css/puzzles.css?v=b0f88347" />
+  <link rel="stylesheet" href="css/puzzles.css?v=5d69de03" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
   <script src="js/skin-preload.js?v=399486e6"></script>
 </head>
-<body class="pl">
+<body class="pl pz-page">
 <div id="pl-shell"></div>
 
 <main class="papp" role="main">
-  <p><a href="/puzzles" class="muted small pback"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-arrow-left"></use></svg><span data-i18n="puzzles.back">Tất cả puzzle</span></a></p>
+  <p class="pz-back"><a href="/puzzles" class="pz-backbtn"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-arrow-left"></use></svg><span data-i18n="puzzles.back">Tất cả puzzle</span></a></p>
   <div id="pz-error" class="pnote" hidden></div>
 
   <div id="pz-view" class="pz-solve" hidden>
-    <div class="pz-solve__board ppanel">
+    <div class="pz-solve__board pz-panel">
       <canvas id="pz-canvas"></canvas>
     </div>
 
-    <div class="pz-solve__side ppanel">
-      <h1 id="pz-title" class="pz-title"></h1>
-      <div id="pz-meta" class="pz-meta"></div>
-      <p id="pz-prompt" class="pz-prompt"></p>
-      <p id="pz-turn" class="pz-turn"></p>
+    <div class="pz-solve__side pz-panel">
+      <header>
+        <p id="pz-position" class="pz-eyebrow" hidden></p>
+        <h1 id="pz-title" class="pz-title"></h1>
+        <div id="pz-meta" class="pz-meta pz-row"></div>
+      </header>
 
-      <div id="pz-moves" class="pz-moves" aria-live="polite"></div>
-      <form id="pz-form" class="pz-form" autocomplete="off">
-        <label class="muted small" for="pz-input" id="pz-input-label"></label>
-        <input id="pz-input" type="text" maxlength="200" spellcheck="false" data-i18n-placeholder="puzzles.input_ph" placeholder="H8, J9" />
-        <div class="pactions">
-          <button type="submit" id="pz-submit" class="pbtn pbtn--primary" data-i18n="puzzles.check">Kiểm tra</button>
-          <button type="button" id="pz-undo" class="pbtn pbtn--ghost" data-i18n="puzzles.undo">Bỏ nước cuối</button>
-          <button type="button" id="pz-clear" class="pbtn pbtn--ghost" data-i18n="puzzles.clear">Xoá hết</button>
-        </div>
-      </form>
-      <p id="pz-attempts" class="muted small" hidden></p>
-      <p id="pz-result" class="pz-result" role="status" hidden></p>
-      <p id="pz-login" class="pnote" hidden></p>
-      <div id="pz-next" class="pactions" hidden>
-        <a id="pz-next-link" class="pbtn pbtn--primary" href="/puzzles" data-i18n="puzzles.more">Puzzle khác</a>
+      <ol class="pz-steps">
+        <li id="pz-step-read" class="pz-step is-done"><div class="pz-stack">
+          <h2 class="pz-step__h" data-i18n="puzzles.step_read">Đọc đề</h2>
+          <p id="pz-prompt" class="pz-prompt"></p>
+          <p id="pz-turn" class="pz-turn"></p>
+        </div></li>
+
+        <li id="pz-step-answer" class="pz-step is-on"><div class="pz-stack">
+          <h2 class="pz-step__h" data-i18n="puzzles.step_answer">Nhập đáp án</h2>
+          <p id="pz-lock" class="pz-lock"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-lock"></use></svg><span data-i18n="puzzles.board_locked">Bàn cờ chỉ để xem cho tới khi bạn giải xong hoặc hết lượt.</span></p>
+          <div id="pz-moves" class="pz-moves pz-row" aria-live="polite"></div>
+          <form id="pz-form" class="pz-form" autocomplete="off">
+            <label class="pz-label" for="pz-input" id="pz-input-label"></label>
+            <input id="pz-input" type="text" maxlength="200" spellcheck="false" data-i18n-placeholder="puzzles.input_ph" placeholder="H8, J9" />
+            <div class="pactions">
+              <button type="submit" id="pz-submit" class="pz-btn pz-btn--primary"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-check-circle"></use></svg><span data-i18n="puzzles.check">Kiểm tra</span></button>
+              <button type="button" id="pz-clear" class="pz-tbtn pz-tbtn--danger" data-i18n="puzzles.clear">Xoá hết</button>
+            </div>
+          </form>
+          <p id="pz-attempts" class="pz-help" hidden></p>
+          <p id="pz-result" class="pz-result" role="status" hidden></p>
+          <p id="pz-login" class="pnote" hidden></p>
+        </div></li>
+
+        <li id="pz-step-explore" class="pz-step"><div class="pz-stack">
+          <h2 class="pz-step__h" data-i18n="puzzles.step_explore">Khám phá</h2>
+          <p id="pz-explore-locked" class="pz-help" data-i18n="puzzles.step_explore_locked">Mở sau khi giải xong hoặc hết lượt.</p>
+          <p id="pz-explore-note" class="pz-help" hidden data-i18n="puzzles.explore_note">Bàn cờ đã mở: đặt quân tự do để nghiên cứu, không tính là lượt thử.</p>
+          <div class="pactions">
+            <div id="pz-next" class="pactions" hidden>
+              <a id="pz-next-link" class="pz-btn pz-btn--primary" href="/puzzles" data-i18n="puzzles.more">Puzzle khác</a>
+            </div>
+            <button type="button" id="pz-reset" class="pz-tbtn" hidden><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=1d6d0a18#ph-regular-arrow-counter-clockwise"></use></svg><span data-i18n="puzzles.reset_board">Về thế ban đầu</span></button>
+          </div>
+        </div></li>
+      </ol>
+
+      <div class="pz-stats">
+        <div id="pz-stat-tries" class="pz-stat" hidden><b id="pz-tries-n"></b><span data-i18n="puzzles.stat_tries">Lượt bạn đã thử</span></div>
+        <div id="pz-stat-solvers" class="pz-stat" hidden><b id="pz-solvers-n"></b><span data-i18n="puzzles.stat_solvers">Người đã giải</span></div>
       </div>
+
       <section id="pz-history" hidden>
         <h2 class="small" data-i18n="puzzles.my_attempts">Lượt thử của bạn</h2>
-        <div id="pz-history-list" class="pz-moves"></div>
+        <div id="pz-history-list" class="pz-moves pz-row"></div>
       </section>
       <section id="pz-solvers" hidden>
         <h2 class="small" id="pz-solvers-h"></h2>
@@ -63,7 +90,7 @@
   </div>
 </main>
 
-<script src="js/i18n.js?v=268d5e8a"></script>
+<script src="js/i18n.js?v=872c893a"></script>
 <script src="js/ui-mode.js?v=3e1ff171"></script>
 <script src="js/session.js?v=7d763f30"></script>
 <script src="js/audio-manager.js?v=05f3d9fe"></script>
@@ -72,6 +99,6 @@
 <script src="js/coords.js?v=f2d4e6d0"></script>
 <script src="js/board.js?v=91667397"></script>
 <script src="js/puzzle-board.js?v=8bf7b792"></script>
-<script src="js/puzzle.js?v=144047aa"></script>
+<script src="js/puzzle.js?v=9a3651b2"></script>
 </body>
 </html>

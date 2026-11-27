@@ -81,8 +81,9 @@ describe('#214 Scope 2: site-wide icons', () => {
     expect(iconOf(ed.getElementById('ed-submit'))).toBe('ph-regular-paper-plane-tilt');
     // Button text sits in a span so i18n can translate it without wiping the icon.
     for (const id of ['ed-add-answer', 'ed-submit']) expect(ed.getElementById(id).hasAttribute('data-i18n')).toBe(false);
-    expect(read('js/puzzle-editor.js')).toMatch(/ph-fill-circle[\s\S]*ph-fill-circle[\s\S]*ph-regular-eraser[\s\S]*ph-regular-target/);
-    expect(read('js/puzzle-editor.js')).toMatch(/pz-stone--/);
+    // #506: single-colour stone tools dropped — auto (shuffle), eraser, target remain.
+    expect(read('js/puzzle-editor.js')).toMatch(/ph-regular-shuffle[\s\S]*ph-regular-eraser[\s\S]*ph-regular-target/);
+    expect(read('js/puzzle-editor.js')).not.toMatch(/ph-fill-circle|pz-stone--/);
     // The rendered label comes from i18n, so the string must not carry the glyph either.
     expect(read('js/i18n.js')).not.toMatch(/'puzzles\.add_answer': '\+/);
   });
